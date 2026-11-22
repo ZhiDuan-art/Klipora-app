@@ -2579,7 +2579,7 @@ final class PortabilitySetupManager: ObservableObject {
                 approxSize: "約 178 MB",
                 license: "MIT / Node.js Open Source License",
                 sourceOrPath: bundledNodePath ?? "Contents/Resources/runtime",
-                notes: "隨 MotionDesk.app 完整內建，無需外部安裝 Node.js 即可執行字卡渲染與多軌工作流。"
+                notes: "隨 Klipora.app 完整內建，無需外部安裝 Node.js 即可執行字卡渲染與多軌工作流。"
             ),
             DependencyManifestEntry(
                 id: "qwen3-tts-models",
@@ -3339,7 +3339,7 @@ struct PortabilitySetupSheetView: View {
                                 }
                                 .controlSize(.small)
                                 .accessibilityLabel(app.engineRunning ? "停止內建 ComfyUI 程序" : "由工作台啟動本機 ComfyUI")
-                                .help("由 MotionDesk 直接啟動或停止本機 ComfyUI 服務")
+                                .help("由 Klipora 直接啟動或停止本機 ComfyUI 服務")
 
                                 Button("重設預設模型目錄") {
                                     manager.resetComfyModelsRoot(app: app)
@@ -3570,7 +3570,7 @@ struct PortabilitySetupSheetView: View {
                             }
                             .controlSize(.small)
                             .accessibilityLabel("切換為全新獨立空白聲音角色庫")
-                            .help("切換至 MotionDesk 獨立空白聲音角色庫，不影響原始資料")
+                            .help("切換至 Klipora 獨立空白聲音角色庫，不影響原始資料")
 
                             Button("恢復預設模型快取位置") {
                                 manager.resetVoiceboxModelsCacheDirectory(app: app)
@@ -4114,7 +4114,7 @@ struct PortabilitySetupSheetView: View {
                         }
                         .controlSize(.small)
                         .accessibilityLabel("開啟系統設定中的麥克風隱私權限")
-                        .help("前往 macOS 系統設定開啟 MotionDesk 的麥克風錄音權限")
+                        .help("前往 macOS 系統設定開啟 Klipora 的麥克風錄音權限")
                     }
                 }
 
@@ -4289,7 +4289,7 @@ The above copyright notice and this permission notice shall be included in all c
             .tint(studioAccent)
             .controlSize(.regular)
             .accessibilityLabel(manager.isFirstRunMode ? "完成首次設定並開始使用" : "完成設定並返回工作台")
-            .help("儲存並完成首次環境設定，返回 MotionDesk 工作台")
+            .help("儲存並完成首次環境設定，返回 Klipora 工作台")
         }
     }
 

@@ -4564,13 +4564,13 @@ struct StudioView: View {
                         }.disabled(app.busy)
                         DisclosureGroup {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("由 MotionDesk 另開一個本機 ComfyUI。若已在 Comfy Desktop 啟動實例，直接檢查連線即可。")
+                                Text("由 Klipora 另開一個本機 ComfyUI。若已在 Comfy Desktop 啟動實例，直接檢查連線即可。")
                                     .font(.caption).foregroundStyle(.secondary)
-                                Button(app.engineRunning ? "停止 MotionDesk 的 ComfyUI" : "啟動本機 ComfyUI",
+                                Button(app.engineRunning ? "停止 Klipora 的 ComfyUI" : "啟動本機 ComfyUI",
                                        action: app.toggleEngine)
                             }.padding(.top, 5)
                         } label: {
-                            Text("由 MotionDesk 啟動本機 ComfyUI")
+                            Text("由 Klipora 啟動本機 ComfyUI")
                                 .help("另一種本機啟動方式。使用 Comfy Desktop 的實例時，無須啟用。")
                         }.disabled(app.busy)
                     }.padding(.top, 8)

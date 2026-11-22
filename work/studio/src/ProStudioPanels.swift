@@ -3260,7 +3260,7 @@ private final class AIToolsLocalState: ObservableObject {
     @Published var asrModelUsed: String = ""
     @Published var lastSRTPath: String? = nil
 
-    @Published var ttsText: String = "歡迎使用 MotionDesk 本地神經網路中文配音。"
+    @Published var ttsText: String = "歡迎使用 Klipora 本地神經網路中文配音。"
     @Published var ttsSpeakerID: Int = 45
     @Published var ttsSpeed: Double = 1.0
     @Published var lastTTSPath: String? = nil

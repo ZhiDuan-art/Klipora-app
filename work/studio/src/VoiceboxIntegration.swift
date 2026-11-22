@@ -3450,7 +3450,7 @@ struct VoiceboxStudioSectionView: View {
                                     || store.editingSampleReferenceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                 )
                                 .accessibilityLabel("儲存參考音訊逐字稿校正快取")
-                                .help("儲存至 MotionDesk 衍生校正快取並清除語音提示快取，不修改原始聲音庫資料庫")
+                                .help("儲存至 Klipora 衍生校正快取並清除語音提示快取，不修改原始聲音庫資料庫")
 
                                 Button {
                                     saveDerivedSampleTranscript(sample: sample, restoreOriginal: true)

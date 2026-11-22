@@ -385,7 +385,7 @@ private struct ManualLoRAImportSheet: View {
             }
             HStack { Text("預設強度"); Slider(value: $strength, in: 0...2, step: 0.05); Text(strength.formatted(.number.precision(.fractionLength(2)))).monospacedDigit() }
             Toggle("已確認發布頁標示的基底模型與此選項一致", isOn: $confirmed)
-            Text("權重唯一實體會複製到 ~/Library/Application Support/Klipora/models/loras/（依 SHA256 去重），並於所選 ComfyUI 根目錄的 models/loras/MotionDesk/ 建立符號連結供 Desktop 與 MotionDesk 共用；原始檔保留。")
+            Text("權重唯一實體會複製到 ~/Library/Application Support/Klipora/models/loras/（依 SHA256 去重），並於所選 ComfyUI 根目錄的 models/loras/MotionDesk/ 建立符號連結供 Desktop 與 Klipora 共用；原始檔保留。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !message.isEmpty { Text(message).font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
             HStack {

@@ -255,7 +255,7 @@ struct OnlineImageControls: View {
                     .font(.caption)
                     .disabled(network.isOffline)
                 }
-                Text("以您的瀏覽器正常登入官網生圖並下載，再匯入 MotionDesk 素材庫；不讀取瀏覽器 Cookie 或重複使用工作階段權杖。")
+                Text("以您的瀏覽器正常登入官網生圖並下載，再匯入 Klipora 素材庫；不讀取瀏覽器 Cookie 或重複使用工作階段權杖。")
                     .font(.caption2)
                     .foregroundStyle(StudioTheme.textMuted)
             }

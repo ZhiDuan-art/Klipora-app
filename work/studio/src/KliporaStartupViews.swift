@@ -662,7 +662,7 @@ struct KliporaOnboardingSheet: View {
                 Text(vm.configStatusMessage)
                     .font(.caption).foregroundStyle(StudioTheme.success)
             }
-            Text("中央模型路徑：\(CentralComfyModelStorage.defaultRoot.path)（與舊 MotionDesk 資料完全共用，無需搬移或重複占用硬碟）。")
+            Text("中央模型路徑：\(CentralComfyModelStorage.defaultRoot.path)（所有本機模型集中管理，避免重複占用硬碟）。")
                 .font(.caption2).foregroundStyle(StudioTheme.textMuted)
         }
         .padding(12)

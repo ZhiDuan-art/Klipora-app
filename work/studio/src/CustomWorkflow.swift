@@ -189,7 +189,7 @@ struct CustomWorkflowControls: View {
                     Text("占位符偵測：\(entry.hasPromptPlaceholder ? "✓ {{PROMPT}}" : "✗ 缺 {{PROMPT}}") · \(entry.hasSeedPlaceholder ? "✓ {{SEED}}" : "未設 {{SEED}}") · \(entry.hasImagePlaceholder ? "✓ {{IMAGE}}" : "未設 {{IMAGE}}")")
                         .font(.caption2).foregroundStyle(.secondary)
                     if !entry.hasPromptPlaceholder {
-                        Text("警告：此工作流不含 {{PROMPT}} 占位符，改寫 MotionDesk 提示詞不會自動套用，提交生成前請先於正向提示詞節點設為 {{PROMPT}}。")
+                        Text("警告：此工作流不含 {{PROMPT}} 占位符，改寫 Klipora 提示詞不會自動套用，提交生成前請先於正向提示詞節點設為 {{PROMPT}}。")
                             .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     }
                     Text("匯入不自動執行；請確認本機 ComfyUI 已安裝所需模型與自訂節點。唯一實體存於 ~/Library/Application Support/Klipora/workflows/。")
@@ -262,7 +262,7 @@ private struct CustomWorkflowImportSheet: View {
                     Text("占位符：\(info.hasPromptPlaceholder ? "✓ {{PROMPT}}" : "✗ 缺少 {{PROMPT}}") · \(info.hasSeedPlaceholder ? "✓ {{SEED}}" : "未含 {{SEED}}") · \(info.hasImagePlaceholder ? "✓ {{IMAGE}}" : "未含 {{IMAGE}}")")
                         .font(.caption).foregroundStyle(.secondary)
                     if !info.hasPromptPlaceholder {
-                        Text("提醒：未偵測到 {{PROMPT}} 占位符，匯入後修改 MotionDesk 提示詞不會自動套用，且執行時需先於正向節點填入 {{PROMPT}}。")
+                        Text("提醒：未偵測到 {{PROMPT}} 占位符，匯入後修改 Klipora 提示詞不會自動套用，且執行時需先於正向節點填入 {{PROMPT}}。")
                             .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     }
                 }
