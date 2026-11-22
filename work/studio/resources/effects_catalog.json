@@ -1,0 +1,577 @@
+{
+  "version": "4.0",
+  "visualEffects": [
+    {
+      "id": "rgb_split",
+      "name": "色散分離",
+      "category": "光學畸變",
+      "keywords": ["rgb", "chromatic", "aberration", "色散", "色差", "分色", "抖音", "光學"],
+      "description": "紅藍通道水平與垂直錯位，營造鏡頭色散與潮流視覺衝擊。",
+      "ffmpegFilter": "format=rgba,rgbashift=rh=-8:bv=6:bh=8"
+    },
+    {
+      "id": "vhs_scan",
+      "name": "VHS 掃描線",
+      "category": "復古膠片",
+      "keywords": ["vhs", "crt", "scanline", "retro", "錄影帶", "掃描線", "復古", "電視"],
+      "description": "經典類比錄影帶雜訊、偏暖褪色與交錯深色掃描線。",
+      "ffmpegFilter": "format=rgb24,noise=alls=14:allf=t+u,eq=contrast=1.08:saturation=0.82,colorbalance=rs=0.05:bs=-0.04,geq=r='if(mod(Y,4),r(X,Y),r(X,Y)*0.72)':g='if(mod(Y,4),g(X,Y),g(X,Y)*0.72)':b='if(mod(Y,4),b(X,Y),b(X,Y)*0.75)'"
+    },
+    {
+      "id": "glitch_shift",
+      "name": "數位故障",
+      "category": "光學畸變",
+      "keywords": ["glitch", "cyber", "tear", "故障", "撕裂", "訊號干擾", "失真", "賽博"],
+      "description": "動態水平掃描帶錯位與紅藍分離，模擬數位訊號故障撕裂感。",
+      "ffmpegFilter": "format=rgb24,geq=r='r(mod(X+if(lt(mod(Y+floor(N*17),64),8),14,0),W),Y)':g='g(X,Y)':b='b(mod(X-if(lt(mod(Y+floor(N*23),52),6),12,0),W),Y)'"
+    },
+    {
+      "id": "pixelate",
+      "name": "像素馬賽克",
+      "category": "藝術風格",
+      "keywords": ["pixel", "mosaic", "8bit", "retro", "像素", "馬賽克", "點陣", "復古遊戲"],
+      "description": "最近鄰降採樣再放大，產生銳利方格像素化馬賽克效果。",
+      "ffmpegFilter": "scale=max(2\\,trunc(iw/10)):max(2\\,trunc(ih/10)):flags=neighbor,scale={W}:{H}:flags=neighbor"
+    },
+    {
+      "id": "sharpen_detail",
+      "name": "銳利細節",
+      "category": "光學畸變",
+      "keywords": ["sharpen", "crisp", "detail", "unsharp", "銳化", "清晰", "細節", "質感"],
+      "description": "使用非銳化遮罩強化畫面微對比與邊緣輪廓清晰度。",
+      "ffmpegFilter": "unsharp=5:5:1.5:5:5:0.4"
+    },
+    {
+      "id": "edge_glow",
+      "name": "霓虹邊緣",
+      "category": "藝術風格",
+      "keywords": ["neon", "edge", "outline", "glow", "霓虹", "邊緣", "發光", "線稿"],
+      "description": "偵測高反差影像輪廓並融合飽和霓虹色彩邊線。",
+      "ffmpegFilter": "edgedetect=low=0.08:high=0.28:mode=colormix,eq=saturation=1.8:contrast=1.25"
+    },
+    {
+      "id": "posterize",
+      "name": "海報色階",
+      "category": "藝術風格",
+      "keywords": ["poster", "comic", "quantize", "海報", "色階", "漫畫", "普普", "色塊"],
+      "description": "將 RGB 亮度階數離散化，呈現鮮明平面海報色塊質感。",
+      "ffmpegFilter": "format=rgb24,lutrgb=r='trunc(val/48)*48':g='trunc(val/48)*48':b='trunc(val/48)*48'"
+    },
+    {
+      "id": "mirror_split",
+      "name": "左右鏡像分屏",
+      "category": "動感與鏡像",
+      "keywords": ["mirror", "split", "symmetry", "鏡像", "對稱", "分屏", "左右翻轉"],
+      "description": "裁切左半畫面並水平翻轉拼接至右半，建立完美左右對稱構圖。",
+      "ffmpegFilter": "split[{p}_a][{p}_b];[{p}_a]crop=trunc(iw/2):ih:0:0[{p}_l];[{p}_b]crop=trunc(iw/2):ih:0:0,hflip[{p}_r];[{p}_l][{p}_r]hstack=inputs=2"
+    },
+    {
+      "id": "film_grain",
+      "name": "底片顆粒",
+      "category": "復古膠片",
+      "keywords": ["film", "grain", "35mm", "analog", "底片", "顆粒", "膠片", "雜訊"],
+      "description": "加入動態有機 35mm 膠片顆粒並微調對比與飽和度。",
+      "ffmpegFilter": "noise=alls=18:allf=t+u,eq=contrast=1.06:saturation=0.92"
+    },
+    {
+      "id": "cinematic_teal_orange",
+      "name": "青橙電影",
+      "category": "調色風格",
+      "keywords": ["teal", "orange", "cinema", "movie", "青橙", "電影", "好萊塢", "調色"],
+      "description": "暗部注入冷青色調、亮部拉升暖橘膚色，經典院線電影色調。",
+      "ffmpegFilter": "colorbalance=rs=-0.12:gs=0.04:bs=0.14:rm=0.04:gm=-0.02:bm=-0.06:rh=0.16:gh=0.05:bh=-0.14,eq=contrast=1.10:saturation=1.12"
+    },
+    {
+      "id": "matte_fade",
+      "name": "霧面褪色",
+      "category": "調色風格",
+      "keywords": ["matte", "fade", "lifted", "soft", "霧面", "褪色", "日系", "低反差"],
+      "description": "拉高黑位並壓低純白頂點，呈現柔和日系霧面膠片氛圍。",
+      "ffmpegFilter": "curves=all='0/0.11 0.25/0.28 0.75/0.77 1/0.91',eq=saturation=0.86"
+    },
+    {
+      "id": "noir_cinema",
+      "name": "黑色電影",
+      "category": "復古膠片",
+      "keywords": ["noir", "bw", "monochrome", "contrast", "黑色電影", "黑白", "高對比", "經典"],
+      "description": "高反差 S 曲線單色黑白搭配深暗角，再現經典黑色電影光影。",
+      "ffmpegFilter": "hue=s=0,curves=all='0/0 0.2/0.09 0.5/0.5 0.8/0.91 1/1',vignette=PI/4"
+    },
+    {
+      "id": "sepia_warm",
+      "name": "懷舊褐調",
+      "category": "復古膠片",
+      "keywords": ["sepia", "vintage", "old", "brown", "懷舊", "褐調", "老照片", "復古"],
+      "description": "經典 RGB 色彩矩陣轉換為溫暖泛黃棕褐懷舊色調。",
+      "ffmpegFilter": "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131:0,eq=contrast=1.04"
+    },
+    {
+      "id": "negative",
+      "name": "負片反色",
+      "category": "藝術風格",
+      "keywords": ["negative", "invert", "xray", "負片", "反色", "底片反轉", "前衛"],
+      "description": "反轉全畫面 RGB 色彩與明暗階調，呈現強烈負片視覺。",
+      "ffmpegFilter": "negate"
+    },
+    {
+      "id": "thermal",
+      "name": "熱像偽彩",
+      "category": "藝術風格",
+      "keywords": ["thermal", "heat", "infrared", "predator", "熱像", "紅外線", "偽彩", "熱感應"],
+      "description": "依影像亮度映射熱感應偽彩光譜（藍紫低溫至紅黃白高溫）。",
+      "ffmpegFilter": "format=yuv420p,pseudocolor=preset=heat"
+    },
+    {
+      "id": "emboss",
+      "name": "浮雕立體",
+      "category": "藝術風格",
+      "keywords": ["emboss", "relief", "sculpt", "3d", "浮雕", "立體", "雕刻", "紋理"],
+      "description": "透過 3×3 方向卷積核心與中性灰偏壓刻畫立體浮雕紋理。",
+      "ffmpegFilter": "format=gbrp,convolution=0m='-2 -1 0 -1 1 1 0 1 2':1m='-2 -1 0 -1 1 1 0 1 2':2m='-2 -1 0 -1 1 1 0 1 2':0bias=128:1bias=128:2bias=128"
+    },
+    {
+      "id": "bloom_soft",
+      "name": "柔光漫射",
+      "category": "光學畸變",
+      "keywords": ["bloom", "glow", "halation", "dream", "柔光", "漫射", "光暈", "黑柔鏡"],
+      "description": "將高光模糊層以濾色模式疊加回原畫面，模擬黑柔濾鏡光暈。",
+      "ffmpegFilter": "format=rgb24,split[{p}_b0][{p}_b1];[{p}_b1]gblur=sigma=12,eq=brightness=0.08:contrast=1.2[{p}_b2];[{p}_b0][{p}_b2]blend=all_mode=screen:all_opacity=0.45"
+    },
+    {
+      "id": "kaleido",
+      "name": "四象限萬花筒",
+      "category": "動感與鏡像",
+      "keywords": ["kaleidoscope", "quad", "mirror", "trippy", "萬花筒", "四象限", "對稱", "迷幻"],
+      "description": "取左上象限向水平、垂直與對角鏡像複製，構成四向對稱萬花筒。",
+      "ffmpegFilter": "split=4[{p}_k1][{p}_k2][{p}_k3][{p}_k4];[{p}_k1]crop=trunc(iw/2):trunc(ih/2):0:0[{p}_tl];[{p}_k2]crop=trunc(iw/2):trunc(ih/2):0:0,hflip[{p}_tr];[{p}_k3]crop=trunc(iw/2):trunc(ih/2):0:0,vflip[{p}_bl];[{p}_k4]crop=trunc(iw/2):trunc(ih/2):0:0,hflip,vflip[{p}_br];[{p}_tl][{p}_tr]hstack[{p}_top];[{p}_bl][{p}_br]hstack[{p}_bot];[{p}_top][{p}_bot]vstack"
+    },
+    {
+      "id": "vignette_heavy",
+      "name": "深邃暗角",
+      "category": "光學畸變",
+      "keywords": ["vignette", "dark", "spotlight", "focus", "暗角", "聚光", "壓暗", "電影感"],
+      "description": "強烈大角度四周暗角壓暗，將觀眾視線牢牢鎖定於畫面中央。",
+      "ffmpegFilter": "vignette=angle=PI/2.2:mode=forward,eq=contrast=1.08:brightness=-0.03"
+    },
+    {
+      "id": "bw_grain",
+      "name": "黑白顆粒",
+      "category": "復古膠片",
+      "keywords": ["bw", "grain", "tri-x", "documentary", "黑白", "顆粒", "紀實", "銀鹽"],
+      "description": "紀實銀鹽黑白影調搭配強烈動態底片顆粒感。",
+      "ffmpegFilter": "hue=s=0,noise=alls=22:allf=t+u,eq=contrast=1.18"
+    },
+    {
+      "id": "dreamy_haze",
+      "name": "夢幻薄霧",
+      "category": "光學畸變",
+      "keywords": ["dreamy", "haze", "pastel", "mist", "夢幻", "薄霧", "柔霧", "仙氣"],
+      "description": "柔焦變亮混合層結合粉紫高光偏移，打造唯美夢幻薄霧質感。",
+      "ffmpegFilter": "format=rgb24,split[{p}_d0][{p}_d1];[{p}_d1]gblur=sigma=8,eq=brightness=0.10:saturation=1.2[{p}_d2];[{p}_d0][{p}_d2]blend=all_mode=lighten:all_opacity=0.38,colorbalance=rh=0.06:bh=0.08"
+    },
+    {
+      "id": "duotone_cyber",
+      "name": "賽博雙色調",
+      "category": "調色風格",
+      "keywords": ["duotone", "cyberpunk", "magenta", "cyan", "賽博", "雙色調", "霓虹", "紫藍"],
+      "description": "將單色明暗映射為電光紫紅與冷青藍高反差賽博龐克雙色調。",
+      "ffmpegFilter": "hue=s=0,format=rgb24,lutrgb=r='clip(val*1.25+20,0,255)':g='clip(val*0.55+10,0,255)':b='clip(255-val*0.35,0,255)'"
+    },
+    {
+      "id": "warm_sunset",
+      "name": "日落金光",
+      "category": "調色風格",
+      "keywords": ["sunset", "golden", "warm", "amber", "日落", "金光", "夕陽", "暖色"],
+      "description": "全階調注入琥珀金與夕陽橘暖光並強化色彩飽和度。",
+      "ffmpegFilter": "colorbalance=rs=0.14:gs=0.04:bs=-0.12:rm=0.16:gm=0.05:bm=-0.14:rh=0.18:gh=0.08:bh=-0.10,eq=saturation=1.22:contrast=1.06"
+    },
+    {
+      "id": "cold_moonlight",
+      "name": "冷月藍調",
+      "category": "調色風格",
+      "keywords": ["moonlight", "cold", "blue", "night", "月光", "冷藍", "夜景", "清冷"],
+      "description": "壓低亮度與暖色飽和，營造靜謐深邃的月夜冷藍電影氛圍。",
+      "ffmpegFilter": "colorbalance=rs=-0.14:gs=-0.02:bs=0.18:rm=-0.12:gm=0.0:bm=0.16:rh=-0.08:gh=0.02:bh=0.14,eq=brightness=-0.05:contrast=1.12:saturation=0.78"
+    }
+  ],
+  "audioEffects": [
+    {
+      "id": "telephone",
+      "name": "復古電話",
+      "category": "復古通訊",
+      "keywords": ["telephone", "phone", "call", "電話", "通話", "窄頻"],
+      "description": "300–3000 Hz 語音帶通濾波與動態壓縮，模擬傳統話筒音質。",
+      "ffmpegFilter": "highpass=f=300,lowpass=f=3000,acompressor=threshold=-18dB:ratio=4"
+    },
+    {
+      "id": "robot",
+      "name": "機器人聲",
+      "category": "變聲趣味",
+      "keywords": ["robot", "metallic", "sci-fi", "機器人", "金屬聲", "科幻"],
+      "description": "高速 35Hz 音高調變結合極短金屬感回音，打造合成機器人聲。",
+      "ffmpegFilter": "vibrato=f=35:d=0.85,aecho=0.8:0.88:20:0.4"
+    },
+    {
+      "id": "chipmunk",
+      "name": "花栗鼠高音",
+      "category": "變聲趣味",
+      "keywords": ["chipmunk", "high pitch", "cartoon", "花栗鼠", "高音", "卡通", "變聲"],
+      "description": "提高音高 1.35 倍同時補償節奏速度，保留原本語速的可愛高音。",
+      "ffmpegFilter": "asetrate=48000*1.35,aresample=48000,atempo=0.74074"
+    },
+    {
+      "id": "radio_am",
+      "name": "AM 廣播電台",
+      "category": "復古通訊",
+      "keywords": ["radio", "am", "broadcast", "retro", "廣播", "電台", "收音機"],
+      "description": "中頻鼻音突出、10-bit 輕微失真與重壓縮，重現懷舊 AM 電台。",
+      "ffmpegFilter": "highpass=f=450,lowpass=f=2400,equalizer=f=1200:t=q:w=1.2:g=5,acrusher=bits=10:mix=0.25,acompressor=threshold=-20dB:ratio=6"
+    },
+    {
+      "id": "megaphone",
+      "name": "擴音大聲公",
+      "category": "復古通訊",
+      "keywords": ["megaphone", "bullhorn", "loud", "大聲公", "擴音器", "廣播喇叭"],
+      "description": "強烈 1.8kHz 號角共振峰、8-bit 破音感與硬限幅器。",
+      "ffmpegFilter": "highpass=f=550,lowpass=f=3600,equalizer=f=1800:t=q:w=1.5:g=8,acrusher=bits=8:mix=0.35,acompressor=threshold=-22dB:ratio=8,alimiter=limit=0.9"
+    },
+    {
+      "id": "walkie_talkie",
+      "name": "對講機通訊",
+      "category": "復古通訊",
+      "keywords": ["walkie", "talkie", "intercom", "tactical", "對講機", "無線電", "通訊"],
+      "description": "窄帶濾波搭配 7-bit 量化顆粒與高壓縮比，模擬無線對講機。",
+      "ffmpegFilter": "bandpass=f=1400:width_type=h:w=1800,acrusher=bits=7:mix=0.4,acompressor=threshold=-24dB:ratio=10,equalizer=f=2000:t=q:w=2.0:g=4"
+    },
+    {
+      "id": "deep_voice",
+      "name": "低沉男聲",
+      "category": "變聲趣味",
+      "keywords": ["deep", "low", "bass voice", "低沉", "低音", "大叔", "磁性"],
+      "description": "音高下移 0.80 倍並強化 120Hz 低頻共鳴，聲音渾厚低沉。",
+      "ffmpegFilter": "asetrate=48000*0.80,aresample=48000,atempo=1.25,bass=g=4:f=120"
+    },
+    {
+      "id": "helium",
+      "name": "氦氣尖細聲",
+      "category": "變聲趣味",
+      "keywords": ["helium", "squeaky", "high", "氦氣", "尖細", "搞怪", "變聲"],
+      "description": "音高大幅拉升至 1.55 倍並削去低頻，呈現吸入氦氣般的尖細滑稽音色。",
+      "ffmpegFilter": "asetrate=48000*1.55,aresample=48000,atempo=0.64516,highpass=f=200"
+    },
+    {
+      "id": "monster",
+      "name": "怪獸低吼",
+      "category": "變聲趣味",
+      "keywords": ["monster", "demon", "boss", "growl", "怪獸", "惡魔", "低吼", "反派"],
+      "description": "極低 0.68 倍降調、超低頻轟鳴、粗礪失真與洞穴短迴音。",
+      "ffmpegFilter": "asetrate=48000*0.68,aresample=48000,atempo=1.47059,bass=g=7:f=90,aecho=0.8:0.85:35:0.45,acrusher=bits=10:mix=0.25"
+    },
+    {
+      "id": "hall_reverb",
+      "name": "音樂廳殘響",
+      "category": "空間殘響",
+      "keywords": ["hall", "reverb", "concert", "音樂廳", "殘響", "混響", "空間"],
+      "description": "多層次中長反射延遲與柔和尾音高切，重現大型演奏廳空間感。",
+      "ffmpegFilter": "aecho=0.8:0.88:60|95|140:0.42|0.32|0.22,lowpass=f=9000"
+    },
+    {
+      "id": "room_reverb",
+      "name": "室內小廳",
+      "category": "空間殘響",
+      "keywords": ["room", "ambience", "studio", "室內", "小房間", "自然殘響"],
+      "description": "18ms 與 34ms 緊密早期反射，為乾聲增添自然室內空間氛圍。",
+      "ffmpegFilter": "aecho=0.85:0.82:18|34:0.35|0.22"
+    },
+    {
+      "id": "cathedral",
+      "name": "大教堂迴響",
+      "category": "空間殘響",
+      "keywords": ["cathedral", "church", "epic", "大教堂", "聖堂", "長殘響", "史詩"],
+      "description": "四重綿長高擴散反射（90–360ms），打造宏偉神聖教堂空間。",
+      "ffmpegFilter": "aecho=0.75:0.90:90|160|250|360:0.50|0.40|0.30|0.20,lowpass=f=7500"
+    },
+    {
+      "id": "slapback_echo",
+      "name": "拍擊短回音",
+      "category": "空間殘響",
+      "keywords": ["slapback", "echo", "rockabilly", "回音", "短延遲", "復古搖滾"],
+      "description": "經典 110ms 單次拍擊式短回音，適合旁白強調與復古風格。",
+      "ffmpegFilter": "aecho=0.85:0.80:110:0.48"
+    },
+    {
+      "id": "dub_delay",
+      "name": "雷鬼長延遲",
+      "category": "空間殘響",
+      "keywords": ["dub", "delay", "repeat", "echo", "長延遲", "迴聲", "漸弱回音"],
+      "description": "280/560/840ms 階梯衰減長延遲加上溫暖低通濾波。",
+      "ffmpegFilter": "aecho=0.80:0.85:280|560|840:0.55|0.35|0.20,lowpass=f=5000"
+    },
+    {
+      "id": "underwater",
+      "name": "水下悶響",
+      "category": "空間殘響",
+      "keywords": ["underwater", "muffled", "deep sea", "水下", "潛水", "悶響", "水底"],
+      "description": "420Hz 陡峭低通配合緩慢流動相位調變，模擬身處水底的聽感。",
+      "ffmpegFilter": "lowpass=f=420,equalizer=f=220:t=q:w=1.0:g=5,aphaser=in_gain=0.6:out_gain=0.74:delay=3.0:decay=0.4:speed=0.4"
+    },
+    {
+      "id": "chorus",
+      "name": "立體合唱",
+      "category": "調變節奏",
+      "keywords": ["chorus", "ensemble", "thick", "wide", "合唱", "加厚", "立體聲"],
+      "description": "三聲部微延遲與低頻掃頻交疊，使人聲或樂器更寬廣飽滿。",
+      "ffmpegFilter": "chorus=0.6:0.9:50|60|40:0.4|0.32|0.3:0.25|0.4|0.3:2|2.3|1.3"
+    },
+    {
+      "id": "flanger",
+      "name": "鑲邊掃頻",
+      "category": "調變節奏",
+      "keywords": ["flanger", "jet", "sweep", "psychedelic", "鑲邊", "掃頻", "噴射機"],
+      "description": "極短動態梳狀延遲回饋，產生迷幻噴射機般的頻率掃描聲。",
+      "ffmpegFilter": "flanger=delay=4:depth=3:regen=25:width=80:speed=0.6"
+    },
+    {
+      "id": "phaser",
+      "name": "相位推移",
+      "category": "調變節奏",
+      "keywords": ["phaser", "swirl", "space", "相位", "漩渦", "迷幻"],
+      "description": "週期性全通相位凹口掃描，營造夢幻旋轉流動感。",
+      "ffmpegFilter": "aphaser=in_gain=0.6:out_gain=0.8:delay=3.0:decay=0.55:speed=0.8:type=t"
+    },
+    {
+      "id": "tremolo",
+      "name": "顫音脈動",
+      "category": "調變節奏",
+      "keywords": ["tremolo", "pulse", "amplitude", "顫音", "音量脈動", "抖動"],
+      "description": "6.5Hz 正弦振幅調變，帶來鮮明復古電子琴與戲劇顫動感。",
+      "ffmpegFilter": "tremolo=f=6.5:d=0.65"
+    },
+    {
+      "id": "vibrato",
+      "name": "抖音調變",
+      "category": "調變節奏",
+      "keywords": ["vibrato", "pitch", "wobble", "抖音", "音高抖動", "飄忽"],
+      "description": "6.5Hz 連續音高微幅擺盪，製造奇幻飄忽與卡通震動效果。",
+      "ffmpegFilter": "vibrato=f=6.5:d=0.55"
+    },
+    {
+      "id": "vinyl_lofi",
+      "name": "黑膠復古 Lo-Fi",
+      "category": "復古通訊",
+      "keywords": ["vinyl", "lofi", "tape", "warm", "黑膠", "復古", "低保真", "磁帶"],
+      "description": "溫潤帶限、輕微 11-bit 類比質感與緩慢轉盤抖晃（Wow/Flutter）。",
+      "ffmpegFilter": "highpass=f=180,lowpass=f=3800,acrusher=bits=11:mix=0.22,vibrato=f=1.2:d=0.08,equalizer=f=300:t=q:w=1.0:g=3"
+    },
+    {
+      "id": "bass_boost",
+      "name": "重低音增強",
+      "category": "母帶均衡",
+      "keywords": ["bass", "sub", "punch", "edm", "重低音", "低頻", "震撼", "鼓點"],
+      "description": "100Hz 低頻強力提升 +8dB 並搭配動態壓縮與防爆音限幅。",
+      "ffmpegFilter": "bass=g=8:f=100:w=0.7,acompressor=threshold=-14dB:ratio=3,alimiter=limit=0.95"
+    },
+    {
+      "id": "vocal_presence",
+      "name": "人聲清晰穿透",
+      "category": "母帶均衡",
+      "keywords": ["vocal", "clarity", "presence", "speech", "人聲", "清晰", "穿透", "口白"],
+      "description": "切除 90Hz 低頻轟鳴並精準拉升 2.8kHz/5.5kHz 唇齒清晰度。",
+      "ffmpegFilter": "highpass=f=90,equalizer=f=2800:t=q:w=1.2:g=4.5,equalizer=f=5500:t=q:w=1.5:g=3,acompressor=threshold=-18dB:ratio=3:makeup=2"
+    },
+    {
+      "id": "podcast_warm",
+      "name": "播客溫暖厚實",
+      "category": "母帶均衡",
+      "keywords": ["podcast", "radio host", "warm", "broadcast", "播客", "電台人聲", "溫暖", "旁白"],
+      "description": "播客錄音室鏈條：低頻近講厚實感、中高頻明亮度與平順壓縮。",
+      "ffmpegFilter": "highpass=f=75,bass=g=4:f=130:w=0.8,equalizer=f=3200:t=q:w=1.2:g=2.5,acompressor=threshold=-20dB:ratio=3.5:attack=10:release=120,alimiter=limit=0.95"
+    },
+    {
+      "id": "de_esser",
+      "name": "齒音柔化",
+      "category": "母帶均衡",
+      "keywords": ["deesser", "sibilance", "smooth", "soft", "去齒音", "柔化", "人聲修復"],
+      "description": "針對 6.5kHz 與 8.5kHz 刺耳嘶聲頻段精準衰減，讓人聲更耐聽。",
+      "ffmpegFilter": "equalizer=f=6500:t=q:w=2.2:g=-6,equalizer=f=8500:t=q:w=2.0:g=-4,acompressor=threshold=-16dB:ratio=2.5"
+    }
+  ],
+  "blendModes": [
+    { "id": "normal", "name": "正常 (Normal)", "ffmpegMode": "normal", "description": "標準 Alpha 透明疊加，不套用像素混合運算。" },
+    { "id": "multiply", "name": "色彩增值 (Multiply)", "ffmpegMode": "multiply", "description": "上下層色彩相乘，保留暗部並過濾純白背景。" },
+    { "id": "screen", "name": "濾色 (Screen)", "ffmpegMode": "screen", "description": "反相相乘再反相，濾除黑色並疊加光效與發光素材。" },
+    { "id": "overlay", "name": "覆蓋 (Overlay)", "ffmpegMode": "overlay", "description": "依底層明暗自動切換增值或濾色，大幅提升對比質感。" },
+    { "id": "darken", "name": "變暗 (Darken)", "ffmpegMode": "darken", "description": "逐像素保留兩層中較暗的色彩通道值。" },
+    { "id": "lighten", "name": "變亮 (Lighten)", "ffmpegMode": "lighten", "description": "逐像素保留兩層中較亮的色彩通道值。" },
+    { "id": "addition", "name": "線性加亮 (Addition)", "ffmpegMode": "addition", "description": "直接相加 RGB 亮度值，適合強烈光束與粒子合成。" },
+    { "id": "difference", "name": "差異化 (Difference)", "ffmpegMode": "difference", "description": "計算兩層色彩絕對差值，產生反相幾何與視覺特效。" }
+  ],
+  "masks": [
+    { "id": "none", "name": "無遮罩", "description": "顯示完整片段畫面，不套用遮罩裁切。" },
+    { "id": "rect", "name": "矩形遮罩", "description": "以可調羽化寬度的中心矩形區域保留畫面並透明化四周。" },
+    { "id": "ellipse", "name": "橢圓遮罩", "description": "以柔邊橢圓形視窗聚焦主體，適合畫中畫人像與鏡頭焦點。" },
+    { "id": "linear_fade", "name": "線性漸層遮罩", "description": "由上而下平滑漸變透明，適合雙畫面無縫上下融合。" }
+  ],
+  "shapes": [
+    {
+      "id": "rect",
+      "name": "矩形色塊",
+      "description": "標準直角矩形，適合標題底板、下三分之一資訊條與分隔區塊。",
+      "defaultStyle": {
+        "shapeWidth": 0.34,
+        "shapeHeight": 0.16,
+        "fillColorHex": "#2563EB",
+        "fillGradientEnabled": false,
+        "fillGradientEndHex": "#7C3AED",
+        "fillGradientAngle": 45.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 3.0,
+        "cornerRadius": 0.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 36.0
+      }
+    },
+    {
+      "id": "rounded_rect",
+      "name": "圓角卡片",
+      "description": "圓角矩形卡片，適合重點標註框、章節卡片與說明底板。",
+      "defaultStyle": {
+        "shapeWidth": 0.38,
+        "shapeHeight": 0.18,
+        "fillColorHex": "#0F172A",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#1D4ED8",
+        "fillGradientAngle": 135.0,
+        "strokeColorHex": "#60A5FA",
+        "strokeWidth": 3.0,
+        "cornerRadius": 0.28,
+        "shadowEnabled": true,
+        "label": "重點標註",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 38.0
+      }
+    },
+    {
+      "id": "ellipse",
+      "name": "圓形 / 橢圓",
+      "description": "平滑向量圓形與橢圓，適合圈選強調與裝飾徽章。",
+      "defaultStyle": {
+        "shapeWidth": 0.20,
+        "shapeHeight": 0.35,
+        "fillColorHex": "#EC4899",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#F59E0B",
+        "fillGradientAngle": 45.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 4.0,
+        "cornerRadius": 0.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 36.0
+      }
+    },
+    {
+      "id": "triangle",
+      "name": "三角形",
+      "description": "等腰三角形，適合方向提示、播放符號與幾何構圖裝飾。",
+      "defaultStyle": {
+        "shapeWidth": 0.22,
+        "shapeHeight": 0.32,
+        "fillColorHex": "#10B981",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#06B6D4",
+        "fillGradientAngle": 90.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 3.0,
+        "cornerRadius": 0.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 34.0
+      }
+    },
+    {
+      "id": "star",
+      "name": "五角星",
+      "description": "經典五角星向量形狀，適合評分標記、亮點勳章與特效貼紙。",
+      "defaultStyle": {
+        "shapeWidth": 0.22,
+        "shapeHeight": 0.36,
+        "fillColorHex": "#FACC15",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#F97316",
+        "fillGradientAngle": 60.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 4.0,
+        "cornerRadius": 0.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#111827",
+        "labelFontSize": 34.0
+      }
+    },
+    {
+      "id": "arrow",
+      "name": "指向箭頭",
+      "description": "向右實心指向箭頭，可自由旋轉角度以標示畫面重點位置。",
+      "defaultStyle": {
+        "shapeWidth": 0.28,
+        "shapeHeight": 0.16,
+        "fillColorHex": "#EF4444",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#F97316",
+        "fillGradientAngle": 0.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 3.0,
+        "cornerRadius": 0.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 32.0
+      }
+    },
+    {
+      "id": "pill",
+      "name": "膠囊標籤",
+      "description": "全圓弧兩端膠囊徽章，極適合角標、分類標籤與 CTA 按鈕字卡。",
+      "defaultStyle": {
+        "shapeWidth": 0.30,
+        "shapeHeight": 0.10,
+        "fillColorHex": "#7C3AED",
+        "fillGradientEnabled": true,
+        "fillGradientEndHex": "#EC4899",
+        "fillGradientAngle": 0.0,
+        "strokeColorHex": "#FFFFFF",
+        "strokeWidth": 2.5,
+        "cornerRadius": 1.0,
+        "shadowEnabled": true,
+        "label": "精選片段",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 34.0
+      }
+    },
+    {
+      "id": "line",
+      "name": "裝飾線條",
+      "description": "圓頭水平裝飾線，可旋轉為任意角度作為標題底線或分隔線。",
+      "defaultStyle": {
+        "shapeWidth": 0.45,
+        "shapeHeight": 0.04,
+        "fillColorHex": "#38BDF8",
+        "fillGradientEnabled": false,
+        "fillGradientEndHex": "#818CF8",
+        "fillGradientAngle": 0.0,
+        "strokeColorHex": "#38BDF8",
+        "strokeWidth": 6.0,
+        "cornerRadius": 1.0,
+        "shadowEnabled": true,
+        "label": "",
+        "labelColorHex": "#FFFFFF",
+        "labelFontSize": 28.0
+      }
+    }
+  ]
+}

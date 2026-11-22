@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Klipora</string>
+	<key>CFBundleExecutable</key>
+	<string>Klipora</string>
+	<key>CFBundleIconFile</key>
+	<string>Klipora.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>local.motiondesk.studio</string>
+	<key>CFBundleName</key>
+	<string>Klipora</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Chih Tuan Chang</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Klipora 需要使用麥克風以在多軌剪輯頁錄製旁白音軌。</string>
+</dict>
+</plist>

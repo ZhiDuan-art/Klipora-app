@@ -1,0 +1,119 @@
+{
+  "manifestVersion": "1.2.0",
+  "appVersion": "1.0",
+  "buildNumber": "1.0",
+  "supportedPlatform": "macOS 14.0+ (arm64 / Apple Silicon only)",
+  "bundledComponents": [
+    {
+      "id": "motiondesk-app",
+      "name": "MotionDesk Native Workbench",
+      "bundleRelativePath": "Contents/MacOS/MotionDesk",
+      "architecture": "arm64",
+      "distribution": "bundled",
+      "license": "Proprietary / First-Party"
+    },
+    {
+      "id": "textrender-helper",
+      "name": "CoreText Subtitle & Title Renderer",
+      "bundleRelativePath": "Contents/Resources/textrender",
+      "architecture": "arm64",
+      "distribution": "bundled",
+      "license": "Proprietary / First-Party"
+    },
+    {
+      "id": "voicebox-server",
+      "name": "Voicebox Standalone Server (FastAPI + MLX / Qwen3-TTS Engine)",
+      "bundleRelativePath": "Contents/MacOS/voicebox-server",
+      "patchesRelativePath": "Contents/Resources/backend-patches",
+      "colabBridgeRelativePath": "Contents/Resources/colab",
+      "version": "0.5.4",
+      "architecture": "arm64",
+      "approxSizeMB": 482,
+      "distribution": "bundled",
+      "license": "MIT",
+      "licenseFile": "Contents/Resources/LICENSE-Voicebox",
+      "notes": "Requires Contents/Resources/backend-patches/{mlx_backend.py,mlx_worker.py,qwen_custom_voice_backend.py} at ../Resources/backend-patches relative to Contents/MacOS/voicebox-server."
+    },
+    {
+      "id": "node-runtime",
+      "name": "Node.js Runtime for HyperFrames",
+      "bundleRelativePath": "Contents/Resources/runtime/bin/node",
+      "version": "v22.23.5",
+      "architecture": "arm64",
+      "distribution": "bundled",
+      "license": "MIT / Node.js Open Source License",
+      "licenseFile": "Contents/Resources/runtime/NODE-LICENSE"
+    },
+    {
+      "id": "hyperframes-engine",
+      "name": "HyperFrames HTML/GSAP Title & Motion Engine",
+      "bundleRelativePath": "Contents/Resources/runtime/hyperframes",
+      "distribution": "bundled",
+      "license": "MIT"
+    }
+  ],
+  "externalAndOnDemandComponents": [
+    {
+      "id": "qwen3-tts-models",
+      "name": "Qwen3-TTS 1.7B / 0.6B (Base & CustomVoice) & Whisper Cache",
+      "defaultLocation": "~/Library/Application Support/MotionDesk/models/huggingface/hub",
+      "distribution": "user_triggered_official_download_or_reused_cache",
+      "approxSizeGB": "2.5 - 4.2 per model (measured)",
+      "license": "Apache-2.0",
+      "notes": "Managed under MotionDesk-owned models/huggingface/hub; never bundled inside MotionDesk.app."
+    },
+    {
+      "id": "voicebox-voice-library",
+      "name": "Voicebox Voice Profiles, Samples & SQLite History",
+      "defaultLocation": "~/Library/Application Support/MotionDesk/voicebox-data",
+      "distribution": "local_user_data",
+      "license": "User Data"
+    },
+    {
+      "id": "central-comfy-models",
+      "name": "Central Image Model Weights (Checkpoints / Diffusion / Text Encoders / VAE)",
+      "defaultLocation": "~/Library/Application Support/MotionDesk/models/comfy/{checkpoints,diffusion_models,text_encoders,vae}",
+      "distribution": "user_managed_central_storage",
+      "approxSizeGB": "6 - 24 per image model (estimated)",
+      "license": "Model-Specific",
+      "notes": "Exposed to Comfy Desktop and managed ComfyUI via per-file symlinks or extra_model_paths mapping."
+    },
+    {
+      "id": "central-loras",
+      "name": "Central LoRA Weights",
+      "defaultLocation": "~/Library/Application Support/MotionDesk/models/loras",
+      "distribution": "user_managed_central_storage",
+      "license": "Model-Specific"
+    },
+    {
+      "id": "ai-audio-venv",
+      "name": "Isolated Local Audio AI Environment (Faster-Whisper ASR / UVR MDX-Net / Sherpa-ONNX)",
+      "defaultLocation": "~/Library/Application Support/MotionDesk/ai-audio-venv",
+      "distribution": "user_triggered_install",
+      "approxSizeMB": 512,
+      "license": "MIT / Apache-2.0"
+    },
+    {
+      "id": "local-comfyui",
+      "name": "Local ComfyUI / Comfy Desktop (Loopback HTTP API)",
+      "defaultLocation": "http://127.0.0.1:8188 (dynamic loopback discovery)",
+      "distribution": "external_optional",
+      "license": "GPL-3.0 (external independent process)"
+    },
+    {
+      "id": "ffmpeg-suite",
+      "name": "FFmpeg / FFprobe Transcoding & Signal Processing",
+      "defaultLocation": "/opt/homebrew/bin/ffmpeg or custom binary path",
+      "distribution": "external_or_configurable_path",
+      "license": "LGPL-2.1+ / GPL-3.0 (depending on user build)"
+    },
+    {
+      "id": "google-colab-cli",
+      "name": "Google Colab CLI (Wan 2.2 L4/G4 Video & MiniMax H3 A100 Long-Form Audio)",
+      "defaultLocation": "~/.local/bin/colab",
+      "authScript": "Contents/Resources/h3/scripts/colab_login.py",
+      "distribution": "external_optional",
+      "license": "Apache-2.0"
+    }
+  ]
+}

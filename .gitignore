@@ -1,0 +1,38 @@
+# macOS & Editor clutter
+.DS_Store
+*.swp
+.vscode/
+
+# Compiled binaries, app bundles & installers (publish via GitHub Releases, never Git)
+*.app/
+*.dmg
+*.bundle/
+voicebox-server
+textrender
+hf-runtime/
+outputs/
+releases/*.dmg
+releases/MotionDesk-Beta-Final/MotionDesk.app/
+
+# AI model weights & media caches (multi-GB; downloaded on demand)
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.gguf
+*.onnx
+*.bin
+*.mp4
+*.mov
+*.wav
+*.flac
+Jobs/
+
+# Local secrets & runtime logs
+*.log
+.env
+*.key
+*.pem
+user_loras.json
+user_models.json
+user_workflows.json
