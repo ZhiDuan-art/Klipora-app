@@ -2937,6 +2937,27 @@ struct MultitrackTimelineDockView: View {
         }
     }
 
+    // MARK: Unified Drop Payload (avoids SwiftUI stacked dropDestination shadowing on macOS)
+
+    private enum MultitrackDropItem: Transferable {
+        case fileURL(URL)
+        case payload(String)
+
+        static var transferRepresentation: some TransferRepresentation {
+            ProxyRepresentation<MultitrackDropItem, URL>(importing: { .fileURL($0) })
+            ProxyRepresentation<MultitrackDropItem, String>(importing: { raw in
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.hasPrefix("file://"), let url = URL(string: trimmed), url.isFileURL {
+                    return .fileURL(url)
+                }
+                if trimmed.hasPrefix("/"), FileManager.default.fileExists(atPath: trimmed) {
+                    return .fileURL(URL(fileURLWithPath: trimmed))
+                }
+                return .payload(trimmed)
+            })
+        }
+    }
+
     // MARK: Track Lanes
 
     private func laneGridBackground(pxPerSec: CGFloat) -> some View {
@@ -2999,31 +3020,39 @@ struct MultitrackTimelineDockView: View {
                 }
             }
         }
+        .frame(width: contentWidth, height: videoRowHeight, alignment: .leading)
         .opacity(trackLayout.track.hidden ? 0.45 : 1.0)
         .contentShape(Rectangle())
-        .dropDestination(for: URL.self) { urls, location in
+        .dropDestination(for: MultitrackDropItem.self) { items, location in
             state.dropTargetTrackID = nil
             guard !trackLayout.track.locked else {
                 app.status = "軌道 \(trackLayout.track.name) 已鎖定。"
                 return false
             }
-            let rawTime = max(0, Double(location.x / pxPerSec))
-            let dropTime = snapEnabled
-                ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec)).snapped
-                : rawTime
-            if let sel = app.addURLsToMultitrack(urls, targetTrackID: trackLayout.id, at: dropTime) {
-                state.selection = sel
-                state.previewMode = .timeline
-                playback.syncLayout(app.currentMultitrackLayout())
-                return true
+
+            let urls: [URL] = items.compactMap {
+                if case .fileURL(let url) = $0 { return url }
+                return nil
             }
-            return false
-        } isTargeted: { targeted in
-            state.dropTargetTrackID = targeted ? trackLayout.id : (state.dropTargetTrackID == trackLayout.id ? nil : state.dropTargetTrackID)
-        }
-        .dropDestination(for: String.self) { items, location in
-            state.dropTargetTrackID = nil
-            guard !trackLayout.track.locked, let payload = items.first else { return false }
+            if !urls.isEmpty {
+                let rawTime = max(0, Double(location.x / pxPerSec))
+                let dropTime = snapEnabled
+                    ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec)).snapped
+                    : rawTime
+                if let sel = app.addURLsToMultitrack(urls, targetTrackID: trackLayout.id, at: dropTime) {
+                    state.selectActiveTrack(trackLayout.id, kind: .video)
+                    state.selection = sel
+                    state.previewMode = .timeline
+                    playback.syncLayout(app.currentMultitrackLayout())
+                    return true
+                }
+                return false
+            }
+
+            guard let payload = items.compactMap({ item -> String? in
+                if case .payload(let s) = item { return s }
+                return nil
+            }).first else { return false }
 
             // Support dropping a transition card directly onto a video track lane (snaps to nearest seam)
             if payload.hasPrefix("md-transition:") {
@@ -3057,9 +3086,12 @@ struct MultitrackTimelineDockView: View {
                 ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec), excludingClipID: clipID).snapped
                 : rawTime
             app.moveVideoClip(id: clipID, toStart: dropTime, targetTrackID: trackLayout.id)
+            state.selectActiveTrack(trackLayout.id, kind: .video)
             state.selection = .videoClip(trackID: trackLayout.id, clipID: clipID)
             playback.syncLayout(app.currentMultitrackLayout())
             return true
+        } isTargeted: { targeted in
+            state.dropTargetTrackID = targeted ? trackLayout.id : (state.dropTargetTrackID == trackLayout.id ? nil : state.dropTargetTrackID)
         }
     }
 
@@ -3221,32 +3253,39 @@ struct MultitrackTimelineDockView: View {
                 .offset(x: x)
             }
         }
+        .frame(width: contentWidth, height: audioRowHeight, alignment: .leading)
         .opacity(trackLayout.track.muted ? 0.52 : 1.0)
         .contentShape(Rectangle())
-        .dropDestination(for: URL.self) { urls, location in
+        .dropDestination(for: MultitrackDropItem.self) { items, location in
             state.dropTargetTrackID = nil
             guard !trackLayout.track.locked else {
                 app.status = "音訊軌 \(trackLayout.track.name) 已鎖定。"
                 return false
             }
-            let rawTime = max(0, Double(location.x / pxPerSec))
-            let dropTime = snapEnabled
-                ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec)).snapped
-                : rawTime
-            if let sel = app.addURLsToMultitrack(urls, targetTrackID: trackLayout.id, at: dropTime) {
-                state.selection = sel
-                state.previewMode = .timeline
-                playback.syncLayout(app.currentMultitrackLayout())
-                return true
+
+            let urls: [URL] = items.compactMap {
+                if case .fileURL(let url) = $0 { return url }
+                return nil
             }
-            return false
-        } isTargeted: { targeted in
-            state.dropTargetTrackID = targeted ? trackLayout.id : (state.dropTargetTrackID == trackLayout.id ? nil : state.dropTargetTrackID)
-        }
-        .dropDestination(for: String.self) { items, location in
-            state.dropTargetTrackID = nil
-            guard !trackLayout.track.locked,
-                  let payload = items.first,
+            if !urls.isEmpty {
+                let rawTime = max(0, Double(location.x / pxPerSec))
+                let dropTime = snapEnabled
+                    ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec)).snapped
+                    : rawTime
+                if let sel = app.addURLsToMultitrack(urls, targetTrackID: trackLayout.id, at: dropTime) {
+                    state.selectActiveTrack(trackLayout.id, kind: .audio)
+                    state.selection = sel
+                    state.previewMode = .timeline
+                    playback.syncLayout(app.currentMultitrackLayout())
+                    return true
+                }
+                return false
+            }
+
+            guard let payload = items.compactMap({ item -> String? in
+                if case .payload(let s) = item { return s }
+                return nil
+            }).first,
                   payload.hasPrefix("md-clip:audio:"),
                   let clipID = UUID(uuidString: String(payload.dropFirst("md-clip:audio:".count))) else {
                 return false
@@ -3256,9 +3295,12 @@ struct MultitrackTimelineDockView: View {
                 ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec), excludingClipID: clipID).snapped
                 : rawTime
             app.moveAudioClip(id: clipID, toStart: dropTime, targetTrackID: trackLayout.id)
+            state.selectActiveTrack(trackLayout.id, kind: .audio)
             state.selection = .audioClip(trackID: trackLayout.id, clipID: clipID)
             playback.syncLayout(app.currentMultitrackLayout())
             return true
+        } isTargeted: { targeted in
+            state.dropTargetTrackID = targeted ? trackLayout.id : (state.dropTargetTrackID == trackLayout.id ? nil : state.dropTargetTrackID)
         }
     }
 
@@ -3305,8 +3347,12 @@ struct MultitrackTimelineDockView: View {
     }
 
     private func textTrackLane(trackLayout: TextTrackLayout, contentWidth: CGFloat, pxPerSec: CGFloat) -> some View {
-        ZStack(alignment: .leading) {
+        let isTargeted = state.dropTargetTrackID == trackLayout.id
+        return ZStack(alignment: .leading) {
             laneGridBackground(pxPerSec: pxPerSec)
+            if isTargeted {
+                Rectangle().fill(mtTextAccent.opacity(0.10))
+            }
             if trackLayout.segments.isEmpty {
                 Text("從左側「文字」頁一鍵套用樣式，或點「+字幕」建立字幕")
                     .font(.caption2)
@@ -3332,9 +3378,11 @@ struct MultitrackTimelineDockView: View {
                 .offset(x: x)
             }
         }
+        .frame(width: contentWidth, height: textRowHeight, alignment: .leading)
         .opacity(trackLayout.track.hidden ? 0.45 : 1.0)
         .contentShape(Rectangle())
         .dropDestination(for: String.self) { items, location in
+            state.dropTargetTrackID = nil
             guard !trackLayout.track.locked,
                   let payload = items.first,
                   payload.hasPrefix("md-clip:text:"),
@@ -3346,9 +3394,12 @@ struct MultitrackTimelineDockView: View {
                 ? layout.snap(time: rawTime, playhead: playback.playhead, thresholdSeconds: Double(state.snapThresholdPx / pxPerSec), excludingClipID: clipID).snapped
                 : rawTime
             app.moveTextClip(id: clipID, toStart: dropTime, targetTrackID: trackLayout.id)
+            state.selectActiveTrack(trackLayout.id, kind: .text)
             state.selection = .textClip(trackID: trackLayout.id, clipID: clipID)
             playback.syncLayout(app.currentMultitrackLayout())
             return true
+        } isTargeted: { targeted in
+            state.dropTargetTrackID = targeted ? trackLayout.id : (state.dropTargetTrackID == trackLayout.id ? nil : state.dropTargetTrackID)
         }
     }
 }
