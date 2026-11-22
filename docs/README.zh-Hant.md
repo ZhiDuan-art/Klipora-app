@@ -13,6 +13,7 @@
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬體需求建議)
 [![Languages](https://img.shields.io/badge/支援語言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-國語言在地化)
 [![Release](https://img.shields.io/badge/下載-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![贊助支持](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 
 </div>
 
@@ -66,6 +67,17 @@
 
 ### 方式二：交給你的 AI 工具（Codex / Claude / Antigravity）自動部署
 直接將本倉庫網址 `https://github.com/ZhiDuan-art/Klipora-app` 交給你的 AI 助手，請它依照 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 幫你完成本機部署。
+
+---
+
+## 贊助支持開發
+
+如果 Klipora 對你的創作流程有幫助，歡迎請作者喝杯咖啡支持持續開發（支援信用卡與 PayPal）：
+
+[![贊助 Klipora](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
+
+- **第一階段目標（US$99／年）**：購買 Apple Developer Program 開發者帳號，為 Klipora 加入 **Apple 官方公證簽章（Notarization）**，讓日後下載 `.dmg` 直接雙擊就能開啟，不再跳出「無法驗證開發者」警告。
+- **持續維護**：跟進最新 ComfyUI 工作流、本機生圖／影片／語音模型相容性與 5 國語言更新。
 
 ---
 

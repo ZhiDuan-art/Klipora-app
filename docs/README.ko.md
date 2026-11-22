@@ -13,6 +13,7 @@
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#권장-사양)
 [![Languages](https://img.shields.io/badge/지원언어-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5개국어-현지화)
 [![Release](https://img.shields.io/badge/다운로드-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 
 </div>
 
@@ -61,6 +62,17 @@
 1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.0-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
+
+---
+
+## 개발 후원하기
+
+Klipora가 작업에 도움이 되었다면 지속적인 개발을 후원해 주세요 (신용카드 및 PayPal 지원):
+
+[![Support Klipora](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
+
+- **첫 번째 목표 (연 US$99)**: Apple Developer Program 등록 및 공식 **Apple 공증(Notarization)** 적용으로, 향후 `.dmg` 실행 시 macOS 보안 경고 없이 바로 열리도록 개선합니다.
+- **지속적인 유지보수**: 최신 ComfyUI 워크플로우, 로컬 이미지·영상·음성 모델 호환성 및 5개국어 업데이트를 유지합니다.
 
 ---
 

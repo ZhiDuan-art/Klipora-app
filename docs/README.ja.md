@@ -13,6 +13,7 @@
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
 [![Release](https://img.shields.io/badge/ダウンロード-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 
 </div>
 
@@ -61,6 +62,17 @@
 1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.0-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
 2. 初回起動時に警告が表示された場合は、**Klipora.app を右クリック → 開く → 開く** で起動してください。
 3. Codex や各種 AI エージェントに `https://github.com/ZhiDuan-art/Klipora-app` を渡し、**[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** に従って自動セットアップすることも可能です。
+
+---
+
+## 開発を支援する
+
+Klipora が制作ワークフローのお役に立てば、継続的な開発へのご支援をいただけると嬉しいです（クレジットカード・PayPal 対応）：
+
+[![Support Klipora](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
+
+- **最初の目標（年額 US$99）**：Apple Developer Program に登録し、公式の **Apple 公証（Notarization）** に対応することで、今後の `.dmg` 起動時のセキュリティ警告をなくします。
+- **継続メンテナンス**：最新の ComfyUI ワークフロー、ローカル画像・動画・音声モデル、5言語対応のアップデートを継続します。
 
 ---
 

@@ -13,6 +13,7 @@
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
 [![Release](https://img.shields.io/badge/Release-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 
 </div>
 
@@ -83,6 +84,17 @@ git clone https://github.com/ZhiDuan-art/Klipora-app.git
 cd Klipora-app/work/studio
 bash build-app.sh /tmp/Klipora.app
 ```
+
+---
+
+## Support Klipora
+
+If Klipora saves you time or helps your creative workflow, consider supporting its ongoing development:
+
+[![Support on Portaly](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly%20(Card%20%2F%20PayPal)-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
+
+- **First Milestone (US$99 / year):** Apple Developer Program membership for official **Apple Notarization**, so future `.dmg` releases open with a single double-click and zero macOS Gatekeeper warnings.
+- **Ongoing Maintenance:** Keeping ComfyUI workflows, new local image/video/TTS models, and 5-language updates running smoothly on Apple Silicon.
 
 ---
 

@@ -13,6 +13,7 @@
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
 [![Release](https://img.shields.io/badge/下载-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 
 </div>
 
@@ -61,6 +62,17 @@
 1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.0-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
+
+---
+
+## 赞助支持开发
+
+如果 Klipora 对你的创作流程有帮助，欢迎请作者喝杯咖啡支持持续开发（支持信用卡与 PayPal）：
+
+[![赞助 Klipora](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
+
+- **第一阶段目标（US$99／年）**：购买 Apple Developer Program 开发者账号，为 Klipora 加入 **Apple 官方公证签名（Notarization）**，让日后下载 `.dmg` 直接双击即可打开，不再弹出「无法验证开发者」提示。
+- **持续维护**：跟进最新 ComfyUI 工作流、本地生图／视频／语音模型兼容性与 5 国语言更新。
 
 ---
 
