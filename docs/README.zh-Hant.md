@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../work/studio/resources/KliporaLogo.png" alt="Klipora" width="128" />
+<img src="banners/klipora-banner-zh-Hant.png" alt="Klipora 橫幅 Banner" width="100%" />
 
 # Klipora
 
