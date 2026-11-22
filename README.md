@@ -8,17 +8,31 @@
 
 *Clip (`Klip`) × Luminous Spatial Aura (`-ora`) — Create, Voice, Cut & Export Offline on macOS.*
 
+**English** · [繁體中文](docs/README.zh-Hant.md) · [简体中文](docs/README.zh-Hans.md) · [日本語](docs/README.ja.md) · [한국어](docs/README.ko.md)
+
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.0.0%20DMG-F46B53?style=flat-square)](#installation)
+[![Release](https://img.shields.io/badge/Release-v1.0.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 
 </div>
 
 ---
 
+## Interface Showcase
+
+| Startup Self-Check | AI Image Generation Workspace |
+| :---: | :---: |
+| ![Startup Self-Check](docs/screenshots/01-startup-selfcheck.png) | ![Generate Workspace](docs/screenshots/02-generate-workspace.png) |
+
+| Multitrack Video Editor | Setup, Languages & Connections |
+| :---: | :---: |
+| ![Edit Workspace](docs/screenshots/03-edit-workspace.png) | ![Setup & Connections](docs/screenshots/04-settings-connections.png) |
+
+---
+
 ## Why Klipora?
 
-Most AI creators bounce between 5 disconnected apps: one web tab for generating images, another script for LoRAs, a terminal for local TTS voiceovers, a browser for cloud video, and a heavy NLE just to cut and add subtitles.
+Most AI creators bounce between 5 disconnected tools: one web tab for generating images, another script for LoRAs, a terminal for local TTS voiceovers, a browser for cloud video, and a heavy NLE just to cut and add subtitles.
 
 **Klipora unifies the entire creative pipeline into a single native macOS darkroom workstation:**
 
@@ -34,11 +48,11 @@ Most AI creators bounce between 5 disconnected apps: one web tab for generating 
 
 Switch languages anytime inside **Setup & Connections** or the **Onboarding Wizard** — no restart required:
 
-- 繁體中文 (`zh-Hant`)
-- 简体中文 (`zh-Hans`)
-- English (`en`)
-- 日本語 (`ja`)
-- 한국어 (`ko`)
+- [繁體中文](docs/README.zh-Hant.md) (`zh-Hant`)
+- [简体中文](docs/README.zh-Hans.md) (`zh-Hans`)
+- **English** (`en`)
+- [日本語](docs/README.ja.md) (`ja`)
+- [한국어](docs/README.ko.md) (`ko`)
 
 ---
 
@@ -54,7 +68,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 
 ## Installation
 
-### Option 1 — Download `.dmg` (Recommended for Beta Testers)
+### Option 1 — Download `.dmg` (Recommended)
 1. Download **`Klipora-1.0.0-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
@@ -69,14 +83,6 @@ git clone https://github.com/ZhiDuan-art/Klipora-app.git
 cd Klipora-app/work/studio
 bash build-app.sh /tmp/Klipora.app
 ```
-
----
-
-## Architecture & Security Principles
-
-- **Central Model Storage**: Weights live once under `~/Library/Application Support/MotionDesk/models/comfy/` and `models/loras/` and are exposed to ComfyUI via per-file symlinks or `extra_model_paths.yaml`.
-- **Zero Plaintext Secrets**: API keys are stored exclusively in **macOS Keychain** (`kSecClassGenericPassword`), never written to project JSON, request logs, or CLI arguments, and automatically redacted from error output.
-- **Honest Offline Mode**: `NWPathMonitor` disables only online providers when offline while keeping local ComfyUI loopback (`127.0.0.1`), local Voicebox, and multitrack editing 100% operational.
 
 ---
 
