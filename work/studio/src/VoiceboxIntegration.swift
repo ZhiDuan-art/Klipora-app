@@ -524,20 +524,44 @@ final class VoiceboxServiceController: ObservableObject {
         return nil
     }
 
+    static func seedDefaultVoiceLibraryIfNeeded(into targetDir: URL) {
+        let fm = FileManager.default
+        let targetDB = targetDir.appendingPathComponent("voicebox.db")
+        if fm.fileExists(atPath: targetDB.path) { return }
+        guard let seedZip = Bundle.main.resourceURL?.appendingPathComponent("default-voicebox-data.zip"),
+              fm.fileExists(atPath: seedZip.path) else { return }
+        do {
+            try fm.createDirectory(at: targetDir, withIntermediateDirectories: true)
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+            proc.arguments = ["-xk", seedZip.path, targetDir.path]
+            try proc.run()
+            proc.waitUntilExit()
+        } catch {
+            // Non-fatal: user can still create or import voices manually
+        }
+    }
+
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let existingVoiceboxDir = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
         let existingVoiceboxDB = existingVoiceboxDir.appendingPathComponent("voicebox.db")
         let cleanMotionDeskDataDir = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
 
+        let resolvedDataDir: String
         if let savedDataDir = UserDefaults.standard.string(forKey: Self.dataDirDefaultsKey),
            !savedDataDir.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            self.dataDirPath = (savedDataDir as NSString).expandingTildeInPath
+            resolvedDataDir = (savedDataDir as NSString).expandingTildeInPath
         } else if FileManager.default.fileExists(atPath: existingVoiceboxDB.path) {
-            self.dataDirPath = existingVoiceboxDir.path
+            resolvedDataDir = existingVoiceboxDir.path
         } else {
-            self.dataDirPath = cleanMotionDeskDataDir.path
+            resolvedDataDir = cleanMotionDeskDataDir.path
         }
+        self.dataDirPath = resolvedDataDir
+
+        // First-run deployment: if voicebox.db does not exist yet and a bundled default voice pack is present,
+        // unpack the pre-built 68-voice seed library cleanly without overwriting any existing user data.
+        Self.seedDefaultVoiceLibraryIfNeeded(into: URL(fileURLWithPath: resolvedDataDir, isDirectory: true))
 
         let defaultModelsDir = home.appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub", isDirectory: true).path
         if let savedModelsDir = UserDefaults.standard.string(forKey: Self.modelsDirDefaultsKey),

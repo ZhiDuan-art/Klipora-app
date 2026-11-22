@@ -91,6 +91,10 @@ cp "$here/resources/worker.py" \
 
 ditto "$here/resources/locales" "$resources/locales"
 
+if [[ -f "$here/resources/default-voicebox-data.zip" ]]; then
+  cp -f "$here/resources/default-voicebox-data.zip" "$resources/"
+fi
+
 ditto "$here/resources/h3" "$resources/h3"
 if [[ -r "$runtime/node-v22.23.5-darwin-arm64/bin/node" ]]; then
   cp "$runtime/node-v22.23.5-darwin-arm64/bin/node" "$resources/runtime/bin/node"
