@@ -93,8 +93,8 @@ If Klipora saves you time or helps your creative workflow, consider supporting i
 
 [![Support on Portaly](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly%20(Card%20%2F%20PayPal)-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
 
-- **First Milestone (US$99 / year):** Apple Developer Program membership for official **Apple Notarization**, so future `.dmg` releases open with a single double-click and zero macOS Gatekeeper warnings.
 - **Ongoing Maintenance:** Keeping ComfyUI workflows, new local image/video/TTS models, and 5-language updates running smoothly on Apple Silicon.
+- **Future Aspiration (No Guarantee):** If sponsorship grows enough over time, we hope to eventually consider Apple Developer Program notarization to reduce macOS Gatekeeper prompts, though this is not guaranteed.
 
 ---
 

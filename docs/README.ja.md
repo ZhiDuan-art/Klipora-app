@@ -71,8 +71,8 @@ Klipora が制作ワークフローのお役に立てば、継続的な開発へ
 
 [![Support Klipora](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
 
-- **最初の目標（年額 US$99）**：Apple Developer Program に登録し、公式の **Apple 公証（Notarization）** に対応することで、今後の `.dmg` 起動時のセキュリティ警告をなくします。
 - **継続メンテナンス**：最新の ComfyUI ワークフロー、ローカル画像・動画・音声モデル、5言語対応のアップデートを継続します。
+- **今後の希望（保証なし）**：将来的に十分なご支援が集まった場合、macOS の警告を軽減するための Apple 公証（Notarization）対応を検討したいと考えていますが、実現を保証するものではありません。
 
 ---
 

@@ -71,8 +71,8 @@
 
 [![赞助 Klipora](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
 
-- **第一阶段目标（US$99／年）**：购买 Apple Developer Program 开发者账号，为 Klipora 加入 **Apple 官方公证签名（Notarization）**，让日后下载 `.dmg` 直接双击即可打开，不再弹出「无法验证开发者」提示。
 - **持续维护**：跟进最新 ComfyUI 工作流、本地生图／视频／语音模型兼容性与 5 国语言更新。
+- **未来期许（不保证）**：若未来赞助累积充足，希望能视情况评估申请 Apple 官方公证（Notarization）以减少 macOS 安全提示，但此项仅为未来期许，不作保证。
 
 ---
 

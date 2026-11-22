@@ -71,8 +71,8 @@ Klipora가 작업에 도움이 되었다면 지속적인 개발을 후원해 주
 
 [![Support Klipora](https://img.shields.io/badge/Support%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
 
-- **첫 번째 목표 (연 US$99)**: Apple Developer Program 등록 및 공식 **Apple 공증(Notarization)** 적용으로, 향후 `.dmg` 실행 시 macOS 보안 경고 없이 바로 열리도록 개선합니다.
 - **지속적인 유지보수**: 최신 ComfyUI 워크플로우, 로컬 이미지·영상·음성 모델 호환성 및 5개국어 업데이트를 유지합니다.
+- **향후 희망 사항 (보장 없음)**: 추후 후원이 충분히 모일 경우 macOS 보안 경고를 줄이기 위한 Apple 공증(Notarization) 적용을 검토해 보고자 하나, 이는 향후 희망 사항이며 보장되지는 않습니다.
 
 ---
 

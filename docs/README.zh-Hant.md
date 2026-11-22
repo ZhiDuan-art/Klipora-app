@@ -76,8 +76,8 @@
 
 [![贊助 Klipora](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
 
-- **第一階段目標（US$99／年）**：購買 Apple Developer Program 開發者帳號，為 Klipora 加入 **Apple 官方公證簽章（Notarization）**，讓日後下載 `.dmg` 直接雙擊就能開啟，不再跳出「無法驗證開發者」警告。
 - **持續維護**：跟進最新 ComfyUI 工作流、本機生圖／影片／語音模型相容性與 5 國語言更新。
+- **未來期許（不保證）**：若未來贊助累積充足，希望能視情況評估申請 Apple 官方公證（Notarization）以減少 macOS 安全提示，惟此項僅為未來期許，不作保證。
 
 ---
 
