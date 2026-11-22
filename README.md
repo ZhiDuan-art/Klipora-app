@@ -20,9 +20,9 @@
 
 ## Interface Showcase
 
-| Startup Self-Check | AI Image Generation Workspace |
+| Local Neural Voice Studio | AI Image Generation Workspace |
 | :---: | :---: |
-| ![Startup Self-Check](docs/screenshots/01-startup-selfcheck.png) | ![Generate Workspace](docs/screenshots/02-generate-workspace.png) |
+| ![Local Neural Voice Studio](docs/screenshots/01-startup-selfcheck.png) | ![Generate Workspace](docs/screenshots/02-generate-workspace.png) |
 
 | Multitrack Video Editor | Setup, Languages & Connections |
 | :---: | :---: |

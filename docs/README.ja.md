@@ -20,9 +20,9 @@
 
 ## インターフェース紹介
 
-| 起動時セルフチェック | AI 画像生成ワークスペース |
+| ローカル音声・ボイススタジオ | AI 画像生成ワークスペース |
 | :---: | :---: |
-| ![起動時セルフチェック](screenshots/01-startup-selfcheck.png) | ![画像生成ワークスペース](screenshots/02-generate-workspace.png) |
+| ![ローカル音声・ボイススタジオ](screenshots/01-startup-selfcheck.png) | ![画像生成ワークスペース](screenshots/02-generate-workspace.png) |
 
 | マルチトラック動画編集 | 環境・多言語・接続設定 |
 | :---: | :---: |

@@ -20,9 +20,9 @@
 
 ## 介面展示
 
-| 啟動自檢畫面 | AI 影像生成工作區 |
+| 本機語音配音工作室 | AI 影像生成工作區 |
 | :---: | :---: |
-| ![啟動自檢畫面](screenshots/01-startup-selfcheck.png) | ![生成工作區](screenshots/02-generate-workspace.png) |
+| ![本機語音配音工作室](screenshots/01-startup-selfcheck.png) | ![生成工作區](screenshots/02-generate-workspace.png) |
 
 | 多軌專業剪輯工作區 | 元件設定、多國語言與連線 |
 | :---: | :---: |

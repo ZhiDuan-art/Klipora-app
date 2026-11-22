@@ -20,9 +20,9 @@
 
 ## 界面展示
 
-| 启动自检画面 | AI 图像生成工作区 |
+| 本地语音配音工作室 | AI 图像生成工作区 |
 | :---: | :---: |
-| ![启动自检画面](screenshots/01-startup-selfcheck.png) | ![生成工作区](screenshots/02-generate-workspace.png) |
+| ![本地语音配音工作室](screenshots/01-startup-selfcheck.png) | ![生成工作区](screenshots/02-generate-workspace.png) |
 
 | 多轨专业剪辑工作区 | 组件设置、多国语言与连接 |
 | :---: | :---: |

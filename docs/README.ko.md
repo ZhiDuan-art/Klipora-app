@@ -20,9 +20,9 @@
 
 ## 인터페이스 미리보기
 
-| 시작 자체 점검 | AI 이미지 생성 작업 공간 |
+| 로컬 보이스·오디오 스튜디오 | AI 이미지 생성 작업 공간 |
 | :---: | :---: |
-| ![시작 자체 점검](screenshots/01-startup-selfcheck.png) | ![이미지 생성 작업 공간](screenshots/02-generate-workspace.png) |
+| ![로컬 보이스·오디오 스튜디오](screenshots/01-startup-selfcheck.png) | ![이미지 생성 작업 공간](screenshots/02-generate-workspace.png) |
 
 | 멀티트랙 영상 편집기 | 구성요소·다국어·연결 설정 |
 | :---: | :---: |
