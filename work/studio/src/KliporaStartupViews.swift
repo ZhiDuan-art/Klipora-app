@@ -173,8 +173,8 @@ final class KliporaStartupController: ObservableObject {
         )
 
         // 5. Voice Library & TTS Models
-        let voiceData = home.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data")
-        let hfHub = home.appendingPathComponent("Library/Application Support/MotionDesk/models/huggingface/hub")
+        let voiceData = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data")
+        let hfHub = home.appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub")
         let hasVoiceData = fm.fileExists(atPath: voiceData.path)
         let hasTTSModels = (try? fm.contentsOfDirectory(atPath: hfHub.path))?.contains(where: { $0.hasPrefix("models--") }) ?? false
         let voiceItem = StartupCheckItem(
@@ -327,7 +327,7 @@ struct StarterModelOption: Identifiable, Equatable {
     var isInstalledLocally: Bool {
         if category == "tts" {
             let hub = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/MotionDesk/models/huggingface/hub")
+                .appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub")
             let entries = (try? FileManager.default.contentsOfDirectory(atPath: hub.path)) ?? []
             return entries.contains { $0.lowercased().contains(filename.lowercased()) }
         }
@@ -422,7 +422,7 @@ final class KliporaOnboardingViewModel: ObservableObject {
 
     func writeDefaultComfyPathsYAML() {
         let dest = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/extra_model_paths.yaml")
+            .appendingPathComponent("Library/Application Support/Klipora/extra_model_paths.yaml")
         do {
             try CentralComfyModelStorage.writeExtraModelPathsYAML(to: dest)
             configStatusMessage = "已寫入預設路徑設定：\(dest.path)"

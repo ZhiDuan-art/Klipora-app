@@ -762,7 +762,7 @@ final class PortabilitySetupManager: ObservableObject {
 
     private func primeDefaultsWithoutDiskScan() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let defaultJobs = home.appendingPathComponent("Library/Application Support/MotionDesk/Jobs", isDirectory: true)
+        let defaultJobs = home.appendingPathComponent("Library/Application Support/Klipora/Jobs", isDirectory: true)
         let savedOut = userDefaults.string(forKey: "MotionDesk.defaultOutputPath")?.trimmingCharacters(in: .whitespacesAndNewlines)
         let rootURL = (savedOut?.isEmpty == false)
             ? URL(fileURLWithPath: (savedOut! as NSString).expandingTildeInPath, isDirectory: true)
@@ -784,12 +784,12 @@ final class PortabilitySetupManager: ObservableObject {
         let savedVBData = userDefaults.string(forKey: Self.voiceboxDataDirKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.voiceboxDataDirPath = (savedVBData?.isEmpty == false)
             ? (savedVBData! as NSString).expandingTildeInPath
-            : home.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data").path
+            : home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data").path
 
         let savedVBModels = userDefaults.string(forKey: Self.voiceboxModelsDirKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.voiceboxModelsDirPath = (savedVBModels?.isEmpty == false)
             ? (savedVBModels! as NSString).expandingTildeInPath
-            : home.appendingPathComponent("Library/Application Support/MotionDesk/models/huggingface/hub").path
+            : home.appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub").path
 
         self.colabTokenFilePath = home.appendingPathComponent(".config/colab-cli/token.json").path
     }
@@ -1050,7 +1050,7 @@ final class PortabilitySetupManager: ObservableObject {
         }
 
         // 2. Output Root & Dated Storage (runs off MainActor so cloud/network volumes never stall UI)
-        let fallbackJobs = homeURL.appendingPathComponent("Library/Application Support/MotionDesk/Jobs", isDirectory: true)
+        let fallbackJobs = homeURL.appendingPathComponent("Library/Application Support/Klipora/Jobs", isDirectory: true)
         let trimmedOut = savedOutputPath?.trimmingCharacters(in: .whitespacesAndNewlines)
         let outRootURL: URL
         let usingCustomOut: Bool
@@ -1183,8 +1183,8 @@ final class PortabilitySetupManager: ObservableObject {
         }
 
         let trimmedVBData = savedVoiceboxDataDir?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let existingVoiceboxAppSupport = homeURL.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data", isDirectory: true)
-        let cleanMotionDeskVoiceboxData = homeURL.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data", isDirectory: true)
+        let existingVoiceboxAppSupport = homeURL.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
+        let cleanMotionDeskVoiceboxData = homeURL.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
 
         let resolvedVBDataDir: URL
         if let trimmedVBData, !trimmedVBData.isEmpty {
@@ -1202,7 +1202,7 @@ final class PortabilitySetupManager: ObservableObject {
         let vbDataSize = Task.isCancelled ? 0 : setupDirectoryDiskBytes(at: resolvedVBDataDir, maxFiles: 400)
 
         let trimmedVBModels = savedVoiceboxModelsDir?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let defaultHFHubCache = homeURL.appendingPathComponent("Library/Application Support/MotionDesk/models/huggingface/hub", isDirectory: true)
+        let defaultHFHubCache = homeURL.appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub", isDirectory: true)
         let resolvedVBModelsDir: URL
         if let trimmedVBModels, !trimmedVBModels.isEmpty {
             resolvedVBModelsDir = URL(fileURLWithPath: (trimmedVBModels as NSString).expandingTildeInPath, isDirectory: true)
@@ -1443,7 +1443,7 @@ final class PortabilitySetupManager: ObservableObject {
     func inspectOutputRoot(app: Studio? = nil) {
         let customPath = app?.defaultOutputPath ?? userDefaults.string(forKey: "MotionDesk.defaultOutputPath")
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let fallbackJobs = home.appendingPathComponent("Library/Application Support/MotionDesk/Jobs", isDirectory: true)
+        let fallbackJobs = home.appendingPathComponent("Library/Application Support/Klipora/Jobs", isDirectory: true)
         let rootURL: URL
         if let customPath, !customPath.isEmpty {
             rootURL = URL(fileURLWithPath: (customPath as NSString).expandingTildeInPath, isDirectory: true)
@@ -1840,7 +1840,7 @@ final class PortabilitySetupManager: ObservableObject {
 
     func switchToCleanVoiceboxDataDirectory(app: Studio? = nil) {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let cleanURL = home.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data", isDirectory: true)
+        let cleanURL = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
         try? FileManager.default.createDirectory(at: cleanURL, withIntermediateDirectories: true)
         userDefaults.set(cleanURL.path, forKey: Self.voiceboxDataDirKey)
         inspectVoiceboxEnvironment()
@@ -2619,7 +2619,7 @@ final class PortabilitySetupManager: ObservableObject {
                 approxSize: "環境與四組模型合計約 512 MB",
                 license: "MIT (Faster-Whisper / UVR) & Apache-2.0 (Sherpa-ONNX)",
                 sourceOrPath: AudioAIManager.shared.venvDirPath,
-                notes: "選用本地音訊工具，於音訊面板按需安裝至 ~/Library/Application Support/MotionDesk/ai-audio-venv。"
+                notes: "選用本地音訊工具，於音訊面板按需安裝至 ~/Library/Application Support/Klipora/ai-audio-venv。"
             ),
             DependencyManifestEntry(
                 id: "colab-cli",
@@ -3237,7 +3237,7 @@ struct PortabilitySetupSheetView: View {
                         }
                         .controlSize(.small)
                         .accessibilityLabel("恢復預設 Jobs 輸出位置")
-                        .help("將輸出位置重設為預設的 Application Support/MotionDesk/Jobs")
+                        .help("將輸出位置重設為預設的 Application Support/Klipora/Jobs")
                     }
                 }
 

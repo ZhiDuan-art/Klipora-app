@@ -526,9 +526,9 @@ final class VoiceboxServiceController: ObservableObject {
 
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let existingVoiceboxDir = home.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data", isDirectory: true)
+        let existingVoiceboxDir = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
         let existingVoiceboxDB = existingVoiceboxDir.appendingPathComponent("voicebox.db")
-        let cleanMotionDeskDataDir = home.appendingPathComponent("Library/Application Support/MotionDesk/voicebox-data", isDirectory: true)
+        let cleanMotionDeskDataDir = home.appendingPathComponent("Library/Application Support/Klipora/voicebox-data", isDirectory: true)
 
         if let savedDataDir = UserDefaults.standard.string(forKey: Self.dataDirDefaultsKey),
            !savedDataDir.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -539,7 +539,7 @@ final class VoiceboxServiceController: ObservableObject {
             self.dataDirPath = cleanMotionDeskDataDir.path
         }
 
-        let defaultModelsDir = home.appendingPathComponent("Library/Application Support/MotionDesk/models/huggingface/hub", isDirectory: true).path
+        let defaultModelsDir = home.appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub", isDirectory: true).path
         if let savedModelsDir = UserDefaults.standard.string(forKey: Self.modelsDirDefaultsKey),
            !savedModelsDir.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             self.modelsCachePath = (savedModelsDir as NSString).expandingTildeInPath
@@ -923,7 +923,7 @@ final class VoiceboxServiceController: ObservableObject {
         let dataDir = effectiveDataDir
         let modelsDir = effectiveModelsCacheDir
         let logsDir = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/logs", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/logs", isDirectory: true)
 
         do {
             try fm.createDirectory(at: dataDir, withIntermediateDirectories: true)
@@ -1109,7 +1109,7 @@ final class VoiceboxServiceController: ObservableObject {
 
     static var derivedReferenceOverridesFileURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/cache/voicebox-reference-overrides.json")
+            .appendingPathComponent("Library/Application Support/Klipora/cache/voicebox-reference-overrides.json")
     }
 
     static func loadDerivedReferenceOverrideManifest() -> DerivedReferenceOverrideManifest {
@@ -1126,7 +1126,7 @@ final class VoiceboxServiceController: ObservableObject {
         let directURL = URL(fileURLWithPath: sample.audio_path)
         let dataDirCandidate = effectiveDataDir.appendingPathComponent(sample.audio_path)
         let previewCacheCandidate = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/cache/voicebox-previews/sample-\(sample.id).wav")
+            .appendingPathComponent("Library/Application Support/Klipora/cache/voicebox-previews/sample-\(sample.id).wav")
 
         for candidate in [directURL, dataDirCandidate, previewCacheCandidate] {
             if fm.isReadableFile(atPath: candidate.path),
@@ -1322,7 +1322,7 @@ final class VoiceboxServiceController: ObservableObject {
             }
 
             let cacheDir = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/MotionDesk/cache/voicebox-previews", isDirectory: true)
+                .appendingPathComponent("Library/Application Support/Klipora/cache/voicebox-previews", isDirectory: true)
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
 
             // Step 1: Check existing samples for this profile
@@ -1701,9 +1701,9 @@ final class VoiceboxServiceController: ObservableObject {
 
         let fm = FileManager.default
         let colabJobsDir = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/colab-jobs", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/colab-jobs", isDirectory: true)
         let logsDir = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/logs", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/logs", isDirectory: true)
         try fm.createDirectory(at: colabJobsDir, withIntermediateDirectories: true)
         try fm.createDirectory(at: logsDir, withIntermediateDirectories: true)
 
@@ -2040,7 +2040,7 @@ final class NativeVoiceWorkspaceStore: ObservableObject {
     private static let autoInsertKey = "MotionDesk.nativeVoice.autoInsertToTrack"
     private static let projectDraftsKey = "MotionDesk.nativeVoice.perProjectDrafts"
 
-    static let defaultWelcomeScript = "你好，歡迎來到 MotionDesk 語音工作室，讓我們一起把想法變成聲音。"
+    static let defaultWelcomeScript = "你好，歡迎來到 Klipora 語音工作室，讓我們一起把想法變成聲音。"
 
     private var activeProjectScopeKey: String = "__untitled_session__"
     private var isRestoringProjectScope: Bool = false

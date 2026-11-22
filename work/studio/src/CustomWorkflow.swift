@@ -25,11 +25,11 @@ struct WorkflowInspection: Equatable {
 struct CustomWorkflowRegistry {
     static var url: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/user_workflows.json")
+            .appendingPathComponent("Library/Application Support/Klipora/user_workflows.json")
     }
     static var storageDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/workflows", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/workflows", isDirectory: true)
     }
     static func load(from url: URL = Self.url) throws -> [ImportedWorkflow] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
@@ -179,7 +179,7 @@ struct CustomWorkflowControls: View {
                     Label("開啟工作流位置", systemImage: "folder")
                 }
                 .controlSize(.small)
-                .help("在 Finder 開啟中央工作流目錄：~/Library/Application Support/MotionDesk/workflows/")
+                .help("在 Finder 開啟中央工作流目錄：~/Library/Application Support/Klipora/workflows/")
             }
 
             if let entry = selectedEntry {
@@ -192,7 +192,7 @@ struct CustomWorkflowControls: View {
                         Text("警告：此工作流不含 {{PROMPT}} 占位符，改寫 MotionDesk 提示詞不會自動套用，提交生成前請先於正向提示詞節點設為 {{PROMPT}}。")
                             .font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("匯入不自動執行；請確認本機 ComfyUI 已安裝所需模型與自訂節點。唯一實體存於 ~/Library/Application Support/MotionDesk/workflows/。")
+                    Text("匯入不自動執行；請確認本機 ComfyUI 已安裝所需模型與自訂節點。唯一實體存於 ~/Library/Application Support/Klipora/workflows/。")
                         .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Button("移除工作流登錄（保留原始檔）", role: .destructive) {
                         do {
@@ -268,7 +268,7 @@ private struct CustomWorkflowImportSheet: View {
                 }
             }
 
-            Text("匯入後不會自動執行；權重/自訂節點須於本機 ComfyUI 就緒。檔案會依 SHA256 去重存至 ~/Library/Application Support/MotionDesk/workflows/，原始檔保留。")
+            Text("匯入後不會自動執行；權重/自訂節點須於本機 ComfyUI 就緒。檔案會依 SHA256 去重存至 ~/Library/Application Support/Klipora/workflows/，原始檔保留。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
             if !message.isEmpty {

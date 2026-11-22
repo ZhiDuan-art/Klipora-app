@@ -22,7 +22,7 @@ private let proColorPresetHexes: [String] = [
 private func proMotionDeskAppSupportDir() -> URL {
     let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
-    return base.appendingPathComponent("MotionDesk", isDirectory: true)
+    return base.appendingPathComponent("Klipora", isDirectory: true)
 }
 
 private func proShortSHA256(_ input: String) -> String {

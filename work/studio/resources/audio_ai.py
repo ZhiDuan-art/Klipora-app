@@ -11,7 +11,7 @@ pipelines without PyTorch duplication or GPU contention with ComfyUI:
 
 Dispatcher commands (`status`, `install`, `uninstall`) run under macOS
 `/usr/bin/python3` (Python 3.9+) using stdlib only, creating/managing an
-isolated venv at `~/Library/Application Support/MotionDesk/ai-audio-venv`
+isolated venv at `~/Library/Application Support/Klipora/ai-audio-venv`
 derived from the system base Python 3.10-3.12 (NEVER installing packages into
 ComfyUI's `.venv`).
 

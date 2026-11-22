@@ -33,7 +33,7 @@ struct CentralComfyModelStorage {
 
     static var defaultRoot: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/models/comfy", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/models/comfy", isDirectory: true)
     }
 
     static func categoryDirectory(_ category: String, under root: URL = defaultRoot) -> URL {
@@ -407,7 +407,7 @@ struct UserModelRegistry {
 
     static var url: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/user_models.json")
+            .appendingPathComponent("Library/Application Support/Klipora/user_models.json")
     }
 
     static func primaryCategory(for baseProfile: String) -> String {
@@ -673,7 +673,7 @@ struct LocalModelManagerControls: View {
                 )
                 NSWorkspace.shared.activateFileViewerSelecting([CentralComfyModelStorage.defaultRoot])
             }
-            .help("開啟 MotionDesk 中央圖片模型儲存資料夾（~/Library/Application Support/MotionDesk/models/comfy）")
+            .help("開啟 Klipora 中央圖片模型儲存資料夾（~/Library/Application Support/Klipora/models/comfy）")
         }
         .font(.caption)
         .sheet(isPresented: $ui.showManagerSheet) {

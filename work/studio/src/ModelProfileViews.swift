@@ -1729,7 +1729,7 @@ struct RecordedGenerationDetail: Equatable, Sendable {
 
     static var defaultJobsDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MotionDesk/Jobs", isDirectory: true)
+            .appendingPathComponent("Klipora/Jobs", isDirectory: true)
     }
 
     static func read(asset: String, jobs: URL = defaultJobsDirectory) -> RecordedGenerationDetail? {

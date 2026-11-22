@@ -1356,15 +1356,15 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     var endpoint: String { engineEndpoint ?? project.endpoint }
     var jobsDirectory: URL {
         fs.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MotionDesk/Jobs", isDirectory: true)
+            .appendingPathComponent("Klipora/Jobs", isDirectory: true)
     }
     private var bridgeDirectory: URL {
         let support = fs.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MotionDesk/BridgeFrames", isDirectory: true)
+            .appendingPathComponent("Klipora/BridgeFrames", isDirectory: true)
         if (try? fs.createDirectory(at: support, withIntermediateDirectories: true)) != nil {
             return support
         }
-        return fs.temporaryDirectory.appendingPathComponent("MotionDesk/BridgeFrames", isDirectory: true)
+        return fs.temporaryDirectory.appendingPathComponent("Klipora/BridgeFrames", isDirectory: true)
     }
 
     func toggleEngine() {
@@ -1397,7 +1397,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                 return
             }
             let folder = fs.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("MotionDesk/ComfyUI", isDirectory: true)
+                .appendingPathComponent("Klipora/ComfyUI", isDirectory: true)
             try fs.createDirectory(at: folder, withIntermediateDirectories: true)
             try fs.createDirectory(at: folder.appendingPathComponent("user"), withIntermediateDirectories: true)
             try fs.createDirectory(at: folder.appendingPathComponent("custom_nodes"), withIntermediateDirectories: true)

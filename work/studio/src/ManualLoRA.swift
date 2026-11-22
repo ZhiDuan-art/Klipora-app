@@ -18,11 +18,11 @@ struct ManualLoRARegistry {
 
     static var url: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/user_loras.json")
+            .appendingPathComponent("Library/Application Support/Klipora/user_loras.json")
     }
     static var storageDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/models/loras", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/Klipora/models/loras", isDirectory: true)
     }
     static func load(from url: URL = Self.url) throws -> [ImportedLoRA] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
@@ -215,7 +215,7 @@ struct ManualLoRARegistry {
 
     static var defaultUserModelsURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/MotionDesk/user_models.json")
+            .appendingPathComponent("Library/Application Support/Klipora/user_models.json")
     }
 
     static func isModelSupportedForLoRA(_ model: String, userModelsRegistry: URL = Self.defaultUserModelsURL) -> Bool {
@@ -321,7 +321,7 @@ struct ManualLoRAControls: View {
                     }.controlSize(.small)
                 }
             }
-            Text("權重唯一實體存於 ~/Library/Application Support/MotionDesk/models/loras/，並於已授權 ComfyUI 的 models/loras/MotionDesk/ 建立共用符號連結。")
+            Text("權重唯一實體存於 ~/Library/Application Support/Klipora/models/loras/，並於已授權 ComfyUI 的 models/loras/MotionDesk/ 建立共用符號連結。")
                 .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !registryError.isEmpty { Text(registryError).font(.caption).foregroundStyle(.orange) }
         }
@@ -350,7 +350,7 @@ struct ManualLoRAControls: View {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             NSWorkspace.shared.open(dir)
         } label: { Label("開啟 LoRA 位置", systemImage: "folder") }
-            .controlSize(.small).help("在 Finder 開啟中央 LoRA 權重目錄：~/Library/Application Support/MotionDesk/models/loras/")
+            .controlSize(.small).help("在 Finder 開啟中央 LoRA 權重目錄：~/Library/Application Support/Klipora/models/loras/")
     }
     private var importButton: some View {
         Button { importing = true } label: { Label("匯入 LoRA…", systemImage: "square.and.arrow.down") }
@@ -385,7 +385,7 @@ private struct ManualLoRAImportSheet: View {
             }
             HStack { Text("預設強度"); Slider(value: $strength, in: 0...2, step: 0.05); Text(strength.formatted(.number.precision(.fractionLength(2)))).monospacedDigit() }
             Toggle("已確認發布頁標示的基底模型與此選項一致", isOn: $confirmed)
-            Text("權重唯一實體會複製到 ~/Library/Application Support/MotionDesk/models/loras/（依 SHA256 去重），並於所選 ComfyUI 根目錄的 models/loras/MotionDesk/ 建立符號連結供 Desktop 與 MotionDesk 共用；原始檔保留。")
+            Text("權重唯一實體會複製到 ~/Library/Application Support/Klipora/models/loras/（依 SHA256 去重），並於所選 ComfyUI 根目錄的 models/loras/MotionDesk/ 建立符號連結供 Desktop 與 MotionDesk 共用；原始檔保留。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !message.isEmpty { Text(message).font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
             HStack {

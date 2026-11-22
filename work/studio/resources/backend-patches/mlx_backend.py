@@ -56,7 +56,7 @@ def resolve_derived_reference_text(
                 target_override = Path(env_path).expanduser()
             else:
                 target_override = Path(_os.path.expanduser(
-                    "~/Library/Application Support/MotionDesk/cache/voicebox-reference-overrides.json"
+                    "~/Library/Application Support/Klipora/cache/voicebox-reference-overrides.json"
                 ))
 
         if not target_override.is_file():

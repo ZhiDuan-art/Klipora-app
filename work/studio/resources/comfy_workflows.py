@@ -318,7 +318,7 @@ def _expected_primary_category_for_base(base_model: dict[str, Any]) -> str:
 def _apply_user_models(data: dict[str, Any]) -> None:
     """Merge persistent user image model entries from user_models.json into loaded profiles."""
     registry = Path(os.environ.get("MOTIONDESK_USER_MODELS_REGISTRY", str(
-        Path.home() / "Library/Application Support/MotionDesk/user_models.json")))
+        Path.home() / "Library/Application Support/Klipora/user_models.json")))
     if not registry.is_file():
         return
     try:
@@ -407,7 +407,7 @@ def load_profiles(resource_dir: Path | str) -> dict[str, Any]:
         raise ValueError("model_profiles.json 格式無效，缺少 models 欄位。")
     _apply_user_models(data)
     registry = Path(os.environ.get("MOTIONDESK_LORA_REGISTRY", str(
-        Path.home() / "Library/Application Support/MotionDesk/user_loras.json")))
+        Path.home() / "Library/Application Support/Klipora/user_loras.json")))
     if registry.is_file():
         try:
             entries = json.loads(registry.read_text(encoding="utf-8"))

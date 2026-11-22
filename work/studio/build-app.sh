@@ -84,7 +84,6 @@ cp "$here/resources/worker.py" \
    "$here/resources/engine.py" \
    "$here/resources/Klipora.icns" \
    "$here/resources/KliporaLogo.png" \
-   "$here/resources/MotionDesk.icns" \
    "$here/resources/dependency_manifest.json" \
    "$here/resources/THIRD_PARTY_NOTICES.md" \
    "$here/resources/LICENSE-Voicebox" \
