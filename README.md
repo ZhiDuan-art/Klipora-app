@@ -26,17 +26,14 @@
 
 *Recorded from the live macOS app — voiced (offline Qwen3-TTS), edited, subtitled & exported to 1080p entirely inside Klipora.*
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4">
-    <img src="docs/videos/klipora-demo-preview.gif" alt="Klipora Demo Preview (Click to watch full 1080p video)" width="100%" />
-  </a>
-</p>
+https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ Watch Full 1080p Demo (English, 44s)</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 觀看完整 1080p 實機宣傳片（繁體中文，45s）</strong></a>
-</p>
+<details>
+<summary>▶ Watch Traditional Chinese Voiceover Version (繁體中文配音版 · 45s)</summary>
+
+https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+
+</details>
 
 ---
 

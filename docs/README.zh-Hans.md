@@ -26,17 +26,14 @@
 
 *纯窗口实机录制——旁白由 Klipora 内置本地 Qwen3-TTS 离线合成，并全程使用 Klipora 多轨时间轴剪辑、加字幕与导出 1080p。*
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4">
-    <img src="videos/klipora-demo-preview.gif" alt="Klipora 实机操作预览（点击观看完整 1080p 有声版）" width="100%" />
-  </a>
-</p>
+https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 观看完整 1080p 实机宣传片（中文配音，45s）</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ Watch Full 1080p Demo (English, 44s)</strong></a>
-</p>
+<details>
+<summary>▶ Watch English Voiceover Version (英文配音版 · 44s)</summary>
+
+https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+
+</details>
 
 ---
 

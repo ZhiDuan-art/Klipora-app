@@ -26,17 +26,14 @@
 
 *macOS 실기 화면을 녹화하여 Klipora 내장 로컬 Qwen3-TTS 내레이션과 멀티트랙 편집 엔진으로 1080p 내보내기까지 직접 제작했습니다.*
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4">
-    <img src="videos/klipora-demo-preview.gif" alt="Klipora 데모 미리보기 (클릭하여 1080p 전체 영상 보기)" width="100%" />
-  </a>
-</p>
+https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
-<p align="center">
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ 1080p 전체 데모 영상 보기 (English, 44s)</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 1080p 실기 데모 영상 (繁體中文, 45s)</strong></a>
-</p>
+<details>
+<summary>▶ 繁體中文 내레이션 버전 보기 (45s)</summary>
+
+https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+
+</details>
 
 ---
 
