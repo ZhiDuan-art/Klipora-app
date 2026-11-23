@@ -1124,6 +1124,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var log = ""
     @Published var busy = false
     @Published var comfyConnectionMode: String = "managed" // "managed" (Klipora 託管引擎) or "desktop" (外部 ComfyUI Desktop)
+    @Published var referenceRoleByPath: [String: String] = [:] // "角色" / "場景" / "物品" / "風格"
     @Published var jobStartedAt: Date? = nil
     @Published var jobElapsedSeconds: Int = 0
     @Published var jobProgress: Double? = nil
@@ -1175,10 +1176,34 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     var videoMethod: String {
         project.videoMethod ?? "reference"
     }
-    var supportsImageReference: Bool { source == "colab" || localModelSupportsReference }
+    var supportsMultiImageReference: Bool {
+        source == "colab" || source == "openai_image" || source == "gemini_image"
+    }
+    var supportsImageReference: Bool { supportsMultiImageReference || localModelSupportsReference }
     var takesReference: Bool {
         (project.kind == "image" && supportsImageReference)
             || (project.kind == "video" && videoMethod == "reference" && (source == "colab" || localModelSupportsReference))
+    }
+
+    func referenceRole(for path: String) -> String {
+        referenceRoleByPath[path] ?? "角色"
+    }
+
+    func setReferenceRole(_ role: String, for path: String) {
+        referenceRoleByPath[path] = role
+    }
+
+    func insertReferenceMention(index: Int, path: String) {
+        let role = referenceRole(for: path)
+        let tag = "@圖片\(index + 1)（\(role)）"
+        let trimmed = project.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            project.prompt = tag + " "
+        } else if project.prompt.hasSuffix(" ") || project.prompt.hasSuffix("\n") {
+            project.prompt += tag + " "
+        } else {
+            project.prompt += " " + tag + " "
+        }
     }
     var unsupportedKreaReference: String {
         unsupportedLocalReferencePath
@@ -1325,16 +1350,16 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
 
     var referenceImages: [String] {
         let first = referenceImage.isEmpty ? [] : [referenceImage]
-        guard action == "colab" else { return first }
+        guard supportsMultiImageReference else { return first }
         var seen = Set<String>()
         return Array((first + extraCloudReferences).filter {
             !$0.isEmpty && seen.insert($0).inserted
         }.prefix(Self.maxCloudReferenceImages))
     }
 
-    private func setReferenceImages(_ paths: [String]) {
+    func setReferenceImages(_ paths: [String]) {
         referenceImage = paths.first ?? ""
-        if action == "colab" { extraCloudReferences = Array(paths.dropFirst()) }
+        if supportsMultiImageReference { extraCloudReferences = Array(paths.dropFirst()) }
     }
 
     func removeReferenceImage(_ path: String) {
@@ -2604,7 +2629,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @discardableResult
     func attachReferences(_ urls: [URL]) -> Bool {
         guard !busy else { return false }
-        if source != "colab" && project.kind == "image" && !localModelSupportsReference {
+        if !supportsMultiImageReference && project.kind == "image" && !localModelSupportsReference {
             status = "\(profileStore.displayName(for: action)) 目前僅支援文字生圖，不支援參考圖片。"
             return false
         }
@@ -2617,13 +2642,13 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         let images = files.filter { imageTypes.contains($0.pathExtension.lowercased()) }.map(\.path)
         let video = files.first { movieTypes.contains($0.pathExtension.lowercased()) }?.path
         var active: Set<String> = []
-        if action == "colab" {
+        if supportsMultiImageReference {
             var seen = Set<String>()
             let references = Array((referenceImages + images).filter { seen.insert($0).inserted }
                 .prefix(Self.maxCloudReferenceImages))
             setReferenceImages(references)
             active.formUnion(references)
-            if let video { project.referenceVideo = video }
+            if acceptsVideoReference, let video { project.referenceVideo = video }
             if acceptsVideoReference, let existingVideo = project.referenceVideo { active.insert(existingVideo) }
         } else if isBuiltinLocalVideoAction, movieTypes.contains(first.pathExtension.lowercased()) {
             referenceImage = ""
@@ -2852,18 +2877,12 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                 status = "\(onlineProvider.displayName) 僅支援圖片生成；雲端影片請改選 Google Colab。"
                 return
             }
-            let hasRefImage = !(project.imageReference ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || !referenceImages.isEmpty
-            if hasRefImage {
-                status = "\(onlineProvider.displayName) 官方 API 本版僅支援純文字生圖，不支援參考圖片；請先清除參考圖片再生成。"
-                return
-            }
             if !(project.referenceVideo ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                status = "\(onlineProvider.displayName) 官方 API 本版僅支援純文字生圖，不支援參考影片；請先清除參考影片再生成。"
+                status = "\(onlineProvider.displayName) 官方 API 僅支援圖片生成與圖片參考，不支援參考影片；請先清除參考影片再生成。"
                 return
             }
             if !(project.localImageLoRA ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                status = "\(onlineProvider.displayName) 官方 API 本版僅支援純文字生圖，不支援本機 LoRA；請先取消 LoRA 再生成。"
+                status = "\(onlineProvider.displayName) 官方 API 不支援本機 LoRA；請先取消 LoRA 再生成。"
                 return
             }
             let gate = OnlineImageProvider.canInvokeAPI(
@@ -2874,6 +2893,11 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             )
             if !gate.allowed {
                 status = gate.reason ?? "線上圖片 API 尚未就緒。"
+                return
+            }
+            let onlineRefs = referenceImages
+            if onlineRefs.contains(where: { !fs.fileExists(atPath: $0) }) {
+                status = "找不到參考圖片，請重新選取檔案。"
                 return
             }
             let trimmedRawPrompt = project.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2893,6 +2917,10 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                 "resolution": project.resolution,
                 "seconds": generationSeconds
             ]
+            if !onlineRefs.isEmpty {
+                request["referenceImages"] = onlineRefs
+                request["referenceRoles"] = onlineRefs.map { referenceRole(for: $0) }
+            }
             if onlineProvider == .openai {
                 request["onlineQuality"] = onlineProvider.savedOpenAIQuality()
             } else {
@@ -4497,6 +4525,9 @@ struct StudioView: View {
             if app.workspace == .generate && app.project.kind == "video" {
                 GenerationVideoSequenceDock(app: app)
                     .padding([.horizontal, .bottom], 12)
+            } else if app.workspace == .generate && app.project.kind == "image" && app.supportsImageReference {
+                GenerationImageReferenceDock(app: app)
+                    .padding([.horizontal, .bottom], 12)
             }
         }.frame(minWidth: 415, maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -4804,7 +4835,21 @@ struct StudioView: View {
                     }
                     if app.project.kind == "image" {
                         if app.takesReference {
-                            generationReferences
+                            HStack(spacing: 6) {
+                                Image(systemName: "photo.stack")
+                                    .foregroundStyle(studioAccent)
+                                Text(app.supportsMultiImageReference
+                                     ? "多參考素材（角色三視圖／場景／物品，最多 8 張）請於中央下方參考素材板編輯。"
+                                     : "圖片參考素材請於中央下方參考素材板編輯（與專案同步）。")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 7))
+                            if app.showVLMDraftCard {
+                                VLMPromptDraftCard(app: app)
+                            }
                         } else if app.source != "colab" && !app.isRemovedModelSelected {
                             kreaUnsupportedOptionsNotice
                         }

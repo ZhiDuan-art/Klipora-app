@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
-[![Release](https://img.shields.io/badge/下载-v1.0.8%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下载-v1.0.9%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新与除错记录](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%99%A4%E9%94%99%E8%AE%B0%E5%BD%95-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.0.8`（2026-11-23 20:46 UTC+8）**：动态图形（Mografy Skill）分页新增**多文件参考素材与资料上传／拖放**——可一次附上多张图片与 PNG/SVG Logo、Word（`.docx`）、Excel（`.xlsx`）、CSV 或 PDF，自动分流部署并预先提取文档与表格数据。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.8 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.8)**。
+> **最新更新 — `v1.0.9`（2026-11-23 21:15 UTC+8）**：全新统一中央下方 **「参考素材板」UI**（支持多角色三视图／场景／物品／风格标签、多图拖放与一键插入 `@圖片N` 提示词），并解锁 **OpenAI 与 Gemini 线上图片原生多图参考（最多 8 张）**。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.9 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.9)**。
 
 ## 实机操作宣传视频
 
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.8-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.9-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 

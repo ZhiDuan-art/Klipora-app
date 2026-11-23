@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import base64
 import json
+import mimetypes
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Callable
+from uuid import uuid4
 
 OPENAI_ENDPOINT = "https://api.openai.com/v1/images/generations"
+OPENAI_EDITS_ENDPOINT = "https://api.openai.com/v1/images/edits"
 OPENAI_HOST = "api.openai.com"
 OPENAI_DEFAULT_MODEL = "gpt-image-2.5-flare"
 
@@ -122,6 +125,77 @@ def _gemini_aspect(aspect: str) -> str:
     return cleaned if cleaned in allowed else "16:9"
 
 
+def _mime_for_image_path(path: Path) -> str:
+    ext = path.suffix.lower()
+    if ext == ".png":
+        return "image/png"
+    if ext in {".jpg", ".jpeg"}:
+        return "image/jpeg"
+    if ext == ".webp":
+        return "image/webp"
+    guessed, _ = mimetypes.guess_type(str(path))
+    return guessed or "image/png"
+
+
+def _resolve_reference_images(reference_images: list[str] | None) -> list[Path]:
+    if not reference_images:
+        return []
+    resolved: list[Path] = []
+    seen: set[str] = set()
+    for raw in reference_images:
+        text = str(raw or "").strip()
+        if not text:
+            continue
+        p = Path(text).expanduser()
+        if not p.is_file():
+            raise ValueError(f"找不到參考圖片：{p.name or text}")
+        key = str(p.resolve())
+        if key not in seen:
+            seen.add(key)
+            resolved.append(p)
+        if len(resolved) >= 8:
+            break
+    return resolved
+
+
+def _enrich_prompt_with_references(prompt: str, paths: list[Path], roles: list[str] | None) -> str:
+    if not paths:
+        return prompt
+    entries: list[str] = []
+    for idx, path in enumerate(paths):
+        role = ""
+        if roles and idx < len(roles):
+            role = str(roles[idx] or "").strip()
+        role_suffix = f"（{role}）" if role else ""
+        entries.append(f"@圖片{idx + 1}{role_suffix}: {path.name}")
+    legend = "【參考素材對照】" + "；".join(entries)
+    return f"{legend}\n\n{prompt}"
+
+
+def _build_multipart_form(
+    fields: list[tuple[str, str]],
+    files: list[tuple[str, str, str, bytes]],
+) -> tuple[str, bytes]:
+    boundary = f"----KliporaBoundary{uuid4().hex}"
+    chunks: list[bytes] = []
+    for name, value in fields:
+        chunks.append(f"--{boundary}\r\n".encode("ascii"))
+        chunks.append(f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode("utf-8"))
+        chunks.append(value.encode("utf-8"))
+        chunks.append(b"\r\n")
+    for field_name, filename, content_type, data in files:
+        safe_name = filename.replace('"', "_")
+        chunks.append(f"--{boundary}\r\n".encode("ascii"))
+        chunks.append(
+            f'Content-Disposition: form-data; name="{field_name}"; filename="{safe_name}"\r\n'.encode("utf-8")
+        )
+        chunks.append(f"Content-Type: {content_type}\r\n\r\n".encode("ascii"))
+        chunks.append(data)
+        chunks.append(b"\r\n")
+    chunks.append(f"--{boundary}--\r\n".encode("ascii"))
+    return f"multipart/form-data; boundary={boundary}", b"".join(chunks)
+
+
 def generate_openai_image(
     *,
     prompt: str,
@@ -130,9 +204,11 @@ def generate_openai_image(
     model: str = OPENAI_DEFAULT_MODEL,
     aspect: str = "1:1",
     quality: str = "low",
+    reference_images: list[str] | None = None,
+    reference_roles: list[str] | None = None,
     transport: TransportFn | None = None,
 ) -> dict[str, Any]:
-    """Call OpenAI Images API (POST /v1/images/generations) and write decoded image bytes to output_dir."""
+    """Call OpenAI Images API (/v1/images/generations or /v1/images/edits for multi-reference) and write decoded image bytes."""
     key = (api_key or "").strip()
     if not key:
         raise ValueError("缺少 OpenAI API 金鑰（請先於「元件與連線設定」的 Keychain 設定）。")
@@ -143,21 +219,48 @@ def generate_openai_image(
     if quality not in {"low", "medium", "high"}:
         quality = "low"
 
-    _verify_fixed_https_host(OPENAI_ENDPOINT, OPENAI_HOST)
-    payload = {
-        "model": model_id,
-        "prompt": cleaned_prompt,
-        "n": 1,
-        "size": _openai_size_for_aspect(aspect),
-        "quality": quality,
-    }
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
+    ref_paths = _resolve_reference_images(reference_images)
+    size_str = _openai_size_for_aspect(aspect)
     send = transport or _default_https_transport
+
+    if ref_paths:
+        endpoint = OPENAI_EDITS_ENDPOINT
+        _verify_fixed_https_host(endpoint, OPENAI_HOST)
+        enriched = _enrich_prompt_with_references(cleaned_prompt, ref_paths, reference_roles)
+        fields = [
+            ("model", model_id),
+            ("prompt", enriched),
+            ("n", "1"),
+            ("size", size_str),
+            ("quality", quality),
+        ]
+        file_parts = [
+            ("image[]", p.name, _mime_for_image_path(p), p.read_bytes())
+            for p in ref_paths
+        ]
+        content_type, body_bytes = _build_multipart_form(fields, file_parts)
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": content_type,
+        }
+    else:
+        endpoint = OPENAI_ENDPOINT
+        _verify_fixed_https_host(endpoint, OPENAI_HOST)
+        payload = {
+            "model": model_id,
+            "prompt": cleaned_prompt,
+            "n": 1,
+            "size": size_str,
+            "quality": quality,
+        }
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        }
+        body_bytes = json.dumps(payload).encode("utf-8")
+
     try:
-        status, raw = send(OPENAI_ENDPOINT, headers, json.dumps(payload).encode("utf-8"), 120.0)
+        status, raw = send(endpoint, headers, body_bytes, 120.0)
     except Exception as exc:
         raise RuntimeError(_redact_secret(str(exc), key)) from None
     if not (200 <= status < 300):
@@ -189,8 +292,9 @@ def generate_openai_image(
         "paths": [str(out_file)],
         "provider": "openai",
         "model": model_id,
-        "size": payload["size"],
+        "size": size_str,
         "quality": quality,
+        "reference_count": len(ref_paths),
     }
 
 
@@ -202,9 +306,11 @@ def generate_gemini_image(
     model: str = GEMINI_DEFAULT_MODEL,
     aspect: str = "16:9",
     image_size: str = "1K",
+    reference_images: list[str] | None = None,
+    reference_roles: list[str] | None = None,
     transport: TransportFn | None = None,
 ) -> dict[str, Any]:
-    """Call Gemini Interactions API (POST /v1beta/interactions) and decode model_output image content."""
+    """Call Gemini Interactions API (POST /v1beta/interactions) with optional multi-image references."""
     key = (api_key or "").strip()
     if not key:
         raise ValueError("缺少 Gemini API 金鑰（請先於「元件與連線設定」的 Keychain 設定）。")
@@ -215,10 +321,23 @@ def generate_gemini_image(
     if image_size not in {"1K", "2K"}:
         image_size = "1K"
 
+    ref_paths = _resolve_reference_images(reference_images)
     _verify_fixed_https_host(GEMINI_ENDPOINT, GEMINI_HOST)
+    if ref_paths:
+        enriched = _enrich_prompt_with_references(cleaned_prompt, ref_paths, reference_roles)
+        input_field: Any = [{"type": "text", "text": enriched}]
+        for p in ref_paths:
+            input_field.append({
+                "type": "image",
+                "data": base64.b64encode(p.read_bytes()).decode("ascii"),
+                "mime_type": _mime_for_image_path(p),
+            })
+    else:
+        input_field = cleaned_prompt
+
     payload = {
         "model": model_id,
-        "input": cleaned_prompt,
+        "input": input_field,
         "response_format": {
             "type": "image",
             "aspect_ratio": _gemini_aspect(aspect),

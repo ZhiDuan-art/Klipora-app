@@ -1,5 +1,17 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.9 — 2026-11-23 21:15 (UTC+8)
+### Unified Multi-Reference Board UI & Online Multi-Image API Support / 統一中央下方參考素材板與線上多圖原生支援
+- **解鎖線上圖片（OpenAI & Gemini）原生多參考圖輸入（最多 8 張）**：
+  - `online_image.py` 升級 OpenAI 圖片 API 於附帶參考圖時自動走官方 `/v1/images/edits`（`multipart/form-data` 多張 `image[]`），Gemini Interactions API 自動送出多模態 `input` 圖文陣列，並自動附上 `@圖片1（角色）／@圖片2（場景）` 對照說明。
+  - 維持原本所有安全與計費防線（固定官方 HTTPS 主機、阻擋重導向、金鑰遮蔽、離線停用）。
+- **全新統一中央下方「參考素材板（`GenerationImageReferenceDock`）」＋ 右側欄瘦身優化**：
+  - 將原本擠在右側窄欄的圖片參考素材統一移至中央預覽區下方橫向 Dock（與影片序列 Dock 視覺一致），徹底清爽右側參數欄。
+  - 支援從左側素材庫或 Finder 一次拖放多張圖片（如多位角色三視圖、場景、物品），每張卡片可自由切換用途標籤（**`角色` / `場景` / `物品` / `風格`**），點一下卡片上的 **`@圖片N`** 膠囊即可直接插入提示詞框！
+- **Affected Files**：`work/studio/resources/online_image.py`, `work/studio/resources/worker.py`, `work/studio/src/GenerationDockViews.swift`, `work/studio/src/Studio.swift`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.8 — 2026-11-23 20:46 (UTC+8)
 ### Multi-File Reference Upload for Motion Graphics / 動態圖形支援多檔案參考素材與文件上傳
 - **動態圖形（Mografy Skill）分頁新增「參考素材與資料檔案」多檔案上傳與拖放區**：

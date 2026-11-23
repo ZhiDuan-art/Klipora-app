@@ -1374,16 +1374,26 @@ def _validate_online_text_to_image_only(request, provider_label):
     ref_images = [str(p).strip() for p in (request.get("referenceImages") or []) if str(p).strip()]
     ref_video = str(request.get("referenceVideo") or "").strip()
     lora = str(request.get("lora") or "").strip()
-    if ref or ref_images:
-        raise ValueError(f"{provider_label} 官方 API 本版僅支援純文字生圖，不支援參考圖片；請先移除參考圖片。")
     if ref_video:
-        raise ValueError(f"{provider_label} 官方 API 本版僅支援純文字生圖，不支援參考影片；請先移除參考影片。")
+        raise ValueError(f"{provider_label} 官方 API 僅支援圖片生成與圖片參考，不支援參考影片；請先移除參考影片。")
     if lora:
-        raise ValueError(f"{provider_label} 官方 API 本版僅支援純文字生圖，不支援本機 LoRA；請先取消 LoRA。")
+        raise ValueError(f"{provider_label} 官方 API 不支援本機 LoRA；請先取消 LoRA。")
+    all_refs = []
+    if ref:
+        all_refs.append(ref)
+    for item in ref_images:
+        if item and item not in all_refs:
+            all_refs.append(item)
+    if len(all_refs) > MAX_CLOUD_REFERENCE_IMAGES:
+        raise ValueError(f"{provider_label} 最多支援 {MAX_CLOUD_REFERENCE_IMAGES} 張參考圖片。")
+    for item in all_refs:
+        if not Path(item).expanduser().is_file():
+            raise ValueError(f"找不到參考圖片：{item}")
+    return all_refs
 
 
 def run_openai_image(request, folder):
-    _validate_online_text_to_image_only(request, "OpenAI")
+    ref_images = _validate_online_text_to_image_only(request, "OpenAI")
     api_key = os.environ.get("MOTIONDESK_OPENAI_API_KEY", "").strip()
     if not api_key:
         raise ValueError("未提供 OpenAI API 金鑰（請於「元件與連線設定」的 macOS Keychain 設定）。")
@@ -1395,13 +1405,16 @@ def run_openai_image(request, folder):
         model=request.get("onlineModel") or online_image.OPENAI_DEFAULT_MODEL,
         aspect=request.get("aspect") or "1:1",
         quality=request.get("onlineQuality") or "low",
+        reference_images=ref_images,
+        reference_roles=request.get("referenceRoles") if isinstance(request.get("referenceRoles"), list) else None,
     )
-    log(f"OpenAI 圖片 API 完成（model={res['model']}，size={res['size']}，quality={res['quality']}）。")
+    ref_note = f"，參考圖={len(ref_images)}" if ref_images else ""
+    log(f"OpenAI 圖片 API 完成（model={res['model']}，size={res['size']}，quality={res['quality']}{ref_note}）。")
     return res["paths"]
 
 
 def run_gemini_image(request, folder):
-    _validate_online_text_to_image_only(request, "Gemini")
+    ref_images = _validate_online_text_to_image_only(request, "Gemini")
     api_key = os.environ.get("MOTIONDESK_GEMINI_API_KEY", "").strip()
     if not api_key:
         raise ValueError("未提供 Gemini API 金鑰（請於「元件與連線設定」的 macOS Keychain 設定）。")
@@ -1413,8 +1426,11 @@ def run_gemini_image(request, folder):
         model=request.get("onlineModel") or online_image.GEMINI_DEFAULT_MODEL,
         aspect=request.get("aspect") or "16:9",
         image_size=request.get("onlineImageSize") or "1K",
+        reference_images=ref_images,
+        reference_roles=request.get("referenceRoles") if isinstance(request.get("referenceRoles"), list) else None,
     )
-    log(f"Gemini 圖片 API 完成（model={res['model']}，aspect={res['aspect_ratio']}，image_size={res['image_size']}）。")
+    ref_note = f"，參考圖={len(ref_images)}" if ref_images else ""
+    log(f"Gemini 圖片 API 完成（model={res['model']}，aspect={res['aspect_ratio']}，image_size={res['image_size']}{ref_note}）。")
     return res["paths"]
 
 

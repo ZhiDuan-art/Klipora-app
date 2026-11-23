@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#권장-사양)
 [![Languages](https://img.shields.io/badge/지원언어-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5개국어-현지화)
-[![Release](https://img.shields.io/badge/다운로드-v1.0.8%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/다운로드-v1.0.9%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![변경 및 디버그 로그](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **최신 업데이트 — `v1.0.8` (2026-11-23 20:46 UTC+8)**: 모션 그래픽(Mografy Skill) 탭에 **다중 파일 첨부 및 Finder 드래그 앤 드롭** 기능을 추가했습니다(이미지·PNG/SVG 로고·Word `.docx`·Excel `.xlsx`·CSV·PDF 지원, 자동 배치 및 데이터 추출). 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.0.8 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.8)**.
+> **최신 업데이트 — `v1.0.9` (2026-11-23 21:15 UTC+8)**: 중앙 하단에 통합 **멀티 레퍼런스 보드 UI**(캐릭터 삼면도·배경·소품·스타일 태그 및 원클릭 `@圖片N` 프롬프트 삽입)를 신설하고 **OpenAI / Gemini 이미지 API 다중 참조 이미지(최대 8장)** 를 지원합니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.0.9 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.9)**.
 
 ## 실기 데모 영상
 
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
 ## 설치 방법
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.8-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.9-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
 

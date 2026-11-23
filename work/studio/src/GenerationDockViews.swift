@@ -1644,3 +1644,206 @@ private struct TextVideoSequenceSection: View {
         .disabled(app.busy)
     }
 }
+
+// MARK: - Unified Center-Bottom Image Reference Board Dock (Multi-Role Character / Scene / Prop / Style)
+
+@MainActor
+private final class ImageReferenceDockState: ObservableObject {
+    @Published var isDropTargeted = false
+}
+
+struct GenerationImageReferenceDock: View {
+    @ObservedObject var app: Studio
+    @StateObject private var dockState = ImageReferenceDockState()
+
+    private let roles = ["角色", "場景", "物品", "風格"]
+
+    private var capabilityBadge: String {
+        if app.source == "openai_image" || app.source == "gemini_image" {
+            return "線上原生多圖（支援多角色三視圖／場景／物品，最多 8 張）"
+        } else if app.source == "colab" {
+            return "線上 Colab 多圖融合（最多 8 張，支援 @圖片 標記）"
+        }
+        return "本機單圖參考（Img2Img）"
+    }
+
+    var body: some View {
+        let images = app.referenceImages
+        let maxCount = app.supportsMultiImageReference ? Studio.maxCloudReferenceImages : 1
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Label("參考素材板", systemImage: "photo.stack")
+                    .font(.callout.weight(.semibold))
+                Text("\(images.count) / \(maxCount)")
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(studioAccent.opacity(0.18), in: Capsule())
+                    .foregroundStyle(studioAccent)
+                Text(capabilityBadge)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                if let primary = images.first, !primary.isEmpty {
+                    Button {
+                        app.interrogateReferenceImage(path: primary)
+                    } label: {
+                        Label("看圖產生提示詞", systemImage: "sparkles.rectangle.stack")
+                    }
+                    .controlSize(.small)
+                    .disabled(app.busy)
+                }
+                if !images.isEmpty {
+                    Button("清空") {
+                        app.setReferenceImages([])
+                    }
+                    .controlSize(.small)
+                    .disabled(app.busy)
+                }
+                Button {
+                    app.pickReferences(
+                        title: app.supportsMultiImageReference ? "選擇多張參考圖片（角色／場景／物品）" : "選擇參考圖片",
+                        types: [.image],
+                        multiple: app.supportsMultiImageReference
+                    ) { urls in
+                        app.attachReferences(urls)
+                    }
+                } label: {
+                    Label(app.supportsMultiImageReference ? "加入多圖…" : "選擇圖片…", systemImage: "plus.circle")
+                }
+                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
+                .tint(studioAccent)
+                .disabled(app.busy || (app.supportsMultiImageReference && images.count >= maxCount))
+            }
+
+            if images.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.title3)
+                        .foregroundStyle(studioAccent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(app.supportsMultiImageReference
+                             ? "從左側素材庫或 Finder 拖入多張參考圖（如角色三視圖、場景、物品）"
+                             : "從左側素材庫或 Finder 拖入 1 張參考圖片進行本機圖生圖")
+                            .font(.caption.weight(.medium))
+                        Text(app.supportsMultiImageReference
+                             ? "加入後可為每張圖標記「角色／場景／物品／風格」，點一下 @圖片 標籤即可插入提示詞。"
+                             : "如需一次融合多位角色與場景，請將上方「來源」切換至線上 Gemini / OpenAI / Google Colab。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(dockState.isDropTargeted ? studioAccent.opacity(0.12) : canvas.opacity(0.55))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(
+                            dockState.isDropTargeted ? studioAccent : Color.white.opacity(0.14),
+                            style: StrokeStyle(lineWidth: dockState.isDropTargeted ? 1.8 : 1, dash: [4, 3])
+                        )
+                )
+            } else {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    HStack(spacing: 10) {
+                        ForEach(Array(images.enumerated()), id: \.element) { idx, path in
+                            referenceCard(index: idx, path: path)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .padding(10)
+        .background(panel, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(dockState.isDropTargeted ? studioAccent : Color.white.opacity(0.08), lineWidth: dockState.isDropTargeted ? 2 : 1)
+        )
+        .contentShape(Rectangle())
+        .dropDestination(for: URL.self) { urls, _ in
+            dockState.isDropTargeted = false
+            guard !app.busy, !urls.isEmpty else { return false }
+            return app.attachReferences(urls)
+        } isTargeted: { targeted in
+            dockState.isDropTargeted = targeted
+        }
+    }
+
+    private func referenceCard(index: Int, path: String) -> some View {
+        let role = app.referenceRole(for: path)
+        return VStack(alignment: .leading, spacing: 5) {
+            ZStack(alignment: .topLeading) {
+                MediaThumbnail(path: path, width: 118, height: 70, reloadToken: app.mediaReloadToken)
+                    .onTapGesture { app.generateSelection = path }
+
+                HStack {
+                    if app.supportsMultiImageReference {
+                        Button {
+                            app.insertReferenceMention(index: index, path: path)
+                        } label: {
+                            Text("@圖片\(index + 1)")
+                                .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(studioAccent, in: Capsule())
+                                .foregroundStyle(canvas)
+                        }
+                        .buttonStyle(.plain)
+                        .help("點一下插入「@圖片\(index + 1)（\(role)）」至提示詞")
+                    }
+                    Spacer()
+                    Button {
+                        app.removeReferenceImage(path)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .shadow(radius: 2)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(app.busy)
+                    .help("移除此參考圖")
+                }
+                .padding(4)
+            }
+
+            HStack(spacing: 4) {
+                if app.supportsMultiImageReference {
+                    Menu {
+                        ForEach(roles, id: \.self) { option in
+                            Button(option) { app.setReferenceRole(option, for: path) }
+                        }
+                    } label: {
+                        Text(role)
+                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.09), in: Capsule())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
+                Text(filename(path))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(5)
+        .frame(width: 128)
+        .background(canvas.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+        )
+    }
+}
