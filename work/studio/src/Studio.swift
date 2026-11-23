@@ -4202,9 +4202,13 @@ struct StudioView: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 
-    private func formattedJobETA(elapsed: Int, progress: Double?) -> String? {
-        guard let pct = progress, pct >= 0.05, pct < 0.99, elapsed >= 5 else { return nil }
-        let remaining = Int((Double(elapsed) * (1.0 - pct) / pct).rounded())
+    private func formattedJobETA(elapsed: Int, progress: Double?, step: Int?, maxStep: Int?) -> String? {
+        // Only estimate remaining time when backed by real linear step/frame progress,
+        // never from fixed coarse stage milestones (e.g. 12% while an AI Agent is coding).
+        guard let step, let maxStep, maxStep > 0, step >= 2, step < maxStep,
+              let pct = progress, pct >= 0.05, pct < 0.99, elapsed >= 5 else { return nil }
+        let ratio = Double(step) / Double(maxStep)
+        let remaining = Int((Double(elapsed) * (1.0 - ratio) / ratio).rounded())
         guard remaining > 0 else { return nil }
         if remaining >= 3600 {
             let h = remaining / 3600
@@ -4251,7 +4255,7 @@ struct StudioView: View {
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
                 .background(Color.primary.opacity(0.06), in: Capsule())
-                if let eta = formattedJobETA(elapsed: app.jobElapsedSeconds, progress: app.jobProgress) {
+                if let eta = formattedJobETA(elapsed: app.jobElapsedSeconds, progress: app.jobProgress, step: app.jobProgressStep, maxStep: app.jobProgressMax) {
                     Text(eta)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)

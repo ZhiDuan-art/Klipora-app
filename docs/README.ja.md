@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
-[![Release](https://img.shields.io/badge/ダウンロード-v1.0.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/ダウンロード-v1.0.7%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新・デバッグ履歴](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新アップデート — `v1.0.6`（2026-11-23 19:26 UTC+8）**：ローカル ComfyUI を2つの独立モード（**Klipora 管理エンジン** / **外部 ComfyUI Desktop**）に分離し、**Mografy モーショングラフィックス Skill** 連携を追加（Skill と Claude Code / Codex / Antigravity 検出時に「動態圖形」タブを自動解放し MP4 を素材庫へ自動取り込み）。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.6 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.6)**。
+> **最新アップデート — `v1.0.7`（2026-11-23 20:25 UTC+8）**：残り時間目安（ETA）を実際のステップ／フレーム進捗時のみ表示するよう改善し、Antigravity（`agy`）に `--output-format stream-json` によるリアルタイムログ出力を追加しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.7 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.7)**。
 
 ## 実機デモ動画
 
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
 ## インストール方法
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.6-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.7-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
 2. 初回起動時に警告が表示された場合は、**Klipora.app を右クリック → 開く → 開く** で起動してください。
 3. Codex や各種 AI エージェントに `https://github.com/ZhiDuan-art/Klipora-app` を渡し、**[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** に従って自動セットアップすることも可能です。
 

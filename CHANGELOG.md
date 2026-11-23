@@ -1,5 +1,16 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.7 — 2026-11-23 20:25 (UTC+8)
+### Accurate ETA & Antigravity Live Streaming / 預估剩餘時間精準化與 Antigravity 即時串流日誌
+- **修正底部狀態列「預估剩餘時間（ETA）」失真問題**：
+  - **Root Cause (原因)**：AI Agent 撰寫動畫腳本期間進度條停在固定的起始里程碑（如 `12%`），原本的 ETA 公式拿 `已耗時 ÷ 12%` 硬推算，導致畫面顯示「預估剩餘 ~46 分 / ~1 小時 18 分」等失真數字。
+  - **Fix (修復內容)**：`formattedJobETA` 改為僅在具備**真實線性步數／影格數**（如 ComfyUI 的 `step/max` 或 Mografy 渲染的 `Capturing frames X/Y`，且至少完成 2 步）時才顯示預估剩餘時間；Agent 撰寫與思考階段只顯示即時經過時間（`已耗時 MM:SS`），不再出現誤導數字。
+- **Antigravity (`agy`) 即時串流輸出**：
+  - `worker.py` 呼叫 `agy -p` 時加上 `--output-format stream-json` 並解析 NDJSON 事件，讓「工作紀錄」與目前執行階段在 Antigravity 製作動畫期間能即時更新。
+- **Affected Files**：`work/studio/src/Studio.swift`, `work/studio/resources/worker.py`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.6 — 2026-11-23 19:26 (UTC+8)
 ### Independent ComfyUI Mode Switcher & Mografy Motion Graphics Skill Integration / ComfyUI 雙模式獨立切換與 Mografy 動態圖形整合
 - **本機 ComfyUI 雙模式改為同層獨立切換（不再互相巢狀隱藏）**：

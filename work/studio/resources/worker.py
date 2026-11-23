@@ -1459,7 +1459,7 @@ def run_mografy_motion(request, folder):
             instruction,
         ]
     elif agent == "antigravity":
-        cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
+        cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions", "--output-format", "stream-json"]
     else:
         cmd = [agent_bin, "-p", instruction]
 
@@ -1492,7 +1492,30 @@ def run_mografy_motion(request, folder):
                 text = line.rstrip("\r\n")
                 if not text:
                     continue
-                log(text)
+                display_text = text
+                if agent == "antigravity" and text.startswith("{"):
+                    try:
+                        ev = json.loads(text)
+                        if isinstance(ev, dict):
+                            ev_type = str(ev.get("type") or "")
+                            summary = (
+                                ev.get("message")
+                                or ev.get("text")
+                                or ev.get("content")
+                                or ev.get("tool")
+                                or ev.get("tool_name")
+                                or ""
+                            )
+                            if isinstance(summary, dict):
+                                summary = json.dumps(summary, ensure_ascii=False)
+                            summary_str = str(summary).strip()
+                            if summary_str:
+                                display_text = f"[{ev_type or 'agy'}] {summary_str[:300]}"
+                            elif ev_type:
+                                display_text = f"[{ev_type}]"
+                    except Exception:
+                        pass
+                log(display_text)
                 m = frame_re.search(text)
                 if m:
                     cur, tot = int(m.group(1)), int(m.group(2))
