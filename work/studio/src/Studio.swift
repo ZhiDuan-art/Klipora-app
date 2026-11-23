@@ -2925,6 +2925,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                 "agent": mgr.effectiveAgent.rawValue,
                 "agentBinary": agentBin,
                 "mografyWorkspace": mgr.workspacePath,
+                "attachments": mgr.attachments.map(\.path),
                 "outputFolder": generationOutputDirectory.path,
             ]
             perform(req, "動態圖形生成中（\(mgr.effectiveAgent.displayName)）")
@@ -4884,6 +4885,7 @@ struct StudioView: View {
                 get: { max(3, min(30, app.project.seconds)) },
                 set: { app.project.seconds = $0 }
             ), in: 3...30)
+            MografyAttachmentsSection(disabled: app.busy)
             Text("透過 \(mgr.effectiveAgent.displayName) 搭配 Mografy Skill 撰寫並渲染 MP4，完成後自動匯入左側素材庫。")
                 .font(.caption)
                 .foregroundStyle(.secondary)

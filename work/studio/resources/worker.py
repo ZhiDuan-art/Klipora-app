@@ -1418,6 +1418,72 @@ def run_gemini_image(request, folder):
     return res["paths"]
 
 
+def _extract_office_preview(path: Path, max_chars: int = 12000) -> str:
+    """Zero-dependency stdlib extractor for .docx, .xlsx, .csv, .txt, .md, .json."""
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    ext = path.suffix.lower()
+    try:
+        if ext in {".csv", ".tsv", ".txt", ".md", ".markdown", ".json", ".yaml", ".yml"}:
+            return path.read_text(encoding="utf-8", errors="replace")[:max_chars]
+        if ext == ".docx":
+            with zipfile.ZipFile(path, "r") as zf:
+                xml_bytes = zf.read("word/document.xml")
+            root = ET.fromstring(xml_bytes)
+            lines = []
+            for p in root.iter():
+                if p.tag.endswith("}p"):
+                    texts = [t.text for t in p.iter() if t.tag.endswith("}t") and t.text]
+                    if texts:
+                        lines.append("".join(texts))
+            return "\n".join(lines)[:max_chars]
+        if ext == ".xlsx":
+            with zipfile.ZipFile(path, "r") as zf:
+                shared = []
+                if "xl/sharedStrings.xml" in zf.namelist():
+                    sroot = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+                    for si in sroot.iter():
+                        if si.tag.endswith("}si"):
+                            parts = [t.text for t in si.iter() if t.tag.endswith("}t") and t.text]
+                            shared.append("".join(parts))
+                sheet_names = sorted(
+                    n for n in zf.namelist()
+                    if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")
+                )
+                out_lines = []
+                for idx, sname in enumerate(sheet_names[:4], start=1):
+                    out_lines.append(f"--- Sheet {idx} ({Path(sname).name}) ---")
+                    shroot = ET.fromstring(zf.read(sname))
+                    for row in shroot.iter():
+                        if not row.tag.endswith("}row"):
+                            continue
+                        vals = []
+                        for cell in row:
+                            if not cell.tag.endswith("}c"):
+                                continue
+                            ctype = cell.attrib.get("t", "")
+                            v_el = next((c for c in cell if c.tag.endswith("}v")), None)
+                            if v_el is not None and v_el.text is not None:
+                                if ctype == "s":
+                                    try:
+                                        vals.append(shared[int(v_el.text)])
+                                    except Exception:
+                                        vals.append(v_el.text)
+                                else:
+                                    vals.append(v_el.text)
+                            else:
+                                is_texts = [t.text for t in cell.iter() if t.tag.endswith("}t") and t.text]
+                                if is_texts:
+                                    vals.append("".join(is_texts))
+                        if vals:
+                            out_lines.append("\t".join(vals))
+                return "\n".join(out_lines)[:max_chars]
+    except Exception as exc:
+        return f"(預先擷取失敗：{exc}；請直接於工作區讀取原檔)"
+    return ""
+
+
 def run_mografy_motion(request, folder):
     workspace = Path((request.get("mografyWorkspace") or "").strip()).expanduser()
     if not workspace.is_dir():
@@ -1434,15 +1500,67 @@ def run_mografy_motion(request, folder):
     job_slug = f"klipora-{int(time.time())}"
     target_mp4 = folder / f"01-{job_slug}.mp4"
 
+    # Stage multi-file reference assets (images/logos -> assets/, docs/spreadsheets -> brief-files/)
+    raw_attachments = request.get("attachments") or []
+    staged_visuals = []
+    staged_docs = []
+    extracted_sections = []
+    visual_exts = {".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif", ".tif", ".tiff"}
+    project_root = workspace / "projects" / job_slug
+    if raw_attachments:
+        assets_dir = project_root / "assets"
+        brief_dir = project_root / "brief-files"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        brief_dir.mkdir(parents=True, exist_ok=True)
+        for item in raw_attachments:
+            src = Path(str(item)).expanduser()
+            if not src.is_file():
+                continue
+            ext = src.suffix.lower()
+            dest_dir = assets_dir if ext in visual_exts else brief_dir
+            dest = dest_dir / src.name
+            counter = 2
+            while dest.exists():
+                dest = dest_dir / f"{src.stem}-{counter}{src.suffix}"
+                counter += 1
+            shutil.copy2(src, dest)
+            rel = f"projects/{job_slug}/{dest_dir.name}/{dest.name}"
+            if ext in visual_exts:
+                staged_visuals.append(rel)
+            else:
+                staged_docs.append(rel)
+                preview = _extract_office_preview(dest)
+                if preview.strip():
+                    extracted_sections.append(f"=== {dest.name} ({rel}) ===\n{preview.strip()}")
+        if extracted_sections:
+            summary_path = brief_dir / "_extracted_summary.txt"
+            summary_path.write_text("\n\n".join(extracted_sections), encoding="utf-8")
+            staged_docs.append(f"projects/{job_slug}/brief-files/_extracted_summary.txt")
+
     emit_progress(pct=0.05, stage="準備 Mografy 工作區")
-    log(f"Mografy 動態圖形 · 引擎={agent} · 比例={aspect} · {seconds} 秒")
+    att_note = f" · 附件={len(staged_visuals)} 圖 / {len(staged_docs)} 文件" if (staged_visuals or staged_docs) else ""
+    log(f"Mografy 動態圖形 · 引擎={agent} · 比例={aspect} · {seconds} 秒{att_note}")
+
+    attachment_prompt_block = ""
+    if staged_visuals or staged_docs:
+        lines = ["\nAttached Reference Assets & Data Files (already copied into this project):"]
+        if staged_visuals:
+            lines.append("- Visual assets / Logos (render directly as crisp images in your scenes):")
+            for p in staged_visuals:
+                lines.append(f"  * {p}")
+        if staged_docs:
+            lines.append("- Reference documents / spreadsheets (read exact data/copy from these files):")
+            for p in staged_docs:
+                lines.append(f"  * {p}")
+        attachment_prompt_block = "\n".join(lines) + "\n"
 
     instruction = (
         f"Use the mografy skill in this workspace to create and render a {seconds}-second "
         f"{aspect} motion graphics MP4 video for the following request:\n\n"
-        f"{prompt}\n\n"
+        f"{prompt}\n"
+        f"{attachment_prompt_block}\n"
         f"Requirements:\n"
-        f"1. Create a new project under projects/{job_slug}.\n"
+        f"1. Create/use the project under projects/{job_slug} (preserve any pre-staged files in assets/ and brief-files/).\n"
         f"2. Run mografy check to verify layout and frames have no clipping or errors.\n"
         f"3. Export the final rendered MP4 video to: {target_mp4}\n"
         f"4. Reply briefly once the MP4 file is written."

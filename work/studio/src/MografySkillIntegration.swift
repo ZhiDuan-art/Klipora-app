@@ -1,6 +1,43 @@
 import AppKit
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
+
+struct MografyAttachmentItem: Identifiable, Equatable {
+    let id = UUID()
+    let path: String
+
+    var url: URL { URL(fileURLWithPath: path) }
+    var filename: String { url.lastPathComponent }
+    var ext: String { url.pathExtension.lowercased() }
+
+    static let visualExtensions: Set<String> = ["png", "jpg", "jpeg", "webp", "svg", "gif", "tif", "tiff"]
+    static let spreadsheetExtensions: Set<String> = ["xlsx", "xls", "csv", "tsv"]
+    static let documentExtensions: Set<String> = ["docx", "doc", "rtf", "pages"]
+    static let textDataExtensions: Set<String> = ["pdf", "md", "markdown", "txt", "json", "yaml", "yml"]
+    static let supportedExtensions: Set<String> = visualExtensions
+        .union(spreadsheetExtensions)
+        .union(documentExtensions)
+        .union(textDataExtensions)
+
+    var isVisualAsset: Bool { Self.visualExtensions.contains(ext) }
+
+    var badgeLabel: String {
+        if Self.visualExtensions.contains(ext) { return "圖片/Logo" }
+        if Self.spreadsheetExtensions.contains(ext) { return "Excel/表格" }
+        if Self.documentExtensions.contains(ext) { return "Word 文件" }
+        if ext == "pdf" { return "PDF" }
+        return "資料檔"
+    }
+
+    var iconName: String {
+        if Self.visualExtensions.contains(ext) { return "photo" }
+        if Self.spreadsheetExtensions.contains(ext) { return "tablecells" }
+        if Self.documentExtensions.contains(ext) { return "doc.richtext" }
+        if ext == "pdf" { return "doc.text.fill" }
+        return "doc.plaintext"
+    }
+}
 
 enum AgentCLIKind: String, CaseIterable, Identifiable, Codable {
     case claude
@@ -50,6 +87,66 @@ final class MografySkillManager: ObservableObject {
     @Published var skillInstalledPath: String? = nil
     @Published var workspaceReady: Bool = false
     @Published var copiedBanner: String? = nil
+    @Published var attachments: [MografyAttachmentItem] = []
+
+    func addAttachmentURLs(_ urls: [URL]) {
+        let fm = FileManager.default
+        var existingPaths = Set(attachments.map { URL(fileURLWithPath: $0.path).standardizedFileURL.path })
+        var added: [MografyAttachmentItem] = []
+        for rawURL in urls {
+            let url = rawURL.standardizedFileURL
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { continue }
+            if isDir.boolValue {
+                if let children = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
+                    for child in children.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                        let ext = child.pathExtension.lowercased()
+                        guard MografyAttachmentItem.supportedExtensions.contains(ext) else { continue }
+                        let std = child.standardizedFileURL.path
+                        if existingPaths.insert(std).inserted {
+                            added.append(MografyAttachmentItem(path: std))
+                        }
+                    }
+                }
+            } else {
+                let ext = url.pathExtension.lowercased()
+                guard MografyAttachmentItem.supportedExtensions.contains(ext) else { continue }
+                let std = url.path
+                if existingPaths.insert(std).inserted {
+                    added.append(MografyAttachmentItem(path: std))
+                }
+            }
+        }
+        if !added.isEmpty {
+            attachments.append(contentsOf: added)
+        }
+    }
+
+    func pickAttachments() {
+        let panel = NSOpenPanel()
+        panel.title = "選擇動態圖形參考素材與資料檔案（可多選）"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        var types: [UTType] = [.image, .svg, .pdf, .plainText, .commaSeparatedText, .tabSeparatedText, .json, .spreadsheet, .rtf]
+        for ext in ["docx", "doc", "xlsx", "xls", "md", "yaml", "yml"] {
+            if let ut = UTType(filenameExtension: ext) {
+                types.append(ut)
+            }
+        }
+        panel.allowedContentTypes = types
+        if panel.runModal() == .OK {
+            addAttachmentURLs(panel.urls)
+        }
+    }
+
+    func removeAttachment(_ id: UUID) {
+        attachments.removeAll { $0.id == id }
+    }
+
+    func clearAttachments() {
+        attachments.removeAll()
+    }
 
     var isUnlocked: Bool {
         skillInstalledPath != nil && !detectedAgents.isEmpty
@@ -301,5 +398,125 @@ struct MografySkillSetupCard: View {
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         )
         .onAppear { mgr.refresh() }
+    }
+}
+
+@MainActor
+private final class MografyDropHighlightState: ObservableObject {
+    @Published var isTargeted = false
+}
+
+struct MografyAttachmentsSection: View {
+    @ObservedObject private var mgr = MografySkillManager.shared
+    @StateObject private var dropState = MografyDropHighlightState()
+    var disabled: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Label("參考素材與資料檔案", systemImage: "paperclip")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(StudioTheme.textPrimary)
+                if !mgr.attachments.isEmpty {
+                    Text("\(mgr.attachments.count)")
+                        .font(.caption2.monospacedDigit().weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(StudioTheme.coral.opacity(0.22), in: Capsule())
+                        .foregroundStyle(StudioTheme.coral)
+                }
+                Spacer()
+                if !mgr.attachments.isEmpty {
+                    Button("清空") { mgr.clearAttachments() }
+                        .buttonStyle(.plain)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .disabled(disabled)
+                }
+                Button {
+                    mgr.pickAttachments()
+                } label: {
+                    Label("上傳多檔…", systemImage: "plus.circle")
+                }
+                .controlSize(.mini)
+                .disabled(disabled)
+            }
+
+            if mgr.attachments.isEmpty {
+                VStack(spacing: 4) {
+                    Text("拖放或點「上傳多檔…」加入圖片、Logo (PNG/SVG)、Word、Excel、CSV 或 PDF")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(dropState.isTargeted ? StudioTheme.coral.opacity(0.12) : Color.white.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(
+                            dropState.isTargeted ? StudioTheme.coral : Color.white.opacity(0.12),
+                            style: StrokeStyle(lineWidth: dropState.isTargeted ? 1.5 : 1, dash: [4, 3])
+                        )
+                )
+            } else {
+                VStack(spacing: 4) {
+                    ForEach(mgr.attachments) { item in
+                        HStack(spacing: 6) {
+                            Image(systemName: item.iconName)
+                                .font(.caption)
+                                .foregroundStyle(item.isVisualAsset ? StudioTheme.coral : StudioTheme.neutralAccent)
+                                .frame(width: 14)
+                            Text(item.filename)
+                                .font(.caption)
+                                .foregroundStyle(StudioTheme.textPrimary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 4)
+                            Text(item.badgeLabel)
+                                .font(.system(size: 9.5, weight: .medium))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.07), in: Capsule())
+                                .foregroundStyle(.secondary)
+                            Button {
+                                mgr.removeAttachment(item.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(disabled)
+                            .help("移除此附件")
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+                .padding(4)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(dropState.isTargeted ? StudioTheme.coral.opacity(0.10) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(dropState.isTargeted ? StudioTheme.coral : Color.white.opacity(0.08), lineWidth: 1)
+                )
+            }
+        }
+        .contentShape(Rectangle())
+        .dropDestination(for: URL.self) { items, _ in
+            guard !disabled, !items.isEmpty else { return false }
+            mgr.addAttachmentURLs(items)
+            return true
+        } isTargeted: { targeted in
+            dropState.isTargeted = targeted
+        }
     }
 }

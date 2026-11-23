@@ -1,5 +1,16 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.8 — 2026-11-23 20:46 (UTC+8)
+### Multi-File Reference Upload for Motion Graphics / 動態圖形支援多檔案參考素材與文件上傳
+- **動態圖形（Mografy Skill）分頁新增「參考素材與資料檔案」多檔案上傳與拖放區**：
+  - 支援點擊「上傳多檔…」或直接從 Finder 拖放**多個檔案**（圖片／PNG／SVG Logo、Word `.docx`、Excel `.xlsx`、`.csv`、`.pdf`、`.md`、`.txt`、`.json`），附類型標籤、檔案計數與單筆／清空移除按鈕。
+  - **自動分類佈署與零相依 Office 內容預先擷取**（`worker.py`）：
+    - 圖片與 SVG Logo 自動複製到 `projects/<slug>/assets/`，讓 Mografy 場景以原圖像素級精準繪製不變形；
+    - Word / Excel / CSV / PDF 等資料檔自動複製到 `projects/<slug>/brief-files/`，並以 Python 標準庫自動擷取 `.docx` 段落與 `.xlsx` 工作表數據至 `_extracted_summary.txt` 供 Agent 直接讀取，確保數據圖表與文案 100% 精準。
+- **Affected Files**：`work/studio/src/MografySkillIntegration.swift`, `work/studio/src/Studio.swift`, `work/studio/resources/worker.py`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.7 — 2026-11-23 20:25 (UTC+8)
 ### Accurate ETA & Antigravity Live Streaming / 預估剩餘時間精準化與 Antigravity 即時串流日誌
 - **修正底部狀態列「預估剩餘時間（ETA）」失真問題**：

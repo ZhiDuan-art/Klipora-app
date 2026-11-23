@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬體需求建議)
 [![Languages](https://img.shields.io/badge/支援語言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-國語言在地化)
-[![Release](https://img.shields.io/badge/下載-v1.0.7%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下載-v1.0.8%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![贊助支持](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新與除錯紀錄](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E8%88%87%E9%99%A4%E9%8C%AF%E7%B4%80%E9%8C%84-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.0.7`（2026-11-23 20:25 UTC+8）**：精準化底部預估剩餘時間（僅在具備真實步數／影格進度時顯示 ETA，不再因固定里程碑算出失真時間），並為 Antigravity（`agy`）補上 `--output-format stream-json` 即時串流日誌與階段更新。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.0.7 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.7)**。
+> **最新更新 — `v1.0.8`（2026-11-23 20:46 UTC+8）**：動態圖形（Mografy Skill）分頁新增**多檔案參考素材與資料上傳／拖放**——可一次附上多張圖片與 PNG/SVG Logo、Word（`.docx`）、Excel（`.xlsx`）、CSV 或 PDF，自動分流佈署並預先擷取文件與表格數據，做出 Logo 零變形、數據 100% 精準的商業級動態圖形。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.0.8 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.8)**。
 
 ## 實機操作宣傳影片
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 ## 安裝方式
 
 ### 方式一：直接下載 `.dmg` 安裝檔（推薦）
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.0.7-arm64.dmg`**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.0.8-arm64.dmg`**。
 2. 將 **Klipora.app** 拖曳至 **Applications** 資料夾。
 3. 首次開啟時若 macOS 提示無法驗證開發者（內測簽章版），請對 `Klipora.app` **按右鍵 → 打開 → 打開**。
 4. 跟著內建 4 步驟安裝引導即可完成硬體檢測、ComfyUI 連線與模型下載。
