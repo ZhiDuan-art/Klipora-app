@@ -4819,7 +4819,7 @@ struct StudioView: View {
                         }
                     }
                     if !app.usesFirstLastFrames {
-                        promptEditor("畫面與動作", placeholder: "例如：湖畔晨霧，人物捧杯輕吹熱茶。")
+                        promptEditor("畫面與動作", placeholder: "請在這裡輸入提示詞")
                     }
                     if !app.generateSelection.isEmpty {
                         RecordedGenerationSummaryCard(app: app, assetPath: app.generateSelection)

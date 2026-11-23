@@ -1452,12 +1452,25 @@ def run_mografy_motion(request, folder):
         cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
     elif agent == "codex":
         cmd = [agent_bin, "exec", "--full-auto", instruction]
+    elif agent == "antigravity":
+        cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
     else:
         cmd = [agent_bin, "-p", instruction]
 
+    env = dict(os.environ)
+    extra_bins = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        str(Path.home() / ".local/bin"),
+        str(Path.home() / "Library/pnpm"),
+        str(Path.home() / ".bun/bin"),
+        str(Path(agent_bin).parent),
+    ]
+    env["PATH"] = os.pathsep.join(extra_bins + [env.get("PATH", "")])
+
     started_at = time.time()
     emit_progress(pct=0.18, stage=f"{agent} 製作動畫中")
-    proc = subprocess.run(cmd, cwd=str(workspace), capture_output=True, text=True, timeout=1800)
+    proc = subprocess.run(cmd, cwd=str(workspace), env=env, capture_output=True, text=True, timeout=1800)
     if proc.stdout:
         log(proc.stdout[-4000:])
     if proc.stderr:

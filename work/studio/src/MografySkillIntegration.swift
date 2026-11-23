@@ -101,14 +101,23 @@ final class MografySkillManager: ObservableObject {
         let fm = FileManager.default
         let home = fm.homeDirectoryForCurrentUser
 
-        // 1. Detect installed Agent CLIs
+        // 1. Detect installed Agent CLIs (including desktop app bundles & package manager bins)
         var searchDirs: [String] = [
             "/opt/homebrew/bin",
             "/usr/local/bin",
             home.appendingPathComponent(".local/bin").path,
             home.appendingPathComponent(".npm-global/bin").path,
             home.appendingPathComponent(".volta/bin").path,
+            home.appendingPathComponent("Library/pnpm").path,
+            home.appendingPathComponent(".bun/bin").path,
+            "/Applications/Gemini.app/Contents/Helpers",
+            home.appendingPathComponent("Applications/Gemini.app/Contents/Helpers").path,
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
+            home.appendingPathComponent("Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS").path,
             "/Applications/Antigravity.app/Contents/Resources/app/bin",
+            home.appendingPathComponent("Applications/Antigravity.app/Contents/Resources/app/bin").path,
+            "/Applications/Claude.app/Contents/MacOS",
+            home.appendingPathComponent("Applications/Claude.app/Contents/MacOS").path,
         ]
         if let envPath = ProcessInfo.processInfo.environment["PATH"] {
             searchDirs.append(contentsOf: envPath.split(separator: ":").map(String.init))
@@ -185,6 +194,26 @@ final class MografySkillManager: ObservableObject {
 struct MografySkillSetupCard: View {
     @ObservedObject private var mgr = MografySkillManager.shared
 
+    private var statusBadgeTitle: String {
+        if mgr.isUnlocked {
+            return "已解鎖「動態圖形」"
+        } else if mgr.skillInstalledPath != nil {
+            return "未偵測到 Agent CLI"
+        } else {
+            return "未安裝 Skill"
+        }
+    }
+
+    private var statusBadgeColor: Color {
+        if mgr.isUnlocked {
+            return StudioTheme.success
+        } else if mgr.skillInstalledPath != nil {
+            return StudioTheme.warning
+        } else {
+            return StudioTheme.textMuted
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
@@ -201,12 +230,12 @@ struct MografySkillSetupCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Text(mgr.isUnlocked ? "已解鎖「動態圖形」" : "未安裝 Skill")
+                Text(statusBadgeTitle)
                     .font(.system(size: 10, weight: .semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background((mgr.isUnlocked ? StudioTheme.success : StudioTheme.textMuted).opacity(0.16), in: Capsule())
-                    .foregroundStyle(mgr.isUnlocked ? StudioTheme.success : StudioTheme.textSecondary)
+                    .background(statusBadgeColor.opacity(0.16), in: Capsule())
+                    .foregroundStyle(mgr.isUnlocked ? StudioTheme.success : (mgr.skillInstalledPath != nil ? StudioTheme.warning : StudioTheme.textSecondary))
             }
 
             HStack(spacing: 10) {
