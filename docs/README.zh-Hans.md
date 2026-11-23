@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
-[![Release](https://img.shields.io/badge/下载-v1.0.3%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下载-v1.0.4%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新与除错记录](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%99%A4%E9%94%99%E8%AE%B0%E5%BD%95-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.0.3`（2026-11-23 11:10 UTC+8）**：修复本地 Wan 2.2 视频生成 `SaveVideo` 画布工作流反解验证失败 Bug，并将本地视频时长上限由 5 秒扩充至 **15 秒（2–15 秒）**。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.3 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.3)**。
+> **最新更新 — `v1.0.4`（2026-11-23 12:30 UTC+8）**：修复本地 Wan 2.2 在 Apple Silicon (MPS) 出现绿色网格噪点（启用 `--fp32-vae` 全精度解码）、底部状态栏新增**实时完成度 %／步数／已耗时／预计剩余时间**，并将本地视频超时上限由 30 分钟放宽至 **2 小时**（执行中自动续时）。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.4 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.4)**。
 
 ## 实机操作宣传视频
 
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.3-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.4-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 

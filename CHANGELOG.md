@@ -1,5 +1,21 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.4 — 2026-11-23 12:30 (UTC+8)
+### Video Quality Fix, Live Progress Bar & Long-Video Timeout Fix / 本機影片畫質修復、即時進度條與長片逾時修復
+- **修復本機 Wan 2.2 影片在 Apple Silicon (MPS) 上出現螢光綠網格／馬賽克顆粒（`--fp32-vae`）**：
+  - **Root Cause (原因)**：ComfyUI 在 macOS MPS 上預設以 `torch.bfloat16` 載入並解碼 `wan2.2_vae.safetensors`，導致 3D VAE 解碼階段產生嚴重的綠色網格與點陣雜訊。
+  - **Fix (修復內容)**：由 Klipora 啟動本機 ComfyUI 時自動帶入 `--fp32-vae`，以全精度 `torch.float32` 進行 VAE 解碼；經同提示詞與同種子碼實機對照驗證，綠色網格徹底消除、毛髮與森林細節恢復銳利自然。
+  - 同步修正模型參數摘要列將 `Wan 2.2 TI2V-5B (FP16)` 誤標為 `FP8` 的顯示問題（改為優先判定模型名稱精度）。
+- **新增即時進度條、完成度 %、執行階段、步數、經過時間與預估剩餘時間（ETA）**：
+  - `worker.py` 新增零相依標準庫 RFC 6455 WebSocket 監聽器（`_ComfyProgressMonitor`），連線至本機 ComfyUI `/ws?clientId=...` 即時回報目前節點階段（載入模型／編碼條件／採樣生成中／VAE 解碼中／儲存影片中）與採樣步數（`step/max`）。
+  - 底部狀態列在生成或匯出時即時顯示進度條、粗體完成度 `%`、步數 `(step/max)`、動態計時器（`已耗時 MM:SS`）與 `預估剩餘 ~X 分`。
+- **修復本機長秒數影片在 30 分鐘強制中斷問題**：
+  - **Root Cause (原因)**：`worker.py` 原先對所有本機 ComfyUI 工作寫死 `1800` 秒（30 分鐘）逾時並自動送出 `/interrupt`，導致 6–15 秒 Wan 2.2 影片在 MPS 上尚未跑完即被強制中斷。
+  - **Fix (修復內容)**：本機影片逾時上限放寬至 **2 小時（7200 秒）**，且只要 WebSocket 監聽到 ComfyUI 仍在持續推進步數，將自動延長上限至最高 4 小時，不再誤殺長片生成工作。
+- **Affected Files**：`work/studio/resources/worker.py`, `work/studio/src/Studio.swift`, `work/studio/src/ModelProfileViews.swift`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.3 — 2026-11-23 11:10 (UTC+8)
 ### Bug Fixed & Video Duration Upgrade / 本機影片生成修復與片長擴充
 - **修復 Wan 2.2 本機影片生成出現「ComfyUI 畫布工作流反解驗證失敗（SaveVideo 遺失 format / codec）」**：

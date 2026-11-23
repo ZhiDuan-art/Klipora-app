@@ -1123,6 +1123,12 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var status = "就緒"
     @Published var log = ""
     @Published var busy = false
+    @Published var jobStartedAt: Date? = nil
+    @Published var jobElapsedSeconds: Int = 0
+    @Published var jobProgress: Double? = nil
+    @Published var jobProgressStep: Int? = nil
+    @Published var jobProgressMax: Int? = nil
+    @Published var jobStageLabel: String = ""
     @Published var showLog = false
     @Published var showPrompt = false
     @Published var promptDraft = ""
@@ -1444,7 +1450,8 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                                  "--database-url", "sqlite:///:memory:",
                                  "--disable-all-custom-nodes",
                                  "--whitelist-custom-nodes", "ComfyUI-llama-cpp_vlm",
-                                 "--disable-api-nodes", "--disable-auto-launch"]
+                                 "--disable-api-nodes", "--disable-auto-launch",
+                                 "--fp32-vae"]
             if fs.fileExists(atPath: front.path) {
                 process.arguments?.append(contentsOf: ["--front-end-root", front.path])
             }
@@ -3028,6 +3035,12 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             }
             log = ""
             status = label
+            jobStartedAt = Date()
+            jobElapsedSeconds = 0
+            jobProgress = nil
+            jobProgressStep = nil
+            jobProgressMax = nil
+            jobStageLabel = ""
             busy = true
             try process.run()
             if let bridgeID, bridgeShot?.id == bridgeID { bridgeShot?.generatedVideo = nil }
@@ -3037,12 +3050,53 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             }
         } catch {
             busy = false
+            jobStartedAt = nil
+            jobElapsedSeconds = 0
+            jobProgress = nil
+            jobProgressStep = nil
+            jobProgressMax = nil
+            jobStageLabel = ""
             status = error.localizedDescription
         }
     }
 
     private func refreshLog(_ url: URL) {
-        if let content = try? String(contentsOf: url, encoding: .utf8) { log = String(content.suffix(16000)) }
+        if let startedAt = jobStartedAt {
+            jobElapsedSeconds = max(0, Int(Date().timeIntervalSince(startedAt)))
+        }
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let lines = content.components(separatedBy: .newlines)
+        var visibleLines: [String] = []
+        visibleLines.reserveCapacity(lines.count)
+        var latestProgressJSON: String? = nil
+        let prefix = "KLIPORA_PROGRESS:"
+        for line in lines {
+            if line.hasPrefix(prefix) {
+                latestProgressJSON = String(line.dropFirst(prefix.count))
+            } else {
+                visibleLines.append(line)
+            }
+        }
+        if let jsonText = latestProgressJSON,
+           let data = jsonText.data(using: .utf8),
+           let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+            if let pct = obj["pct"] as? Double {
+                jobProgress = max(0.0, min(1.0, pct))
+            } else if let pctNum = obj["pct"] as? NSNumber {
+                jobProgress = max(0.0, min(1.0, pctNum.doubleValue))
+            }
+            if let step = obj["step"] as? Int, let maxStep = obj["max"] as? Int, maxStep > 0 {
+                jobProgressStep = step
+                jobProgressMax = maxStep
+            } else if let stepNum = obj["step"] as? NSNumber, let maxNum = obj["max"] as? NSNumber, maxNum.intValue > 0 {
+                jobProgressStep = stepNum.intValue
+                jobProgressMax = maxNum.intValue
+            }
+            if let stage = obj["stage"] as? String, !stage.isEmpty {
+                jobStageLabel = stage
+            }
+        }
+        log = String(visibleLines.joined(separator: "\n").suffix(16000))
     }
 
     private func finish(_ resultURL: URL, logURL: URL, code: Int32, origin: Workspace, bridgeID: UUID?, previewOnly: Bool) {
@@ -3051,6 +3105,12 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         worker = nil
         busy = false
         refreshLog(logURL)
+        jobStartedAt = nil
+        jobElapsedSeconds = 0
+        jobProgress = nil
+        jobProgressStep = nil
+        jobProgressMax = nil
+        jobStageLabel = ""
         guard let data = try? Data(contentsOf: resultURL),
               let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             status = "工作未完成（代碼 \(code)）。請查看紀錄。"
@@ -4102,11 +4162,76 @@ struct StudioView: View {
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func formattedJobElapsed(_ totalSeconds: Int) -> String {
+        let clamped = max(0, totalSeconds)
+        let hours = clamped / 3600
+        let minutes = (clamped % 3600) / 60
+        let seconds = clamped % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private func formattedJobETA(elapsed: Int, progress: Double?) -> String? {
+        guard let pct = progress, pct >= 0.05, pct < 0.99, elapsed >= 5 else { return nil }
+        let remaining = Int((Double(elapsed) * (1.0 - pct) / pct).rounded())
+        guard remaining > 0 else { return nil }
+        if remaining >= 3600 {
+            let h = remaining / 3600
+            let m = (remaining % 3600) / 60
+            return "預估剩餘 ~\(h) 小時 \(m) 分"
+        } else if remaining >= 60 {
+            let m = max(1, Int((Double(remaining) / 60.0).rounded()))
+            return "預估剩餘 ~\(m) 分"
+        }
+        return "預估剩餘 ~\(remaining) 秒"
+    }
+
     private var statusFooter: some View {
         HStack(spacing: 10) {
-            if app.busy { ProgressView().controlSize(.small) }
-            else { Image(systemName: "circle.fill").font(.system(size: 6)).foregroundStyle(studioAccent) }
-            Text(app.status).lineLimit(1).truncationMode(.tail).help(app.status)
+            if app.busy {
+                ProgressView().controlSize(.small)
+                Text(app.status).lineLimit(1).truncationMode(.tail).help(app.status)
+                if !app.jobStageLabel.isEmpty {
+                    Text("· \(app.jobStageLabel)")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let pct = app.jobProgress {
+                    ProgressView(value: pct, total: 1.0)
+                        .progressViewStyle(.linear)
+                        .tint(studioAccent)
+                        .frame(width: 96)
+                    Text("\(Int((pct * 100).rounded()))%")
+                        .font(.callout.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(studioAccent)
+                    if let step = app.jobProgressStep, let maxStep = app.jobProgressMax, maxStep > 0 {
+                        Text("(\(step)/\(maxStep))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.caption2)
+                    Text("已耗時 \(formattedJobElapsed(app.jobElapsedSeconds))")
+                        .font(.caption.monospacedDigit())
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Color.primary.opacity(0.06), in: Capsule())
+                if let eta = formattedJobETA(elapsed: app.jobElapsedSeconds, progress: app.jobProgress) {
+                    Text(eta)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Image(systemName: "circle.fill").font(.system(size: 6)).foregroundStyle(studioAccent)
+                Text(app.status).lineLimit(1).truncationMode(.tail).help(app.status)
+            }
             Spacer()
             Button("工作紀錄") { app.showLog.toggle() }.disabled(app.log.isEmpty && !app.busy)
         }.font(.callout).padding(.horizontal, 14).frame(height: 34).background(panel)

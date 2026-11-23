@@ -680,12 +680,18 @@ struct LocalModelProfile: Codable, Equatable, Identifiable, Sendable {
         let decodedPrecision: String
         if let explicit = container.decodeFirst(String.self, keys: [.precision, .dtype]) {
             decodedPrecision = explicit
-        } else if decodedArch.uppercased().contains("FP8") || decodedDisplay.uppercased().contains("FP8") {
-            decodedPrecision = "FP8"
-        } else if decodedArch.uppercased().contains("FP16") || decodedDisplay.uppercased().contains("FP16") {
+        } else if decodedDisplay.uppercased().contains("FP16") {
             decodedPrecision = "FP16"
-        } else if decodedArch.uppercased().contains("BF16") || decodedDisplay.uppercased().contains("BF16") {
+        } else if decodedDisplay.uppercased().contains("BF16") {
             decodedPrecision = "BF16"
+        } else if decodedDisplay.uppercased().contains("FP8") {
+            decodedPrecision = "FP8"
+        } else if decodedArch.uppercased().contains("FP16") {
+            decodedPrecision = "FP16"
+        } else if decodedArch.uppercased().contains("BF16") {
+            decodedPrecision = "BF16"
+        } else if decodedArch.uppercased().contains("FP8") {
+            decodedPrecision = "FP8"
         } else {
             decodedPrecision = fallback?.precision ?? "BF16"
         }

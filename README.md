@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.0.3%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.4%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **Latest Update — `v1.0.3` (2026-11-23 11:10 UTC+8):** Fixed ComfyUI V3 `SaveVideo` canvas validation error for local Wan 2.2 video generation and extended local video duration up to **15 seconds** (2–15s). See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.0.3 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.3)**.
+> **Latest Update — `v1.0.4` (2026-11-23 12:30 UTC+8):** Fixed Apple Silicon MPS green-grid artifacts in local Wan 2.2 videos (`--fp32-vae`), added a live progress bar with **% / step / elapsed time / ETA**, and raised the local video timeout from 30 min to **2 hours** (auto-extending while active). See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.0.4 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.4)**.
 
 ## Product Demo Video
 
@@ -88,7 +88,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.0.3-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.0.4-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

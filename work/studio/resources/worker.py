@@ -1,4 +1,6 @@
 """Local worker for MotionDesk 0.2. Takes one request and writes one result."""
+import base64
+import hashlib
 import html
 import json
 import math
@@ -6,9 +8,13 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
+import ssl
+import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
@@ -42,6 +48,270 @@ MENTION_RE = re.compile(r"@(圖片|图片|Image|影片|视频|Video|音訊|音�
 
 def log(message):
     print(message, flush=True)
+
+
+def emit_progress(pct=None, step=None, max_step=None, stage=""):
+    payload = {}
+    if pct is not None:
+        payload["pct"] = round(max(0.0, min(1.0, float(pct))), 4)
+    if step is not None:
+        payload["step"] = int(step)
+    if max_step is not None:
+        payload["max"] = int(max_step)
+    if stage:
+        payload["stage"] = str(stage)
+    if payload:
+        print("KLIPORA_PROGRESS:" + json.dumps(payload, ensure_ascii=False), flush=True)
+
+
+_COMFY_STAGE_MAP = {
+    "UNETLoader": ("載入模型", 0.05),
+    "CLIPLoader": ("載入模型", 0.05),
+    "DualCLIPLoader": ("載入模型", 0.05),
+    "VAELoader": ("載入模型", 0.06),
+    "CheckpointLoaderSimple": ("載入模型", 0.05),
+    "LoraLoader": ("載入模型", 0.06),
+    "LoraLoaderModelOnly": ("載入模型", 0.06),
+    "CLIPTextEncode": ("編碼條件", 0.09),
+    "WanImageToVideo": ("準備影格", 0.10),
+    "EmptySD3LatentImage": ("初始化潛空間", 0.10),
+    "EmptyLatentImage": ("初始化潛空間", 0.10),
+    "LoadImage": ("載入參考圖", 0.08),
+    "KSampler": ("採樣生成中", 0.12),
+    "KSamplerAdvanced": ("採樣生成中", 0.12),
+    "SamplerCustom": ("採樣生成中", 0.12),
+    "SamplerCustomAdvanced": ("採樣生成中", 0.12),
+    "VAEDecode": ("VAE 解碼中", 0.92),
+    "VAEDecodeTiled": ("VAE 解碼中", 0.92),
+    "CreateVideo": ("封裝影片中", 0.96),
+    "SaveVideo": ("儲存影片中", 0.97),
+    "SaveImage": ("儲存圖片中", 0.97),
+    "VHS_VideoCombine": ("封裝影片中", 0.96),
+}
+
+
+class _ComfyProgressMonitor:
+    """Zero-dependency RFC 6455 WebSocket listener for live ComfyUI step & stage progress."""
+
+    def __init__(self, base_url, client_id, graph):
+        self.base_url = base_url
+        self.client_id = client_id
+        self.graph = graph if isinstance(graph, dict) else {}
+        self.prompt_id = None
+        self.last_activity = time.monotonic()
+        self._stop = threading.Event()
+        self._sock = None
+        self._last_pct = 0.0
+        self._current_stage = ""
+        self._thread = threading.Thread(target=self._run, name="comfy-ws-progress", daemon=True)
+
+    def start(self):
+        self._thread.start()
+
+    def set_prompt_id(self, prompt_id):
+        self.prompt_id = prompt_id
+
+    def seconds_since_activity(self):
+        return max(0.0, time.monotonic() - self.last_activity)
+
+    def close(self):
+        self._stop.set()
+        sock = self._sock
+        if sock is not None:
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except Exception:
+                pass
+            try:
+                sock.close()
+            except Exception:
+                pass
+        self._thread.join(timeout=1.5)
+
+    def _recv_exact(self, sock, n):
+        chunks = bytearray()
+        while len(chunks) < n and not self._stop.is_set():
+            try:
+                part = sock.recv(n - len(chunks))
+            except socket.timeout:
+                continue
+            if not part:
+                return None
+            chunks.extend(part)
+        return bytes(chunks) if len(chunks) == n else None
+
+    def _send_pong(self, sock, payload):
+        try:
+            mask = os.urandom(4)
+            length = len(payload)
+            header = bytearray([0x8A])
+            if length < 126:
+                header.append(0x80 | length)
+            elif length < 65536:
+                header.append(0x80 | 126)
+                header.extend(struct.pack("!H", length))
+            else:
+                header.append(0x80 | 127)
+                header.extend(struct.pack("!Q", length))
+            header.extend(mask)
+            masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+            sock.sendall(bytes(header) + masked)
+        except Exception:
+            pass
+
+    def _handle_message(self, raw_text):
+        try:
+            msg = json.loads(raw_text)
+        except Exception:
+            return
+        if not isinstance(msg, dict):
+            return
+        mtype = msg.get("type")
+        data = msg.get("data") if isinstance(msg.get("data"), dict) else {}
+        msg_pid = data.get("prompt_id")
+        if self.prompt_id and msg_pid and msg_pid != self.prompt_id:
+            return
+
+        self.last_activity = time.monotonic()
+
+        if mtype == "execution_start":
+            self._current_stage = "準備執行"
+            self._last_pct = max(self._last_pct, 0.02)
+            emit_progress(pct=self._last_pct, stage=self._current_stage)
+        elif mtype == "executing":
+            node_id = data.get("node")
+            if node_id is None:
+                self._current_stage = "整理成品"
+                self._last_pct = max(self._last_pct, 0.98)
+                emit_progress(pct=self._last_pct, stage=self._current_stage)
+                return
+            node_info = self.graph.get(str(node_id))
+            class_type = node_info.get("class_type", "") if isinstance(node_info, dict) else ""
+            stage_label, stage_pct = _COMFY_STAGE_MAP.get(class_type, (class_type or "執行節點中", self._last_pct))
+            self._current_stage = stage_label
+            if stage_pct > self._last_pct:
+                self._last_pct = stage_pct
+            emit_progress(pct=self._last_pct, stage=self._current_stage)
+        elif mtype == "progress":
+            val = data.get("value")
+            mx = data.get("max")
+            if isinstance(val, (int, float)) and isinstance(mx, (int, float)) and mx > 0:
+                ratio = max(0.0, min(1.0, float(val) / float(mx)))
+                # Map sampler steps smoothly across 12%..90% so VAE decode & video save still show headroom.
+                pct = max(self._last_pct, 0.12 + 0.78 * ratio)
+                self._last_pct = pct
+                stage = self._current_stage or "採樣生成中"
+                emit_progress(pct=pct, step=int(val), max_step=int(mx), stage=stage)
+
+    def _run(self):
+        try:
+            parsed = urlsplit(self.base_url)
+            host = parsed.hostname or "127.0.0.1"
+            use_tls = parsed.scheme == "https"
+            port = parsed.port or (443 if use_tls else 80)
+            base_path = parsed.path.rstrip("/")
+            ws_path = f"{base_path}/ws?clientId={quote(self.client_id, safe='')}"
+            raw_sock = socket.create_connection((host, port), timeout=5.0)
+            if use_tls:
+                ctx = ssl.create_default_context()
+                sock = ctx.wrap_socket(raw_sock, server_hostname=host)
+            else:
+                sock = raw_sock
+            sock.settimeout(2.0)
+            self._sock = sock
+
+            ws_key = base64.b64encode(os.urandom(16)).decode("ascii")
+            host_header = f"{host}:{port}" if parsed.port else host
+            headers = [
+                f"GET {ws_path} HTTP/1.1",
+                f"Host: {host_header}",
+                "Upgrade: websocket",
+                "Connection: Upgrade",
+                f"Sec-WebSocket-Key: {ws_key}",
+                "Sec-WebSocket-Version: 13",
+            ]
+            token = os.environ.get("MOTIONDESK_COMFY_BEARER_TOKEN", "").strip()
+            if token:
+                headers.append(f"Authorization: Bearer {token}")
+            req = ("\r\n".join(headers) + "\r\n\r\n").encode("ascii")
+            sock.sendall(req)
+
+            resp = bytearray()
+            while b"\r\n\r\n" not in resp and len(resp) < 16384 and not self._stop.is_set():
+                try:
+                    chunk = sock.recv(1024)
+                except socket.timeout:
+                    continue
+                if not chunk:
+                    return
+                resp.extend(chunk)
+            header_end = resp.find(b"\r\n\r\n")
+            if header_end < 0 or b" 101 " not in resp[:header_end].split(b"\r\n", 1)[0]:
+                return
+
+            leftover = bytes(resp[header_end + 4:])
+            buf = bytearray(leftover)
+
+            def read_bytes(n):
+                while len(buf) < n and not self._stop.is_set():
+                    try:
+                        chunk = sock.recv(max(4096, n - len(buf)))
+                    except socket.timeout:
+                        continue
+                    if not chunk:
+                        return None
+                    buf.extend(chunk)
+                if len(buf) < n:
+                    return None
+                out = bytes(buf[:n])
+                del buf[:n]
+                return out
+
+            text_fragments = []
+            while not self._stop.is_set():
+                hdr = read_bytes(2)
+                if hdr is None:
+                    break
+                b0, b1 = hdr[0], hdr[1]
+                fin = (b0 & 0x80) != 0
+                opcode = b0 & 0x0F
+                masked = (b1 & 0x80) != 0
+                length = b1 & 0x7F
+                if length == 126:
+                    ext = read_bytes(2)
+                    if ext is None:
+                        break
+                    length = struct.unpack("!H", ext)[0]
+                elif length == 127:
+                    ext = read_bytes(8)
+                    if ext is None:
+                        break
+                    length = struct.unpack("!Q", ext)[0]
+                mask_key = read_bytes(4) if masked else None
+                if masked and mask_key is None:
+                    break
+                payload = read_bytes(length) if length > 0 else b""
+                if payload is None:
+                    break
+                if masked and mask_key:
+                    payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+
+                if opcode == 0x8:  # close
+                    break
+                elif opcode == 0x9:  # ping
+                    self._send_pong(sock, payload)
+                elif opcode == 0x1:  # text
+                    text_fragments = [payload]
+                    if fin:
+                        self._handle_message(payload.decode("utf-8", errors="replace"))
+                        text_fragments = []
+                elif opcode == 0x0 and text_fragments:  # continuation
+                    text_fragments.append(payload)
+                    if fin:
+                        self._handle_message(b"".join(text_fragments).decode("utf-8", errors="replace"))
+                        text_fragments = []
+        except Exception:
+            pass
 
 
 def run(args, **kwargs):
@@ -296,65 +566,92 @@ def comfy(request, folder):
     else:
         log(f"本機 ComfyUI · {base} · {preset}")
 
-    payload = {
-        "prompt": graph,
-        "client_id": str(uuid4()),
-        "extra_data": {
-            "extra_pnginfo": {
-                "workflow": bundle["canvasWorkflow"],
-            }
-        },
-    }
-    pid = api(base, "/prompt", payload)["prompt_id"]
-    log(f"本機 ComfyUI 已排入工作 {pid}")
-    deadline = time.monotonic() + 1800
-    while time.monotonic() < deadline:
-        job = api(base, "/history/" + pid).get(pid)
-        if job is not None:
-            status = job.get("status", {})
-            if status.get("status_str") == "error":
-                messages = [payload.get("exception_message", "") for kind, payload in status.get("messages", [])
-                            if kind == "execution_error" and isinstance(payload, dict)]
-                raise ValueError("本機 ComfyUI 執行失敗。" + " ".join(messages))
-            if status.get("completed") is False:
-                time.sleep(2)
-                continue
-            paths = []
-            seen = set()
-            for output in job.get("outputs", {}).values():
-                for group in output.values():
-                    for item in group if isinstance(group, list) else ():
-                        if not isinstance(item, dict) or "filename" not in item:
-                            continue
-                        name = Path(item["filename"]).name
-                        if Path(name).suffix.lower() not in MEDIA_EXT or item.get("type", "output") != "output":
-                            continue
-                        query = urlencode({"filename": name, "subfolder": item.get("subfolder", ""), "type": "output"})
-                        if query in seen:
-                            continue
-                        seen.add(query)
-                        path = folder / f"{len(paths)+1:02d}-{name}"
-                        path.write_bytes(api(base, "/view?" + query, raw=True))
-                        paths.append(str(path))
-            default_kind = ("video" if preset == "wan22" else "image") if builtin else None
-            kind = request.get("kind", default_kind)
-            expected = {"image": IMAGE_EXT, "video": VIDEO_EXT}.get(kind)
-            if expected:
-                paths = [path for path in paths if Path(path).suffix.lower() in expected]
-            if paths:
-                return paths, {
-                    "apiWorkflowPath": bundle["apiPath"],
-                    "canvasWorkflowPath": bundle["workflowPath"],
-                    "workflowMeta": meta,
-                    "promptId": pid,
-                }
-            raise ValueError("工作流跑完但沒有可匯入的成品。請接 SaveImage、SaveVideo 或對應的輸出節點。")
-        time.sleep(2)
+    client_id = str(uuid4())
+    monitor = _ComfyProgressMonitor(base, client_id, graph)
+    monitor.start()
     try:
-        api(base, "/interrupt", {}, timeout=5)
-    except Exception:
-        pass
-    raise TimeoutError("等待本機 ComfyUI 成品超過 30 分鐘，已嘗試送出中斷並請於 ComfyUI 查看工作佇列。")
+        payload = {
+            "prompt": graph,
+            "client_id": client_id,
+            "extra_data": {
+                "extra_pnginfo": {
+                    "workflow": bundle["canvasWorkflow"],
+                }
+            },
+        }
+        pid = api(base, "/prompt", payload)["prompt_id"]
+        monitor.set_prompt_id(pid)
+        log(f"本機 ComfyUI 已排入工作 {pid}")
+        emit_progress(pct=0.01, stage="已排入佇列")
+
+        default_kind = ("video" if preset == "wan22" else "image") if builtin else None
+        kind = request.get("kind", default_kind)
+        is_video = (kind == "video") or (preset == "wan22")
+        base_timeout = 7200 if is_video else 1800
+        hard_cap = 14400 if is_video else 3600
+        req_timeout = request.get("timeoutSeconds")
+        if isinstance(req_timeout, (int, float)) and req_timeout >= 60:
+            base_timeout = int(req_timeout)
+            hard_cap = max(hard_cap, base_timeout)
+
+        started_at = time.monotonic()
+        deadline = started_at + base_timeout
+        while True:
+            now = time.monotonic()
+            if now >= deadline:
+                if monitor.seconds_since_activity() < 300 and (now - started_at) < hard_cap:
+                    deadline = min(started_at + hard_cap, now + 600)
+                else:
+                    break
+            job = api(base, "/history/" + pid).get(pid)
+            if job is not None:
+                status = job.get("status", {})
+                if status.get("status_str") == "error":
+                    messages = [payload.get("exception_message", "") for kind, payload in status.get("messages", [])
+                                if kind == "execution_error" and isinstance(payload, dict)]
+                    raise ValueError("本機 ComfyUI 執行失敗。" + " ".join(messages))
+                if status.get("completed") is False:
+                    time.sleep(2)
+                    continue
+                emit_progress(pct=0.99, stage="下載成品中")
+                paths = []
+                seen = set()
+                for output in job.get("outputs", {}).values():
+                    for group in output.values():
+                        for item in group if isinstance(group, list) else ():
+                            if not isinstance(item, dict) or "filename" not in item:
+                                continue
+                            name = Path(item["filename"]).name
+                            if Path(name).suffix.lower() not in MEDIA_EXT or item.get("type", "output") != "output":
+                                continue
+                            query = urlencode({"filename": name, "subfolder": item.get("subfolder", ""), "type": "output"})
+                            if query in seen:
+                                continue
+                            seen.add(query)
+                            path = folder / f"{len(paths)+1:02d}-{name}"
+                            path.write_bytes(api(base, "/view?" + query, raw=True))
+                            paths.append(str(path))
+                expected = {"image": IMAGE_EXT, "video": VIDEO_EXT}.get(kind)
+                if expected:
+                    paths = [path for path in paths if Path(path).suffix.lower() in expected]
+                if paths:
+                    emit_progress(pct=1.0, stage="已完成")
+                    return paths, {
+                        "apiWorkflowPath": bundle["apiPath"],
+                        "canvasWorkflowPath": bundle["workflowPath"],
+                        "workflowMeta": meta,
+                        "promptId": pid,
+                    }
+                raise ValueError("工作流跑完但沒有可匯入的成品。請接 SaveImage、SaveVideo 或對應的輸出節點。")
+            time.sleep(2)
+        try:
+            api(base, "/interrupt", {}, timeout=5)
+        except Exception:
+            pass
+        elapsed_min = max(1, int(round((time.monotonic() - started_at) / 60)))
+        raise TimeoutError(f"等待本機 ComfyUI 成品超過 {elapsed_min} 分鐘，已嘗試送出中斷並請於 ComfyUI 查看工作佇列。")
+    finally:
+        monitor.close()
 
 
 def export_workflow_action(request, folder):
