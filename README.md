@@ -22,6 +22,24 @@
 
 > **Latest Update — `v1.0.2` (2026-11-23 08:16 UTC+8):** Added Finder drag-and-drop import and mouse rubber-band marquee multi-selection (`⌘+Click` + batch add to track) in both Generate & Edit Media Libraries. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.0.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**.
 
+## Product Demo Video
+
+*Recorded from the live macOS app — voiced (offline Qwen3-TTS), edited, subtitled & exported to 1080p entirely inside Klipora.*
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4">
+    <img src="docs/videos/klipora-demo-preview.gif" alt="Klipora Demo Preview (Click to watch full 1080p video)" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ Watch Full 1080p Demo (English, 44s)</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 觀看完整 1080p 實機宣傳片（繁體中文，45s）</strong></a>
+</p>
+
+---
+
 ## Interface Showcase
 
 | Local Neural Voice Studio | AI Image Generation Workspace |

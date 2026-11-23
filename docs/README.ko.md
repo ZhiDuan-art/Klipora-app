@@ -22,6 +22,24 @@
 
 > **최신 업데이트 — `v1.0.2` (2026-11-23 08:16 UTC+8)**: 미디어 라이브러리에서 Finder 직접 드래그 앤 드롭 가져오기 및 마우스 박스 다중 선택(`⌘+클릭` 및 트랙 일괄 추가)을 지원합니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.0.2 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**.
 
+## 실기 데모 영상
+
+*macOS 실기 화면을 녹화하여 Klipora 내장 로컬 Qwen3-TTS 내레이션과 멀티트랙 편집 엔진으로 1080p 내보내기까지 직접 제작했습니다.*
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4">
+    <img src="videos/klipora-demo-preview.gif" alt="Klipora 데모 미리보기 (클릭하여 1080p 전체 영상 보기)" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ 1080p 전체 데모 영상 보기 (English, 44s)</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 1080p 실기 데모 영상 (繁體中文, 45s)</strong></a>
+</p>
+
+---
+
 ## 인터페이스 미리보기
 
 | 로컬 보이스·오디오 스튜디오 | AI 이미지 생성 작업 공간 |

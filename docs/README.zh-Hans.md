@@ -22,6 +22,24 @@
 
 > **最新更新 — `v1.0.2`（2026-11-23 08:16 UTC+8）**：素材库新增「鼠标直接从 Finder 拖入导入」与「鼠标框选多选／`⌘+点击`／批量加入轨道」（生成与剪辑页均支持）。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**。
 
+## 实机操作宣传视频
+
+*纯窗口实机录制——旁白由 Klipora 内置本地 Qwen3-TTS 离线合成，并全程使用 Klipora 多轨时间轴剪辑、加字幕与导出 1080p。*
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4">
+    <img src="videos/klipora-demo-preview.gif" alt="Klipora 实机操作预览（点击观看完整 1080p 有声版）" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 观看完整 1080p 实机宣传片（中文配音，45s）</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ Watch Full 1080p Demo (English, 44s)</strong></a>
+</p>
+
+---
+
 ## 界面展示
 
 | 本地语音配音工作室 | AI 图像生成工作区 |

@@ -22,6 +22,24 @@
 
 > **最新アップデート — `v1.0.2`（2026-11-23 08:16 UTC+8）**：メディアライブラリで Finder からの直接ドラッグ＆ドロップ読み込み、およびマウス範囲選択（`⌘+クリック`・一括トラック追加対応）を追加しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.2 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**。
 
+## 実機デモ動画
+
+*macOS 実機ウィンドウを録画し、Klipora 内蔵のローカル Qwen3-TTS ナレーションとマルチトラック編集エンジンで 1080p 書き出しまで完結させました。*
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4">
+    <img src="videos/klipora-demo-preview.gif" alt="Klipora デモプレビュー（クリックで 1080p 音声付きフル動画を再生）" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-en-1080p.mp4"><strong>▶ 1080p フルデモ動画を見る（English, 44s）</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.0.2/Klipora-Promo-zh-Hant-1080p.mp4"><strong>▶ 1080p 実機デモ動画（繁體中文, 45s）</strong></a>
+</p>
+
+---
+
 ## インターフェース紹介
 
 | ローカル音声・ボイススタジオ | AI 画像生成ワークスペース |
