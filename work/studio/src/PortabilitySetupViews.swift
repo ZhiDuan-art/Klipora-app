@@ -3119,7 +3119,7 @@ struct PortabilitySetupSheetView: View {
     private func fourPillarStatusBar(scrollProxy: ScrollViewProxy) -> some View {
         let summary = manager.fourPillarSummary
         return LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 150, maximum: 280), spacing: 8)],
+            columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
             spacing: 8
         ) {
             pillarTile(anchor: .runtime, badge: summary.runtimeAvailable, scrollProxy: scrollProxy)

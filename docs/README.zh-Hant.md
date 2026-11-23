@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬體需求建議)
 [![Languages](https://img.shields.io/badge/支援語言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-國語言在地化)
-[![Release](https://img.shields.io/badge/下載-v1.0.9%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下載-v1.1.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![贊助支持](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新與除錯紀錄](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E8%88%87%E9%99%A4%E9%8C%AF%E7%B4%80%E9%8C%84-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.0.9`（2026-11-23 21:15 UTC+8）**：全新統一中央下方 **「參考素材板」UI**（支援多角色三視圖／場景／物品／風格標籤、多圖拖放與一鍵插入 `@圖片N` 提示詞），並解鎖 **OpenAI 與 Gemini 線上圖片原生多圖參考（最多 8 張）**，右側參數欄更清爽。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.0.9 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.9)**。
+> **最新更新 — `v1.1.0`（2026-11-23 22:32 UTC+8）**：全面優化設定與線上生圖介面：元件設定 1~4 狀態卡改為單排 4 欄、切換線上來源時自動隱藏本機 ComfyUI 參數欄、修正品質/解析度斷行與多圖參考說明文案，並新增自動偵測與一鍵開啟 **ChatGPT / Gemini 桌面版** 快捷按鈕。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.0 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.0)**。
 
 ## 實機操作宣傳影片
 

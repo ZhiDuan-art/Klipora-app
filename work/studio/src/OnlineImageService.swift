@@ -235,29 +235,51 @@ struct OnlineImageControls: View {
         )
     }
 
+    private var installedDesktopAppURL: URL? {
+        let appName = provider == .openai ? "ChatGPT.app" : "Gemini.app"
+        let fm = FileManager.default
+        let candidates = [
+            URL(fileURLWithPath: "/Applications/\(appName)"),
+            fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications/\(appName)"),
+        ]
+        return candidates.first { fm.fileExists(atPath: $0.path) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Section 1: Official Web Browser Button
+            // Section 1: Official Desktop App & Web Browser Entry
             VStack(alignment: .leading, spacing: 6) {
-                Text("官方網頁入口（免 API 金鑰）")
+                Text("官方桌面程式與網頁入口（免 API 金鑰）")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(StudioTheme.textPrimary)
                 HStack(spacing: 8) {
+                    if let appURL = installedDesktopAppURL {
+                        Button {
+                            NSWorkspace.shared.open(appURL)
+                        } label: {
+                            Label(provider == .openai ? "開啟 ChatGPT 桌面版" : "開啟 Gemini 桌面版", systemImage: "macwindow")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(StudioTheme.neutralAccent)
+                    }
                     Button {
                         NSWorkspace.shared.open(provider.webURL)
                     } label: {
                         Label(provider.webButtonTitle, systemImage: "safari")
                     }
                     .disabled(network.isOffline)
+                }
+                HStack(spacing: 8) {
                     Button("官方定價與文件") {
                         NSWorkspace.shared.open(provider.pricingURL)
                     }
                     .font(.caption)
                     .disabled(network.isOffline)
                 }
-                Text("以您的瀏覽器正常登入官網生圖並下載，再匯入 Klipora 素材庫；不讀取瀏覽器 Cookie 或重複使用工作階段權杖。")
+                Text("桌面版 App 未開放第三方直接串接生圖 API；可用既有訂閱於桌面版／網頁生圖後，直接拖入 Klipora 左側素材庫。")
                     .font(.caption2)
                     .foregroundStyle(StudioTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(9)
             .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: 8))
@@ -265,7 +287,7 @@ struct OnlineImageControls: View {
             // Section 2: Opt-in Official REST API
             VStack(alignment: .leading, spacing: 7) {
                 HStack {
-                    Text("官方 REST API（純文字生圖 · 選擇性啟用）")
+                    Text("官方 REST API（支援純文字與多圖參考）")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.textPrimary)
                     Spacer()
@@ -276,9 +298,10 @@ struct OnlineImageControls: View {
                         .foregroundStyle(gate.allowed ? StudioTheme.success : StudioTheme.warning)
                 }
 
-                Text("本版官方 API 僅支援純文字生圖（Text-to-Image），不支援參考圖片、參考影片或本機 LoRA；若專案已選取這些項目，生成前須先清除。")
+                Text("支援純文字生圖或於中央下方「參考素材板」加入最多 8 張參考圖片（角色三視圖／場景／物品）；不支援參考影片或本機 LoRA。")
                     .font(.caption2)
-                    .foregroundStyle(StudioTheme.warmHighlight)
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if network.isOffline {
                     HStack(spacing: 6) {
@@ -295,6 +318,7 @@ struct OnlineImageControls: View {
                     Text("模型 ID")
                         .font(.caption)
                         .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize()
                     TextField(provider.defaultModelID, text: $vm.modelID)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption.monospaced())
@@ -305,24 +329,38 @@ struct OnlineImageControls: View {
                 .disabled(network.isOffline)
 
                 if provider == .openai {
-                    Picker("品質（Quality）", selection: $vm.openAIQuality) {
-                        Text("低（low）").tag("low")
-                        Text("中（medium）").tag("medium")
-                        Text("高（high）").tag("high")
+                    HStack(spacing: 8) {
+                        Text("品質")
+                            .font(.caption)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize()
+                        Picker("品質", selection: $vm.openAIQuality) {
+                            Text("低").tag("low")
+                            Text("中").tag("medium")
+                            Text("高").tag("high")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .font(.caption)
+                        .disabled(network.isOffline)
+                        .onChange(of: vm.openAIQuality) { _, val in provider.setSavedOpenAIQuality(val) }
                     }
-                    .pickerStyle(.segmented)
-                    .font(.caption)
-                    .disabled(network.isOffline)
-                    .onChange(of: vm.openAIQuality) { _, val in provider.setSavedOpenAIQuality(val) }
                 } else {
-                    Picker("解析度（image_size）", selection: $vm.geminiImageSize) {
-                        Text("1K").tag("1K")
-                        Text("2K").tag("2K")
+                    HStack(spacing: 8) {
+                        Text("解析度")
+                            .font(.caption)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize()
+                        Picker("解析度", selection: $vm.geminiImageSize) {
+                            Text("1K").tag("1K")
+                            Text("2K").tag("2K")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .font(.caption)
+                        .disabled(network.isOffline)
+                        .onChange(of: vm.geminiImageSize) { _, val in provider.setSavedGeminiImageSize(val) }
                     }
-                    .pickerStyle(.segmented)
-                    .font(.caption)
-                    .disabled(network.isOffline)
-                    .onChange(of: vm.geminiImageSize) { _, val in provider.setSavedGeminiImageSize(val) }
                 }
 
                 Toggle(isOn: $vm.billingAccepted) {

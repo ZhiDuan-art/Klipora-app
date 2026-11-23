@@ -1,5 +1,19 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.0 — 2026-11-23 22:32 (UTC+8)
+### UI Layout Polish, Online Controls Cleanup & Desktop App Quick-Launch / 介面排版優化、線上設定欄淨化與桌面程式快捷啟動
+- **「元件與連線設定」上方 1~4 狀態卡改為單排 4 欄顯示**：
+  - 修正 `PortabilitySetupViews.swift` 中「1. 執行環境 / 2. 雲端登入與 API / 3. 模型快取 / 4. 服務連線」原本第 4 張卡片會折行落到第二排的問題，改為固定 4 欄等寬橫排，畫面更緊湊對齊。
+- **切換至線上來源時自動隱藏「本機 ComfyUI 參數」面板**：
+  - 修正 `Studio.swift` 判斷條件（由 `app.source != "colab"` 修正為 `app.source == "zimage"`），切換為 **線上 OpenAI / Gemini / Colab** 時右側不再誤顯示本機 ComfyUI 步數／CFG／Sampler 設定欄。
+- **線上圖片設定面板（`OnlineImageService.swift`）文案與排版優化 ＋ 桌面版快捷啟動**：
+  - 更新過時提示文案，同步反映 `v1.0.9` 已支援的多參考圖（最多 8 張）功能。
+  - 修正「品質 / 解析度」標籤斷行擠壓問題（改為單行不換行標籤＋清爽分段控制）。
+  - 自動偵測本機是否已安裝 **`ChatGPT.app`** 或 **`Gemini.app`**，於官方入口卡片直接顯示「**開啟 ChatGPT 桌面版** / **開啟 Gemini 桌面版**」一鍵啟動按鈕（不讀取或竊取任何第三方登入狀態）。
+- **Affected Files**：`work/studio/src/PortabilitySetupViews.swift`, `work/studio/src/Studio.swift`, `work/studio/src/OnlineImageService.swift`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.9 — 2026-11-23 21:15 (UTC+8)
 ### Unified Multi-Reference Board UI & Online Multi-Image API Support / 統一中央下方參考素材板與線上多圖原生支援
 - **解鎖線上圖片（OpenAI & Gemini）原生多參考圖輸入（最多 8 張）**：

@@ -4826,7 +4826,7 @@ struct StudioView: View {
                         bridgeBanner(bridge)
                     }
                     generationSettings
-                    if app.project.kind != "motion" && app.source != "colab" {
+                    if app.project.kind != "motion" && app.source == "zimage" {
                         if app.isRemovedModelSelected {
                             RemovedModelBanner(app: app)
                         } else {

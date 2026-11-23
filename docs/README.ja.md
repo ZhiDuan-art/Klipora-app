@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
-[![Release](https://img.shields.io/badge/ダウンロード-v1.0.9%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/ダウンロード-v1.1.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新・デバッグ履歴](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新アップデート — `v1.0.9`（2026-11-23 21:15 UTC+8）**：中央下部に統合 **マルチリファレンスボード UI**（キャラクター三面図・背景・小物・スタイルタグ＆ワンクリック `@圖片N` 挿入）を新設し、**OpenAI / Gemini 画像 API の複数参照画像（最大8枚）** を解放しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.9 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.9)**。
+> **最新アップデート — `v1.1.0`（2026-11-23 22:32 UTC+8）**：設定とオンライン画像生成 UI を刷新。1〜4 ステータスカードを 1 行 4 列に統一し、オンラインソース選択時はローカル ComfyUI パラメータを自動非表示に。さらに品質／解像度ラベルの折り返し修正と **ChatGPT / Gemini デスクトップ版** ワンクリック起動ボタンを追加しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.1.0 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.0)**。
 
 ## 実機デモ動画
 
