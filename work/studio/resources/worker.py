@@ -1453,9 +1453,8 @@ def run_mografy_motion(request, folder):
     elif agent == "codex":
         cmd = [
             agent_bin, "exec",
-            "--sandbox", "workspace-write",
+            "--sandbox", "danger-full-access",
             "--skip-git-repo-check",
-            "--add-dir", str(folder),
             "-C", str(workspace),
             instruction,
         ]
@@ -1475,8 +1474,9 @@ def run_mografy_motion(request, folder):
     ]
     env["PATH"] = os.pathsep.join(extra_bins + [env.get("PATH", "")])
 
+    frame_re = re.compile(r"Capturing frames\s+(\d+)\s*/\s*(\d+)")
     started_at = time.time()
-    emit_progress(pct=0.18, stage=f"{agent} 製作動畫中")
+    emit_progress(pct=0.12, stage=f"{agent} 製作動畫中")
     proc = subprocess.Popen(
         cmd,
         cwd=str(workspace),
@@ -1490,35 +1490,80 @@ def run_mografy_motion(request, folder):
         if proc.stdout is not None:
             for line in proc.stdout:
                 text = line.rstrip("\r\n")
-                if text:
-                    log(text)
+                if not text:
+                    continue
+                log(text)
+                m = frame_re.search(text)
+                if m:
+                    cur, tot = int(m.group(1)), int(m.group(2))
+                    if tot > 0:
+                        emit_progress(pct=0.65 + 0.30 * (cur / tot), step=cur, max_step=tot, stage="渲染影格中")
+                else:
                     low = text.lower()
-                    if "mografy check" in low or "review" in low:
-                        emit_progress(pct=0.58, stage="檢查動畫畫面中")
-                    elif "export" in low or "render" in low or "ffmpeg" in low:
-                        emit_progress(pct=0.76, stage="渲染輸出 MP4 中")
+                    if "mografy check" in low or "mografy review" in low:
+                        emit_progress(pct=0.50, stage="檢查動畫畫面中")
+                    elif "exporting mp4" in low or "encoding mp4" in low:
+                        emit_progress(pct=0.65, stage="渲染輸出 MP4 中")
         returncode = proc.wait(timeout=1800)
     except subprocess.TimeoutExpired:
         proc.kill()
         raise TimeoutError(f"Agent（{agent}）執行超過 30 分鐘已中斷，請查看工作紀錄。")
-    if returncode != 0 and not target_mp4.is_file():
-        raise ValueError(f"Agent（{agent}）執行失敗（代碼 {returncode}），請查看工作紀錄。")
 
     emit_progress(pct=0.88, stage="檢查輸出 MP4")
-    if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
-        # Fallback: locate the newest MP4 created inside the Mografy workspace during this run
-        candidates = []
+
+    def _find_recent_mp4():
+        found = []
         for mp4 in workspace.rglob("*.mp4"):
             try:
                 st = mp4.stat()
                 if st.st_size > 0 and st.st_mtime >= started_at - 2:
-                    candidates.append((st.st_mtime, mp4))
+                    found.append((st.st_mtime, mp4))
             except OSError:
                 continue
-        if candidates:
-            candidates.sort(reverse=True)
-            shutil.copy2(candidates[0][1], target_mp4)
+        found.sort(reverse=True)
+        return found[0][1] if found else None
+
     if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
+        recent = _find_recent_mp4()
+        if recent is not None:
+            shutil.copy2(recent, target_mp4)
+
+    # Automatic host-level Mografy CLI export fallback if the project was created but MP4 wasn't rendered yet
+    project_dir = workspace / "projects" / job_slug
+    mografy_cli = workspace / "packages" / "cli" / "bin" / "mografy.js"
+    if (not target_mp4.is_file() or target_mp4.stat().st_size == 0) and project_dir.is_dir() and mografy_cli.is_file():
+        node_bin = shutil.which("node", path=env["PATH"])
+        if node_bin:
+            log(f"改由本機 Mografy CLI 自動渲染輸出：projects/{job_slug}")
+            emit_progress(pct=0.65, stage="Mografy CLI 渲染輸出中")
+            exp_proc = subprocess.Popen(
+                [node_bin, str(mografy_cli), "export", f"projects/{job_slug}", "--format", "mp4", "--preset", "share"],
+                cwd=str(workspace),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            if exp_proc.stdout is not None:
+                for line in exp_proc.stdout:
+                    text = line.rstrip("\r\n")
+                    if not text:
+                        continue
+                    log(text)
+                    m = frame_re.search(text)
+                    if m:
+                        cur, tot = int(m.group(1)), int(m.group(2))
+                        if tot > 0:
+                            emit_progress(pct=0.65 + 0.30 * (cur / tot), step=cur, max_step=tot, stage="渲染影格中")
+            exp_proc.wait(timeout=900)
+            recent = _find_recent_mp4()
+            if recent is not None:
+                shutil.copy2(recent, target_mp4)
+
+    if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
+        if returncode != 0:
+            raise ValueError(f"Agent（{agent}）執行失敗（代碼 {returncode}），請查看工作紀錄。")
         raise ValueError("Mografy 未產生可匯入的 MP4 成品，請查看工作紀錄確認 Agent 執行細節。")
 
     emit_progress(pct=1.0, stage="已完成")

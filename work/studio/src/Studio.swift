@@ -5508,10 +5508,12 @@ struct StudioView: View {
             }.padding(6).frame(height: 104)
                 .background(canvas, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(0.09)))
-            HStack {
-                Button("預覽／編輯送出提示詞", action: app.previewPrompt)
-                    .disabled(app.project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                if app.editedPrompt != nil { Button("還原") { app.editedPrompt = nil } }
+            if app.project.kind != "motion" {
+                HStack {
+                    Button("預覽／編輯送出提示詞", action: app.previewPrompt)
+                        .disabled(app.project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if app.editedPrompt != nil { Button("還原") { app.editedPrompt = nil } }
+                }
             }
         }
     }
