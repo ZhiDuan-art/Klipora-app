@@ -1,5 +1,17 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.6 — 2026-11-23 19:26 (UTC+8)
+### Independent ComfyUI Mode Switcher & Mografy Motion Graphics Skill Integration / ComfyUI 雙模式獨立切換與 Mografy 動態圖形整合
+- **本機 ComfyUI 雙模式改為同層獨立切換（不再互相巢狀隱藏）**：
+  - 將原本藏在「本機 ComfyUI 連線」折疊選單底下的「由 Klipora 啟動本機 ComfyUI」抽離為同層級二選一切換：**`Klipora 託管引擎`**（預設推薦，顯示狀態燈／自動埠號／一鍵啟停，並自動套用 `--fp32-vae`）與 **`外部 ComfyUI Desktop`**（獨立位址欄／開啟 Comfy Desktop／外部連線檢查）。
+- **新增 Mografy 動態圖形（Motion Graphics Skill）條件式擴充整合**：
+  - 新增 [MografySkillIntegration.swift](work/studio/src/MografySkillIntegration.swift)，並在「元件與連線設定」加入 **AI Agent 技能擴充（Mografy Skill）** 引導卡片：可一鍵複製安裝指令給 **Claude Code / Codex CLI / Antigravity**、自動偵測本機 Agent CLI 與 `SKILL.md` 安裝狀態，並支援自訂 Mografy 工作區目錄。
+  - **條件解鎖「動態圖形」分頁**：未安裝時輸出列維持極簡 `[圖片 | 影片]`；偵測到已安裝 Mografy Skill 且至少一款 Agent CLI 可用時，生成頁輸出列自動出現第三個分頁 **`動態圖形`**。
+  - **Klipora 頁內直接下指令 → 自動入庫**：在「動態圖形」分頁可選擇 Agent 引擎、比例（16:9 / 9:16 / 1:1）與片長（3–30 秒），透過 `worker.py`（`mografy_motion`）於 Mografy 工作區背景呼叫 Agent 撰寫與渲染 MP4，完成後自動匯入素材庫並同步顯示即時進度與經過時間。
+- **Affected Files**：`work/studio/src/MografySkillIntegration.swift`, `work/studio/src/PortabilitySetupViews.swift`, `work/studio/src/Studio.swift`, `work/studio/resources/worker.py`, `work/studio/build-app.sh`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.5 — 2026-11-23 18:55 (UTC+8)
 ### New Local Video Models & Optional Downloader / 新增本機高階影片預設與可選下載清單
 - **新增 2 款 ComfyUI 原生免外掛本機影片一鍵預設工作流**：

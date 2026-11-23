@@ -27,6 +27,7 @@ swiftc -swift-version 5 -module-cache-path "/tmp/md-v5-module-cache" -parse-as-l
   "$here/src/CustomWorkflow.swift" \
   "$here/src/ProStudioPanels.swift" \
   "$here/src/VoiceboxIntegration.swift" \
+  "$here/src/MografySkillIntegration.swift" \
   "$here/src/PortabilitySetupViews.swift" \
   -o "$app/Contents/MacOS/Klipora"
 

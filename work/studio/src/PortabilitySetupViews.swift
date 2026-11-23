@@ -2895,6 +2895,13 @@ struct PortabilitySetupSheetView: View {
 
                             card4GoogleColabSection
                             card5APIConnectionsSection
+
+                            setupGroupHeader(
+                                title: "AI Agent 技能擴充（選用）",
+                                subtitle: "安裝 Mografy Skill 並偵測到 Claude Code / Codex / Antigravity 後，生成頁會自動解鎖「動態圖形」分頁"
+                            )
+                            .padding(.top, 4)
+                            MografySkillSetupCard()
                         } else {
                             manifestAndLicensesSection
                         }

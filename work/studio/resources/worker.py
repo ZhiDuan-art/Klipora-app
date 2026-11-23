@@ -1418,6 +1418,74 @@ def run_gemini_image(request, folder):
     return res["paths"]
 
 
+def run_mografy_motion(request, folder):
+    workspace = Path((request.get("mografyWorkspace") or "").strip()).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"找不到 Mografy 工作區目錄：{workspace}")
+    agent = (request.get("agent") or "claude").strip().lower()
+    agent_bin = (request.get("agentBinary") or "").strip()
+    if not agent_bin or not Path(agent_bin).is_file():
+        raise ValueError(f"找不到指定的 Agent 執行檔：{agent_bin or agent}")
+    prompt = (request.get("prompt") or "").strip()
+    if not prompt:
+        raise ValueError("請輸入動態圖形製作需求。")
+    aspect = request.get("aspect") or "16:9"
+    seconds = max(3, min(30, int(request.get("seconds") or 8)))
+    job_slug = f"klipora-{int(time.time())}"
+    target_mp4 = folder / f"01-{job_slug}.mp4"
+
+    emit_progress(pct=0.05, stage="準備 Mografy 工作區")
+    log(f"Mografy 動態圖形 · 引擎={agent} · 比例={aspect} · {seconds} 秒")
+
+    instruction = (
+        f"Use the mografy skill in this workspace to create and render a {seconds}-second "
+        f"{aspect} motion graphics MP4 video for the following request:\n\n"
+        f"{prompt}\n\n"
+        f"Requirements:\n"
+        f"1. Create a new project under projects/{job_slug}.\n"
+        f"2. Run mografy check to verify layout and frames have no clipping or errors.\n"
+        f"3. Export the final rendered MP4 video to: {target_mp4}\n"
+        f"4. Reply briefly once the MP4 file is written."
+    )
+
+    if agent == "claude":
+        cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
+    elif agent == "codex":
+        cmd = [agent_bin, "exec", "--full-auto", instruction]
+    else:
+        cmd = [agent_bin, "-p", instruction]
+
+    started_at = time.time()
+    emit_progress(pct=0.18, stage=f"{agent} 製作動畫中")
+    proc = subprocess.run(cmd, cwd=str(workspace), capture_output=True, text=True, timeout=1800)
+    if proc.stdout:
+        log(proc.stdout[-4000:])
+    if proc.stderr:
+        log(proc.stderr[-2000:])
+    if proc.returncode != 0 and not target_mp4.is_file():
+        raise ValueError(f"Agent（{agent}）執行失敗（代碼 {proc.returncode}），請查看工作紀錄。")
+
+    emit_progress(pct=0.88, stage="檢查輸出 MP4")
+    if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
+        # Fallback: locate the newest MP4 created inside the Mografy workspace during this run
+        candidates = []
+        for mp4 in workspace.rglob("*.mp4"):
+            try:
+                st = mp4.stat()
+                if st.st_size > 0 and st.st_mtime >= started_at - 2:
+                    candidates.append((st.st_mtime, mp4))
+            except OSError:
+                continue
+        if candidates:
+            candidates.sort(reverse=True)
+            shutil.copy2(candidates[0][1], target_mp4)
+    if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
+        raise ValueError("Mografy 未產生可匯入的 MP4 成品，請查看工作紀錄確認 Agent 執行細節。")
+
+    emit_progress(pct=1.0, stage="已完成")
+    return [str(target_mp4)]
+
+
 def main():
     req_path, result_path = (Path(value).resolve() for value in sys.argv[1:])
     try:
@@ -1472,6 +1540,7 @@ def main():
                     "export": export,
                     "hyperframes": hyperframes,
                     "title": hyperframes,
+                    "mografy_motion": run_mografy_motion,
                 }
                 if action not in handlers:
                     raise ValueError(f"不支援的動作：{action}")
@@ -1481,7 +1550,7 @@ def main():
         result = {"paths": paths, **extra_result}
         if paths and generation:
             result["generationAspect"] = request["aspect"]
-        if paths and request.get("outputFolder") and (generation or action in {"title", "hyperframes"}):
+        if paths and request.get("outputFolder") and (generation or action in {"title", "hyperframes", "mografy_motion"}):
             try:
                 kind = request["kind"] if generation else "video"
                 saved = save_outputs(paths, request["outputFolder"], folder.name.removeprefix("."), kind)

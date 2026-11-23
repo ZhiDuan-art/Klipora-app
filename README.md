@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.0.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **Latest Update — `v1.0.5` (2026-11-23 18:55 UTC+8):** Added two zero-custom-node local video presets — **Wan 2.2 14B MoE + 4-step LightX2V** (higher hand/physics quality) and **LTX-Video 13B Distilled FP8** (fastest 8-step video on Apple Silicon) — to both the built-in model picker and the optional multi-file downloader with guidance notes. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.0.5 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.5)**.
+> **Latest Update — `v1.0.6` (2026-11-23 19:26 UTC+8):** Split local ComfyUI into two clean independent modes (**Klipora Managed Engine** vs **External ComfyUI Desktop**) and added conditional **Mografy Motion Graphics Skill** integration (auto-unlocks a **Motion Graphics** tab when Mografy Skill + Claude Code / Codex / Antigravity are detected, rendering MP4 directly into your Media Library). See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.0.6 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.6)**.
 
 ## Product Demo Video
 
@@ -88,7 +88,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.0.5-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.0.6-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

@@ -1123,6 +1123,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var status = "就緒"
     @Published var log = ""
     @Published var busy = false
+    @Published var comfyConnectionMode: String = "managed" // "managed" (Klipora 託管引擎) or "desktop" (外部 ComfyUI Desktop)
     @Published var jobStartedAt: Date? = nil
     @Published var jobElapsedSeconds: Int = 0
     @Published var jobProgress: Double? = nil
@@ -2904,6 +2905,31 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             status = notice.message
             return
         }
+        if project.kind == "motion" {
+            let mgr = MografySkillManager.shared
+            guard mgr.isUnlocked, let agentBin = mgr.activeAgentBinaryPath else {
+                status = "尚未偵測到 Mografy Skill 或可用的 Agent CLI（請先至「元件與連線設定」安裝）。"
+                return
+            }
+            let trimmedPrompt = project.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedPrompt.isEmpty else {
+                status = "請先輸入動態圖形製作需求。"
+                return
+            }
+            let req: [String: Any] = [
+                "action": "mografy_motion",
+                "kind": "video",
+                "prompt": trimmedPrompt,
+                "aspect": project.aspect,
+                "seconds": max(3, min(30, project.seconds)),
+                "agent": mgr.effectiveAgent.rawValue,
+                "agentBinary": agentBin,
+                "mografyWorkspace": mgr.workspacePath,
+                "outputFolder": generationOutputDirectory.path,
+            ]
+            perform(req, "動態圖形生成中（\(mgr.effectiveAgent.displayName)）")
+            return
+        }
         if source != "colab" && engineStarting { status = "請等本機 ComfyUI 啟動。"; return }
         if project.kind == "video", let reason = videoMethodUnsupportedReason {
             status = reason
@@ -3996,6 +4022,7 @@ struct StudioView: View {
     @ObservedObject private var network = NetworkReachabilityMonitor.shared
     @ObservedObject private var l10n = LocalizationManager.shared
     @ObservedObject private var startup = KliporaStartupController.shared
+    @ObservedObject private var mografySkill = MografySkillManager.shared
     @AppStorage("MotionDesk.onlineImage.openai_image.billingAcknowledged") private var openAIBillingAccepted = false
     @AppStorage("MotionDesk.onlineImage.gemini_image.billingAcknowledged") private var geminiBillingAccepted = false
     @StateObject private var multitrackState = MultitrackEditState()
@@ -4814,41 +4841,81 @@ struct StudioView: View {
                     .padding(.top, 9)
             }
             Button { app.generate() } label: {
-                Label(app.busy ? "處理中…" : "生成\(app.project.kind == "video" ? "影片" : "圖片")",
+                Label(app.busy ? "處理中…" : (app.project.kind == "motion" ? "生成動態圖形" : "生成\(app.project.kind == "video" ? "影片" : "圖片")"),
                       systemImage: "sparkles")
                     .fontWeight(.semibold).frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent).controlSize(.large)
                 .tint(StudioTheme.coral).foregroundStyle(StudioTheme.cream)
                 .disabled(
                     app.busy
-                        || onlineGenerationUnavailable
+                        || (app.project.kind != "motion" && onlineGenerationUnavailable)
                         || app.project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || (app.source != "colab" && app.isRemovedModelSelected)
-                        || app.videoMethodUnsupportedReason != nil
-                        || (app.source != "colab" && app.hasUnsupportedLocalCapabilityIssue != nil)
+                        || (app.project.kind != "motion" && app.source != "colab" && app.isRemovedModelSelected)
+                        || (app.project.kind == "video" && app.videoMethodUnsupportedReason != nil)
+                        || (app.project.kind != "motion" && app.source != "colab" && app.hasUnsupportedLocalCapabilityIssue != nil)
                 )
                 .padding(12)
         }.background(panel)
     }
 
+    private var mografyMotionSettings: some View {
+        let mgr = MografySkillManager.shared
+        return VStack(alignment: .leading, spacing: 8) {
+            Picker("Agent 引擎", selection: Binding(
+                get: { mgr.effectiveAgent },
+                set: { mgr.selectedAgent = $0 }
+            )) {
+                ForEach(mgr.availableAgents) { kind in
+                    Text(kind.displayName).tag(kind)
+                }
+            }
+            Picker("比例", selection: $app.project.aspect) {
+                Text("16:9").tag("16:9")
+                Text("9:16").tag("9:16")
+                Text("1:1").tag("1:1")
+            }
+            Stepper("目標片長：\(max(3, min(30, app.project.seconds))) 秒", value: Binding(
+                get: { max(3, min(30, app.project.seconds)) },
+                set: { app.project.seconds = $0 }
+            ), in: 3...30)
+            Text("透過 \(mgr.effectiveAgent.displayName) 搭配 Mografy Skill 撰寫並渲染 MP4，完成後自動匯入左側素材庫。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(8)
+        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     var generationSettings: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("來源", selection: Binding(get: { app.source }, set: app.selectSource)) {
-                Text("本機 · ComfyUI").tag("zimage")
-                if app.project.localOnly != true {
-                    if app.project.kind == "image" {
-                        Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · OpenAI（離線停用）" : "線上 · OpenAI（圖片）").tag("openai_image")
-                        Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Gemini（離線停用）" : "線上 · Gemini（圖片）").tag("gemini_image")
+            if app.project.kind != "motion" {
+                Picker("來源", selection: Binding(get: { app.source }, set: app.selectSource)) {
+                    Text("本機 · ComfyUI").tag("zimage")
+                    if app.project.localOnly != true {
+                        if app.project.kind == "image" {
+                            Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · OpenAI（離線停用）" : "線上 · OpenAI（圖片）").tag("openai_image")
+                            Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Gemini（離線停用）" : "線上 · Gemini（圖片）").tag("gemini_image")
+                        }
+                        Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Google Colab（離線停用）" : "線上 · Google Colab").tag("colab")
                     }
-                    Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Google Colab（離線停用）" : "線上 · Google Colab").tag("colab")
                 }
             }
             Picker("輸出", selection: $app.project.kind) {
                 Text("圖片").tag("image")
                 Text("影片").tag("video")
+                if mografySkill.isUnlocked {
+                    Text("動態圖形").tag("motion")
+                }
             }.pickerStyle(.segmented)
-            outputSettings
-            if let onlineProvider = OnlineImageProvider(rawValue: app.source) {
+            if app.project.kind == "motion" {
+                mografyMotionSettings
+            } else {
+                outputSettings
+            }
+            if app.project.kind == "motion" {
+                EmptyView()
+            } else if let onlineProvider = OnlineImageProvider(rawValue: app.source) {
                 OnlineImageControls(provider: onlineProvider)
             } else if app.source == "colab" {
                 HStack {
@@ -4897,45 +4964,84 @@ struct StudioView: View {
                     LocalModelManagerControls(app: app)
                     CustomWorkflowControls(app: app)
                 }
-                DisclosureGroup("本機 ComfyUI 連線") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if app.engineRunning {
-                            LabeledContent("本機 ComfyUI 位址", value: app.engineStarting ? "啟動中…" : app.endpoint)
-                        } else {
-                            TextField("本機 ComfyUI 位址", text: $app.project.endpoint)
-                        }
-                        HStack {
-                            Button("開啟 Comfy Desktop", action: app.openComfyDesktop)
-                                .help("在 Comfy Desktop 啟動 ComfyUI-MPS，再回來檢查連線")
-                            Button("檢查本機就緒狀態") {
-                                var checkReq: [String: Any] = [
-                                    "action": "check_local",
-                                    "endpoint": app.endpoint,
-                                    "preset": app.action,
-                                    "workflow": app.selectedWorkflow,
-                                    "localOnly": app.project.localOnly == true,
-                                    "lora": app.unsupportedLocalLoRAInfo?.id ?? app.selectedLoRA,
-                                    "reference": app.takesReference ? app.referenceImage : app.unsupportedLocalReferencePath
-                                ]
-                                if app.action != "comfy" && !app.isRemovedModelSelected {
-                                    checkReq["modelParams"] = app.currentModelParamsPayload()
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("ComfyUI 執行模式", selection: $app.comfyConnectionMode) {
+                        Text("Klipora 託管引擎").tag("managed")
+                        Text("外部 ComfyUI Desktop").tag("desktop")
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(app.busy)
+
+                    if app.comfyConnectionMode == "managed" {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(app.engineRunning ? StudioTheme.success : StudioTheme.textMuted.opacity(0.5))
+                                    .frame(width: 7, height: 7)
+                                Text(app.engineStarting ? "Klipora 託管引擎啟動中…" : (app.engineRunning ? "執行中 · \(app.endpoint)" : "未啟動（建議使用，自動套用 --fp32-vae 畫質修正）"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            HStack(spacing: 8) {
+                                Button(app.engineRunning ? "停止託管 ComfyUI" : "啟動託管 ComfyUI", action: app.toggleEngine)
+                                    .disabled(app.busy)
+                                Button("檢查就緒狀態") {
+                                    var checkReq: [String: Any] = [
+                                        "action": "check_local",
+                                        "endpoint": app.endpoint,
+                                        "preset": app.action,
+                                        "workflow": app.selectedWorkflow,
+                                        "localOnly": app.project.localOnly == true,
+                                        "lora": app.unsupportedLocalLoRAInfo?.id ?? app.selectedLoRA,
+                                        "reference": app.takesReference ? app.referenceImage : app.unsupportedLocalReferencePath
+                                    ]
+                                    if app.action != "comfy" && !app.isRemovedModelSelected {
+                                        checkReq["modelParams"] = app.currentModelParamsPayload()
+                                    }
+                                    app.perform(checkReq, "檢查本機 ComfyUI")
                                 }
-                                app.perform(checkReq, "檢查本機 ComfyUI")
-                            }.disabled(app.engineStarting)
-                                .help("確認此位址的本機 ComfyUI 已啟動，且目前選擇的模型可用")
-                        }.disabled(app.busy)
-                        DisclosureGroup {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("由 Klipora 另開一個本機 ComfyUI。若已在 Comfy Desktop 啟動實例，直接檢查連線即可。")
-                                    .font(.caption).foregroundStyle(.secondary)
-                                Button(app.engineRunning ? "停止 Klipora 的 ComfyUI" : "啟動本機 ComfyUI",
-                                       action: app.toggleEngine)
-                            }.padding(.top, 5)
-                        } label: {
-                            Text("由 Klipora 啟動本機 ComfyUI")
-                                .help("另一種本機啟動方式。使用 Comfy Desktop 的實例時，無須啟用。")
-                        }.disabled(app.busy)
-                    }.padding(.top, 8)
+                                .disabled(app.busy || app.engineStarting || !app.engineRunning)
+                                .help("確認 Klipora 託管的 ComfyUI 與所選模型皆已就緒")
+                            }
+                        }
+                        .padding(8)
+                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            if app.engineRunning {
+                                Text("目前 Klipora 託管引擎正在執行；若要改連外部 ComfyUI Desktop，請先停止託管引擎。")
+                                    .font(.caption)
+                                    .foregroundStyle(StudioTheme.warning)
+                            }
+                            TextField("外部 ComfyUI 位址", text: $app.project.endpoint)
+                                .disabled(app.engineRunning || app.busy)
+                            HStack(spacing: 8) {
+                                Button("開啟 Comfy Desktop", action: app.openComfyDesktop)
+                                    .help("在 Comfy Desktop 啟動實例，再回來檢查連線")
+                                Button("檢查外部連線") {
+                                    var checkReq: [String: Any] = [
+                                        "action": "check_local",
+                                        "endpoint": app.project.endpoint,
+                                        "preset": app.action,
+                                        "workflow": app.selectedWorkflow,
+                                        "localOnly": app.project.localOnly == true,
+                                        "lora": app.unsupportedLocalLoRAInfo?.id ?? app.selectedLoRA,
+                                        "reference": app.takesReference ? app.referenceImage : app.unsupportedLocalReferencePath
+                                    ]
+                                    if app.action != "comfy" && !app.isRemovedModelSelected {
+                                        checkReq["modelParams"] = app.currentModelParamsPayload()
+                                    }
+                                    app.perform(checkReq, "檢查外部 ComfyUI")
+                                }
+                                .disabled(app.busy || app.engineStarting)
+                                .help("確認外部 ComfyUI 位址已啟動且模型可用")
+                            }
+                        }
+                        .padding(8)
+                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+                    }
                 }
                 if app.action == "comfy" && !app.localModel.hasPrefix("workflow_") {
                     Button("選擇\(app.project.kind == "video" ? "影片" : "圖片") API 工作流") {
