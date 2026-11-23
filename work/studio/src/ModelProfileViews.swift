@@ -1455,7 +1455,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
                     shift: DoubleRangeSpec(min: 3.0, max: 8.0, step: 0.5),
                     guidance: nil,
                     denoise: nil,
-                    seconds: IntRangeSpec(min: 2, max: 5, step: 1)
+                    seconds: IntRangeSpec(min: 2, max: 15, step: 1)
                 ),
                 capabilities: ModelCapabilities(
                     supportsImg2Img: false,

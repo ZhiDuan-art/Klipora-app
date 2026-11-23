@@ -1,5 +1,16 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.3 — 2026-11-23 11:10 (UTC+8)
+### Bug Fixed & Video Duration Upgrade / 本機影片生成修復與片長擴充
+- **修復 Wan 2.2 本機影片生成出現「ComfyUI 畫布工作流反解驗證失敗（SaveVideo 遺失 format / codec）」**：
+  - **Root Cause (原因)**：新版 ComfyUI 將 `SaveVideo` 節點的 `format` 與 `codec` 升級為 V3 動態下拉類型 `COMFY_DYNAMICCOMBO_V3`，`comfy_workflows.py` 的 `PRIMITIVE_WIDGET_TYPES` 原未包含該類型，導致比對本機 ComfyUI `/object_info` 時漏填 widget 並觸發反解驗證失敗。
+  - **Fix (修復內容)**：將 `COMFY_DYNAMICCOMBO_V3` 加入 `PRIMITIVE_WIDGET_TYPES`，完整相容新版 ComfyUI V3 節點（全部 7 款內建工作流皆已通過即時 `/object_info` 反解驗證 `0 diffs`）。
+- **本機 Wan 2.2 影片片長上限由 5 秒擴充至 15 秒（2–15 秒）**：
+  - 同步放寬 `Studio.swift`、`ModelProfileViews.swift`、`GenerationDockViews.swift` 與 `model_profiles.json` 的本機影片片長範圍至 `2–15` 秒（24×秒+1 幀，實測通過 2s=49 幀、5s=121 幀、15s=361 幀工作流驗證與實機生成驗收）。
+- **Affected Files**：`work/studio/resources/comfy_workflows.py`, `work/studio/resources/model_profiles.json`, `work/studio/src/Studio.swift`, `work/studio/src/ModelProfileViews.swift`, `work/studio/src/GenerationDockViews.swift`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.2 — 2026-11-23 08:16 (UTC+8)
 ### New UX Improvements / 素材庫操作體驗升級
 - **素材庫支援直接拖曳匯入（Finder Drag-and-Drop Import）**：

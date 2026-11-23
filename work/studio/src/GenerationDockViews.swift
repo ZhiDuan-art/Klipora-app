@@ -50,7 +50,7 @@ extension Studio {
             }
         }
         if action == "wan22" {
-            return "本機 ComfyUI（Wan 2.2 5B）· 僅支援文字或 1 張首幀圖／影片 · 2–5 秒 · 不支援首尾／多影格"
+            return "本機 ComfyUI（Wan 2.2 5B）· 僅支援文字或 1 張首幀圖／影片 · 2–15 秒 · 不支援首尾／多影格"
         }
         return "本機 ComfyUI（自訂工作流）· 支援 {{IMAGE}} 單圖與 {{SECONDS}} · 不支援首尾／多影格"
     }

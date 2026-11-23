@@ -719,7 +719,7 @@
         "denoise": null,
         "seconds": [
           2,
-          5
+          15
         ],
         "samplers": [
           "euler",
@@ -758,7 +758,7 @@
         "僅支援單一首幀參考（圖片或影片取首幀），不支援首尾雙幀、多影格模式與 LoRA。",
         "VAEDecodeTiled 與 CLIPLoader device=cpu 屬官方文件／理論記憶體優化，本機尚未實測驗證，故未設為預設。"
       ],
-      "notes": "Wan 2.2 TI2V-5B 本機 MPS 驗證設定：euler / simple / 20 步 / CFG 5.0 / shift 5.0 / 24fps / VAEDecode / device=default；支援 2–5 秒（24×秒+1 幀）與單一首幀來源。uni_pc 在本機 MPS 易出現嚴重條紋噪點，僅列為可選實驗值。",
+      "notes": "Wan 2.2 TI2V-5B 本機 MPS 驗證設定：euler / simple / 20 步 / CFG 5.0 / shift 5.0 / 24fps / VAEDecode / device=default；支援 2–15 秒（24×秒+1 幀，建議 2–5 秒較省記憶體，6–15 秒需較長運算時間與記憶體）與單一首幀來源。uni_pc 在本機 MPS 易出現嚴重條紋噪點，僅列為可選實驗值。",
       "officialSources": [
         "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B",
         "https://docs.comfy.org/tutorials/video/wan/wan2_2"

@@ -20,7 +20,7 @@ import re
 from typing import Any, Callable
 
 
-PRIMITIVE_WIDGET_TYPES = {"INT", "FLOAT", "STRING", "BOOLEAN", "COMBO"}
+PRIMITIVE_WIDGET_TYPES = {"INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", "COMFY_DYNAMICCOMBO_V3"}
 PLACEHOLDER_RE = re.compile(r"\{\{(PROMPT|IMAGE|SEED|SECONDS)\}\}")
 
 # Static fallback schemas matching ComfyUI core `/object_info` (27 core nodes).

@@ -1289,7 +1289,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         }
     }
     var secondsRange: ClosedRange<Int> {
-        2...(action == "wan22" ? 5 : 15)
+        2...15
     }
     var usesFirstLastFrames: Bool { action == "colab" && project.kind == "video" && videoMethod == "frames" }
     var usesMultiFrames: Bool { action == "colab" && project.kind == "video" && videoMethod == "multi" }
