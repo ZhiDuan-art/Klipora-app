@@ -1,5 +1,19 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.0.5 — 2026-11-23 18:55 (UTC+8)
+### New Local Video Models & Optional Downloader / 新增本機高階影片預設與可選下載清單
+- **新增 2 款 ComfyUI 原生免外掛本機影片一鍵預設工作流**：
+  1. **`Wan 2.2 14B MoE + 4-step 加速 (FP8)`（`wan22_14b`）**：
+     - 採用 ComfyUI 原生 High-Noise / Low-Noise 雙專家 FP8 模型 + `LightX2V 4-step LoRA` + `Wan 2.1 VAE`（免裝第三方 GGUF 外掛），僅需 **4–8 步（CFG 1.0、16fps）** 即可完成，手部物理與人物互動品質遠勝 5B（需 5 個檔案、合計約 31.3 GB，建議 36GB+ RAM）。
+  2. **`LTX-Video 13B Distilled (FP8)`（`ltxv13b`）**：
+     - 採用 Lightricks 官方 8 步蒸餾 FP8 Checkpoint（內建 VAE，共用既有 T5-XXL），支援文生影（`EmptyLTXVLatentVideo`）與圖生影（`LTXVImgToVideo`）自動切換，Apple Silicon 速度最快（5 秒約 1–3 分鐘、約 15.7 GB，建議 32GB+ RAM）。
+- **可選模型下載清單升級（`KliporaStartupViews.swift`）**：
+  - 升級 `StarterModelOption` 支援多檔案套件下載（`StarterModelFile`），可一鍵下載 **LTX-Video 13B Distilled (15.70 GB)** 與 **Wan 2.2 14B MoE + 4-step 加速 (31.30 GB，5 檔自動分目錄存放)**，並附中文說明、速度／畫質建議與建議記憶體門檻；所有 6 條 HuggingFace 官方連結均實測 `HTTP 200`。
+- **完整驗證**：全部 9 款內建工作流（含 `wan22_14b_i2v`、`ltxv13b_t2v`、`ltxv13b_i2v`）通過 `comfy_workflows.py --self-test`（`0 roundtrip diffs`）與 Build 38 隔離測試。
+- **Affected Files**：`work/studio/resources/wan22_14b.json`, `work/studio/resources/ltxv13b.json`, `work/studio/resources/model_profiles.json`, `work/studio/resources/comfy_workflows.py`, `work/studio/resources/worker.py`, `work/studio/src/KliporaStartupViews.swift`, `work/studio/src/ModelProfileViews.swift`, `work/studio/src/Studio.swift`, `work/studio/src/GenerationDockViews.swift`, `work/studio/build-app.sh`, `work/studio/Info.plist`
+
+---
+
 ## v1.0.4 — 2026-11-23 12:30 (UTC+8)
 ### Video Quality Fix, Live Progress Bar & Long-Video Timeout Fix / 本機影片畫質修復、即時進度條與長片逾時修復
 - **修復本機 Wan 2.2 影片在 Apple Silicon (MPS) 上出現螢光綠網格／馬賽克顆粒（`--fp32-vae`）**：

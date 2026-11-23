@@ -78,6 +78,8 @@ cp "$here/resources/worker.py" \
    "$here/resources/redcraft.json" \
    "$here/resources/krea2.json" \
    "$here/resources/wan22.json" \
+   "$here/resources/wan22_14b.json" \
+   "$here/resources/ltxv13b.json" \
    "$here/resources/moss.json" \
    "$here/resources/flux.json" \
    "$here/resources/sdxl.json" \

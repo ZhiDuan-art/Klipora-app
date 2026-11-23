@@ -163,7 +163,7 @@ struct RecordedGeneration: Decodable {
               let input = try? Data(contentsOf: folder.appendingPathComponent("request.json")),
               var settings = try? JSONDecoder().decode(Self.self, from: input),
               ["image", "video"].contains(settings.kind),
-              (["colab", "comfy", "wan22", "zimage", "krea2", "moss", "redcraft", "realxl", "iniverse_flux", "sdxl1", "openai_image", "gemini_image"].contains(settings.action)
+              (["colab", "comfy", "wan22", "wan22_14b", "ltxv13b", "zimage", "krea2", "moss", "redcraft", "realxl", "iniverse_flux", "sdxl1", "openai_image", "gemini_image"].contains(settings.action)
                || settings.action.hasPrefix("umodel_")) else {
             return nil
         }
@@ -1161,6 +1161,8 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         return "zimage"
     }
     var localImageModel: String { project.localImageModel ?? "zimage" }
+    static let builtinLocalVideoModels: Set<String> = ["wan22", "wan22_14b", "ltxv13b"]
+    var isBuiltinLocalVideoAction: Bool { Self.builtinLocalVideoModels.contains(action) }
     var localVideoModel: String { project.localVideoModel ?? "wan22" }
     var localModel: String { project.kind == "video" ? localVideoModel : localImageModel }
     var action: String {
@@ -1187,7 +1189,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         unsupportedLocalLoRAInfo?.label ?? ""
     }
     var acceptsVideoReference: Bool {
-        project.kind == "video" && takesReference && ["wan22", "colab"].contains(action)
+        project.kind == "video" && takesReference && (Self.builtinLocalVideoModels.contains(action) || action == "colab")
     }
     var orderedFrames: [String] { project.keyframes ?? [] }
     static let maxKeyframes = 32
@@ -2622,13 +2624,13 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             active.formUnion(references)
             if let video { project.referenceVideo = video }
             if acceptsVideoReference, let existingVideo = project.referenceVideo { active.insert(existingVideo) }
-        } else if action == "wan22", movieTypes.contains(first.pathExtension.lowercased()) {
+        } else if isBuiltinLocalVideoAction, movieTypes.contains(first.pathExtension.lowercased()) {
             referenceImage = ""
             project.referenceVideo = first.path
             active.insert(first.path)
         } else {
             referenceImage = first.path
-            if action == "wan22" { project.referenceVideo = nil }
+            if isBuiltinLocalVideoAction { project.referenceVideo = nil }
             active.insert(first.path)
         }
         let imported = files.map(\.path)
@@ -2945,7 +2947,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             status = "找不到原參考素材。請重新選取檔案。"
             return
         }
-        if source == "wan22", !image.isEmpty, !video.isEmpty {
+        if Self.builtinLocalVideoModels.contains(source), !image.isEmpty, !video.isEmpty {
             status = "Wan 2.2 請擇一使用參考圖片或影片首幀。"
             return
         }
@@ -4957,7 +4959,7 @@ struct StudioView: View {
                     get: { app.videoMethod }, set: { app.selectVideoMethod($0) }
                 )) {
                     Text("文字生成").tag("text")
-                    Text(app.action == "wan22" ? "首幀" : "參考素材").tag("reference")
+                    Text(app.isBuiltinLocalVideoAction ? "首幀" : "參考素材").tag("reference")
                     if app.action == "colab" || app.videoMethod == "frames" {
                         Text(app.action == "colab" ? "首尾影格" : "首尾影格（僅線上 Colab）").tag("frames")
                     }
@@ -5060,7 +5062,7 @@ struct StudioView: View {
                 }
             }
             if let video, !video.isEmpty {
-                referenceAsset(app.action == "wan22" ? "影片首幀" : "影片 1", path: video) {
+                referenceAsset(app.isBuiltinLocalVideoAction ? "影片首幀" : "影片 1", path: video) {
                     app.project.referenceVideo = nil
                 }
             }

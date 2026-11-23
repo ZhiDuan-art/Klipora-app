@@ -9,7 +9,9 @@
     "moss",
     "krea2",
     "sdxl1",
-    "wan22"
+    "wan22",
+    "wan22_14b",
+    "ltxv13b"
   ],
   "models": {
     "zimage": {
@@ -762,6 +764,230 @@
       "officialSources": [
         "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B",
         "https://docs.comfy.org/tutorials/video/wan/wan2_2"
+      ]
+    },
+    "wan22_14b": {
+      "id": "wan22_14b",
+      "displayName": "Wan 2.2 14B MoE + 4-step 加速 (FP8)",
+      "shortLabel": "Wan 2.2 14B",
+      "kind": "video",
+      "architecture": "Wan 2.2 14B Dual-Expert MoE (High/Low Noise FP8 + LightX2V 4-step LoRA + Wan 2.1 VAE)",
+      "template": "wan22_14b.json",
+      "filenamePrefix": "MotionDesk/Wan22_14B",
+      "requiredModels": {
+        "diffusion_models": [
+          "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+        ],
+        "loras": [
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
+        ],
+        "text_encoders": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        ],
+        "vae": [
+          "wan_2.1_vae.safetensors"
+        ]
+      },
+      "requiredComfyChecks": {
+        "requiredNode": "WanImageToVideo"
+      },
+      "nativeSizes": {
+        "16:9": [
+          832,
+          480
+        ],
+        "9:16": [
+          480,
+          832
+        ],
+        "1:1": [
+          640,
+          640
+        ]
+      },
+      "alignment": 16,
+      "maxPixels": 921600,
+      "defaults": {
+        "steps": 4,
+        "cfg": 1.0,
+        "sampler": "euler",
+        "scheduler": "simple",
+        "shift": 5.0,
+        "guidance": null,
+        "denoise": 1.0,
+        "img2imgDenoise": null,
+        "negativePrompt": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+        "fps": 16,
+        "seconds": 5
+      },
+      "ranges": {
+        "steps": [
+          4,
+          12
+        ],
+        "cfg": [
+          1.0,
+          3.0
+        ],
+        "shift": [
+          3.0,
+          8.0
+        ],
+        "guidance": null,
+        "denoise": null,
+        "seconds": [
+          2,
+          15
+        ],
+        "samplers": [
+          "euler",
+          "uni_pc"
+        ],
+        "schedulers": [
+          "simple",
+          "sgm_uniform"
+        ]
+      },
+      "capabilities": {
+        "supportsImg2Img": false,
+        "supportsVideoFirstFrame": true,
+        "supportsLoRA": false,
+        "supportsNegativePrompt": true,
+        "supportsGuidance": false,
+        "supportsShift": true,
+        "supportsSkipLayer": false
+      },
+      "nodes": {
+        "latent": "6",
+        "sampler": "8",
+        "positive": "4",
+        "negative": "5",
+        "shift": "7",
+        "guidance": null,
+        "modelSamplingFlux": null,
+        "loraUpstream": null,
+        "loraDownstream": null,
+        "vaeDecode": "9",
+        "save": "11"
+      },
+      "recommendationNote": "高畫質人物動作與手部物理首選（建議 36GB+ RAM）：採用 ComfyUI 原生 FP8 雙專家（High/Low Noise）搭配 LightX2V 4-step 加速 LoRA，僅需 4–8 步（CFG 1.0、16fps）即可完成，手部與互動穩定度遠勝 5B。",
+      "unsupportedNotes": [
+        "本工作流已內建 LightX2V 4-step 加速 LoRA（CFG 1.0），不支援額外外掛 LoRA。",
+        "僅支援單一首幀參考（圖生影效果最佳）或文字生成，不支援首尾雙幀與多影格模式。",
+        "需先於「可選模型下載」下載 5 個檔案（合計約 31.3 GB，共用既有 UMT5-XXL）。"
+      ],
+      "notes": "Wan 2.2 14B MoE + LightX2V 4-step 加速：ComfyUI 原生 FP8（免裝第三方 GGUF 外掛），4–8 步高速出片，推薦 832×480 / 5 秒（81 幀，16fps）。",
+      "officialSources": [
+        "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+        "https://docs.comfy.org/tutorials/video/wan/wan2_2"
+      ]
+    },
+    "ltxv13b": {
+      "id": "ltxv13b",
+      "displayName": "LTX-Video 13B Distilled (FP8)",
+      "shortLabel": "LTX-Video 13B",
+      "kind": "video",
+      "architecture": "LTX-Video 0.9.7 13B Distilled FP8 (T5-XXL FP8 + Built-in VAE)",
+      "template": "ltxv13b.json",
+      "filenamePrefix": "MotionDesk/LTXV13B",
+      "requiredModels": {
+        "checkpoints": [
+          "ltxv-13b-0.9.7-distilled-fp8.safetensors"
+        ],
+        "text_encoders": [
+          "t5xxl_fp8_e4m3fn.safetensors"
+        ]
+      },
+      "requiredComfyChecks": {
+        "requiredNode": "EmptyLTXVLatentVideo"
+      },
+      "nativeSizes": {
+        "16:9": [
+          768,
+          512
+        ],
+        "9:16": [
+          512,
+          768
+        ],
+        "1:1": [
+          640,
+          640
+        ]
+      },
+      "alignment": 32,
+      "maxPixels": 921600,
+      "defaults": {
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler": "euler",
+        "scheduler": "simple",
+        "shift": null,
+        "guidance": null,
+        "denoise": 1.0,
+        "img2imgDenoise": null,
+        "negativePrompt": "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly",
+        "fps": 24,
+        "seconds": 4
+      },
+      "ranges": {
+        "steps": [
+          4,
+          16
+        ],
+        "cfg": [
+          1.0,
+          3.5
+        ],
+        "shift": null,
+        "guidance": null,
+        "denoise": null,
+        "seconds": [
+          2,
+          15
+        ],
+        "samplers": [
+          "euler",
+          "res_multistep"
+        ],
+        "schedulers": [
+          "simple",
+          "normal"
+        ]
+      },
+      "capabilities": {
+        "supportsImg2Img": false,
+        "supportsVideoFirstFrame": true,
+        "supportsLoRA": false,
+        "supportsNegativePrompt": true,
+        "supportsGuidance": false,
+        "supportsShift": false,
+        "supportsSkipLayer": false
+      },
+      "nodes": {
+        "latent": "6",
+        "sampler": "8",
+        "positive": "4",
+        "negative": "5",
+        "shift": null,
+        "guidance": null,
+        "modelSamplingFlux": null,
+        "loraUpstream": null,
+        "loraDownstream": null,
+        "vaeDecode": "9",
+        "save": "11"
+      },
+      "recommendationNote": "Apple Silicon 極速出片首選（建議 32GB+ RAM）：8 步蒸餾模型、鏡頭運動流暢，5 秒影片僅約 1–3 分鐘即可完成，極適合快速試錯與大量剪輯鏡頭（約 15.7 GB，共用既有 T5-XXL）。",
+      "unsupportedNotes": [
+        "LTX-Video 13B Distilled 建議維持 8 steps / CFG 1.0 與 32 倍數尺寸（預設 768×512），幀數自動對齊 8n+1（24fps）。",
+        "僅支援文字生成或單一首幀圖／影片參考，不支援首尾雙幀、多影格模式與 LoRA。"
+      ],
+      "notes": "LTX-Video 13B Distilled FP8（Lightricks 官方蒸餾版）：ComfyUI 原生節點支援、免裝第三方外掛，速度最快，適合快速出片進剪輯時間軸。",
+      "officialSources": [
+        "https://huggingface.co/Lightricks/LTX-Video",
+        "https://docs.comfy.org/tutorials/video/ltx/ltx-video"
       ]
     }
   },

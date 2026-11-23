@@ -366,7 +366,7 @@ def native_size(request, default):
         alignment = int(profile.get("alignment", 16))
         max_pixels = int(profile.get("maxPixels", 2 * 1024 * 1024))
     else:
-        alignment, max_pixels = (32, 1280 * 704) if preset == "wan22" else (16, 2 * 1024 * 1024)
+        alignment, max_pixels = (32, 1280 * 704) if preset in {"wan22", "wan22_14b", "ltxv13b"} else (16, 2 * 1024 * 1024)
     if width % alignment == 0 and height % alignment == 0 and width * height <= max_pixels:
         return size
     return default
@@ -507,7 +507,7 @@ def comfy(request, folder):
         comfy_workflows.validate_preset_request(preset, request, RESOURCE)
         lora = (request.get("lora") or "").strip() if isinstance(request.get("lora"), str) else ""
         check_preset(base, preset, lora)
-        if preset == "wan22" and ref_video:
+        if preset in {"wan22", "wan22_14b", "ltxv13b"} and ref_video:
             source = Path(ref_video)
             if source.suffix.lower() not in VIDEO_EXT or not source.is_file():
                 raise ValueError("找不到可讀取的參考影片。")
@@ -584,9 +584,9 @@ def comfy(request, folder):
         log(f"本機 ComfyUI 已排入工作 {pid}")
         emit_progress(pct=0.01, stage="已排入佇列")
 
-        default_kind = ("video" if preset == "wan22" else "image") if builtin else None
+        default_kind = ("video" if preset in {"wan22", "wan22_14b", "ltxv13b"} else "image") if builtin else None
         kind = request.get("kind", default_kind)
-        is_video = (kind == "video") or (preset == "wan22")
+        is_video = (kind == "video") or (preset in {"wan22", "wan22_14b", "ltxv13b"})
         base_timeout = 7200 if is_video else 1800
         hard_cap = 14400 if is_video else 3600
         req_timeout = request.get("timeoutSeconds")

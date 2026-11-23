@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
-[![Release](https://img.shields.io/badge/ダウンロード-v1.0.4%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/ダウンロード-v1.0.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新・デバッグ履歴](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新アップデート — `v1.0.4`（2026-11-23 12:30 UTC+8）**：Apple Silicon (MPS) 環境でのローカル Wan 2.2 動画の緑グリッドノイズを修正（`--fp32-vae`）、ステータスバーに **進捗率 %・ステップ数・経過時間・残り時間目安** を追加、動画タイムアウトを **2時間**（実行中は自動延長）に拡張しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.4 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.4)**。
+> **最新アップデート — `v1.0.5`（2026-11-23 18:55 UTC+8）**：カスタムノード不要の **Wan 2.2 14B MoE + 4-step 加速** と **LTX-Video 13B Distilled FP8** の2つのローカル動画プリセットを追加し、オプションダウンロード一覧（複数ファイル一括ダウンロード＆推奨ガイド付き）に統合しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.0.5 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.5)**。
 
 ## 実機デモ動画
 
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
 ## インストール方法
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.4-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.5-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
 2. 初回起動時に警告が表示された場合は、**Klipora.app を右クリック → 開く → 開く** で起動してください。
 3. Codex や各種 AI エージェントに `https://github.com/ZhiDuan-art/Klipora-app` を渡し、**[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** に従って自動セットアップすることも可能です。
 

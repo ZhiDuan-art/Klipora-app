@@ -314,25 +314,78 @@ struct KliporaSplashOverlay: View {
 
 // MARK: - First-Run Multi-Model Guided Onboarding Wizard
 
+struct StarterModelFile: Equatable {
+    let category: String // "checkpoints", "diffusion_models", "loras", "vae", "text_encoders", or "tts"
+    let filename: String
+    let sizeGB: Double
+    let officialURL: URL?
+
+    var isInstalledLocally: Bool {
+        let fm = FileManager.default
+        if category == "tts" {
+            let hub = fm.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub")
+            let entries = (try? fm.contentsOfDirectory(atPath: hub.path)) ?? []
+            return entries.contains { $0.lowercased().contains(filename.lowercased()) }
+        }
+        let central = CentralComfyModelStorage.categoryDirectory(category).appendingPathComponent(filename)
+        if fm.fileExists(atPath: central.path) { return true }
+        let userComfy = fm.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/ComfyUI/models/\(category)/\(filename)")
+        return fm.fileExists(atPath: userComfy.path)
+    }
+
+    func destinationDirectory() -> URL {
+        let fm = FileManager.default
+        let userComfyRoot = fm.homeDirectoryForCurrentUser.appendingPathComponent("Documents/ComfyUI/models")
+        if fm.fileExists(atPath: userComfyRoot.path) {
+            return userComfyRoot.appendingPathComponent(category, isDirectory: true)
+        }
+        return CentralComfyModelStorage.categoryDirectory(category)
+    }
+}
+
 struct StarterModelOption: Identifiable, Equatable {
     let id: String
     let name: String
-    let category: String // "checkpoints", "diffusion_models", or "tts"
+    let category: String // "checkpoints", "diffusion_models", "video", or "tts"
     let filename: String
     let sizeGB: Double
     let minRAMGB: Int
     let summary: String
     let officialURL: URL?
+    let files: [StarterModelFile]
+
+    init(
+        id: String,
+        name: String,
+        category: String,
+        filename: String,
+        sizeGB: Double,
+        minRAMGB: Int,
+        summary: String,
+        officialURL: URL?,
+        files: [StarterModelFile]? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.category = category
+        self.filename = filename
+        self.sizeGB = sizeGB
+        self.minRAMGB = minRAMGB
+        self.summary = summary
+        self.officialURL = officialURL
+        self.files = files ?? [
+            StarterModelFile(category: category, filename: filename, sizeGB: sizeGB, officialURL: officialURL)
+        ]
+    }
 
     var isInstalledLocally: Bool {
-        if category == "tts" {
-            let hub = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub")
-            let entries = (try? FileManager.default.contentsOfDirectory(atPath: hub.path)) ?? []
-            return entries.contains { $0.lowercased().contains(filename.lowercased()) }
-        }
-        let target = CentralComfyModelStorage.categoryDirectory(category).appendingPathComponent(filename)
-        return FileManager.default.fileExists(atPath: target.path)
+        !files.isEmpty && files.allSatisfy { $0.isInstalledLocally }
+    }
+
+    var remainingSizeGB: Double {
+        files.filter { !$0.isInstalledLocally }.reduce(0.0) { $0 + $1.sizeGB }
     }
 
     static let catalog: [StarterModelOption] = [
@@ -355,6 +408,66 @@ struct StarterModelOption: Identifiable, Equatable {
             minRAMGB: 24,
             summary: "8 步快速生圖、自然紀實表現佳（需搭配 Qwen3-4B 與 AE VAE）",
             officialURL: URL(string: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/diffusion_models/z_image_turbo_bf16.safetensors")
+        ),
+        StarterModelOption(
+            id: "ltxv13b",
+            name: "LTX-Video 13B Distilled FP8（極速出片影片首選）",
+            category: "video",
+            filename: "ltxv-13b-0.9.7-distilled-fp8.safetensors",
+            sizeGB: 15.70,
+            minRAMGB: 32,
+            summary: "Apple Silicon 最快本機影片（8 步蒸餾、5 秒約 1–3 分鐘），鏡頭運動順暢，適合大量試拍與剪輯（內建 VAE，共用既有 T5-XXL，免裝外掛）。",
+            officialURL: URL(string: "https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltxv-13b-0.9.7-distilled-fp8.safetensors"),
+            files: [
+                StarterModelFile(
+                    category: "checkpoints",
+                    filename: "ltxv-13b-0.9.7-distilled-fp8.safetensors",
+                    sizeGB: 15.70,
+                    officialURL: URL(string: "https://huggingface.co/Lightricks/LTX-Video/resolve/main/ltxv-13b-0.9.7-distilled-fp8.safetensors")
+                )
+            ]
+        ),
+        StarterModelOption(
+            id: "wan22_14b",
+            name: "Wan 2.2 14B MoE + 4-step 加速（高畫質人物動作首選）",
+            category: "video",
+            filename: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+            sizeGB: 31.30,
+            minRAMGB: 36,
+            summary: "手部物理與電影質感遠勝 5B；含 High/Low 雙專家 FP8 + LightX2V 4-step LoRA + Wan 2.1 VAE（5 個檔案，僅需 4–8 步，共用既有 UMT5-XXL，原生免裝外掛）。",
+            officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"),
+            files: [
+                StarterModelFile(
+                    category: "diffusion_models",
+                    filename: "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+                    sizeGB: 14.29,
+                    officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors")
+                ),
+                StarterModelFile(
+                    category: "diffusion_models",
+                    filename: "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+                    sizeGB: 14.29,
+                    officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors")
+                ),
+                StarterModelFile(
+                    category: "loras",
+                    filename: "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+                    sizeGB: 1.23,
+                    officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors")
+                ),
+                StarterModelFile(
+                    category: "loras",
+                    filename: "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+                    sizeGB: 1.23,
+                    officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors")
+                ),
+                StarterModelFile(
+                    category: "vae",
+                    filename: "wan_2.1_vae.safetensors",
+                    sizeGB: 0.25,
+                    officialURL: URL(string: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors")
+                )
+            ]
         ),
         StarterModelOption(
             id: "qwen3_tts_06b",
@@ -405,7 +518,7 @@ final class KliporaOnboardingViewModel: ObservableObject {
     var totalSelectedGB: Double {
         StarterModelOption.catalog
             .filter { selectedModelIDs.contains($0.id) && !$0.isInstalledLocally }
-            .reduce(0.0) { $0 + $1.sizeGB }
+            .reduce(0.0) { $0 + $1.remainingSizeGB }
     }
 
     var exceedsDiskSpace: Bool {
@@ -445,36 +558,41 @@ final class KliporaOnboardingViewModel: ObservableObject {
         downloadProgress = 0.0
         downloadTask?.cancel()
         downloadTask = Task {
-            for (idx, option) in targets.enumerated() {
+            let pendingFiles: [(optionName: String, file: StarterModelFile)] = targets.flatMap { option in
+                option.files.filter { !$0.isInstalledLocally }.map { (option.name, $0) }
+            }
+            let totalCount = max(1, pendingFiles.count)
+            for (idx, item) in pendingFiles.enumerated() {
                 if Task.isCancelled { break }
-                if option.category == "tts" {
-                    downloadStatus = "語音模型「\(option.name)」請透過元件設定頁的官方 Voicebox 下載器下載（已完成標記）。"
-                    downloadProgress = Double(idx + 1) / Double(targets.count)
+                let file = item.file
+                if file.category == "tts" {
+                    downloadStatus = "語音模型「\(item.optionName)」請透過元件設定頁的官方 Voicebox 下載器下載（已完成標記）。"
+                    downloadProgress = Double(idx + 1) / Double(totalCount)
                     continue
                 }
-                guard let url = option.officialURL else { continue }
-                downloadStatus = "正在下載 \(option.name)（\(String(format: "%.2f", option.sizeGB)) GB）…"
+                guard let url = file.officialURL else { continue }
+                downloadStatus = "[\(idx + 1)/\(totalCount)] 正在下載 \(file.filename)（\(String(format: "%.2f", file.sizeGB)) GB）…"
                 do {
                     let (tempURL, response) = try await URLSession.shared.download(from: url)
                     let code = (response as? HTTPURLResponse)?.statusCode ?? 0
                     guard (200...299).contains(code) else {
-                        downloadStatus = "\(option.name) 下載失敗（HTTP \(code)）。"
+                        downloadStatus = "\(file.filename) 下載失敗（HTTP \(code)）。"
                         continue
                     }
-                    let dir = CentralComfyModelStorage.categoryDirectory(option.category)
+                    let dir = file.destinationDirectory()
                     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-                    let dest = dir.appendingPathComponent(option.filename)
+                    let dest = dir.appendingPathComponent(file.filename)
                     if FileManager.default.fileExists(atPath: dest.path) {
                         try FileManager.default.removeItem(at: dest)
                     }
                     try FileManager.default.moveItem(at: tempURL, to: dest)
-                    downloadProgress = Double(idx + 1) / Double(targets.count)
-                    downloadStatus = "已完成下載：\(option.filename)"
+                    downloadProgress = Double(idx + 1) / Double(totalCount)
+                    downloadStatus = "[\(idx + 1)/\(totalCount)] 已完成下載：\(file.filename)"
                 } catch {
                     if Task.isCancelled {
                         downloadStatus = "已取消下載。"
                     } else {
-                        downloadStatus = "\(option.name) 下載中斷：\(error.localizedDescription)"
+                        downloadStatus = "\(file.filename) 下載中斷：\(error.localizedDescription)"
                     }
                 }
             }

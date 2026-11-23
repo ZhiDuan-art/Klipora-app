@@ -28,7 +28,14 @@ extension Studio {
               rawVideoMethod == "frames" || rawVideoMethod == "multi" else {
             return nil
         }
-        let providerLabel = action == "wan22" ? "Wan 2.2 5B" : "自訂 ComfyUI 工作流"
+        let providerLabel: String = {
+            switch action {
+            case "wan22": return "Wan 2.2 5B"
+            case "wan22_14b": return "Wan 2.2 14B (4-step)"
+            case "ltxv13b": return "LTX-Video 13B"
+            default: return "自訂 ComfyUI 工作流"
+            }
+        }()
         let modeLabel = rawVideoMethod == "frames" ? "首尾影格" : "多影格"
         return "本機 \(providerLabel) 目前僅支援「文字生成」或「單張首幀／參考素材」，不支援\(modeLabel)模式。請改選「首幀」或切換至「線上 · Google Colab」。"
     }
@@ -51,6 +58,12 @@ extension Studio {
         }
         if action == "wan22" {
             return "本機 ComfyUI（Wan 2.2 5B）· 僅支援文字或 1 張首幀圖／影片 · 2–15 秒 · 不支援首尾／多影格"
+        }
+        if action == "wan22_14b" {
+            return "本機 ComfyUI（Wan 2.2 14B + 4-step）· 支援文字或 1 張首幀圖／影片（圖生影最佳）· 2–15 秒 · 不支援首尾／多影格"
+        }
+        if action == "ltxv13b" {
+            return "本機 ComfyUI（LTX-Video 13B Distilled）· 8 步極速出片 · 支援文字或 1 張首幀圖／影片 · 2–15 秒"
         }
         return "本機 ComfyUI（自訂工作流）· 支援 {{IMAGE}} 單圖與 {{SECONDS}} · 不支援首尾／多影格"
     }
@@ -1186,7 +1199,7 @@ private struct ReferenceSequenceSection: View {
         let videoPath = app.acceptsVideoReference ? app.project.referenceVideo.flatMap { $0.isEmpty ? nil : $0 } : nil
         let activePath = imagePath ?? videoPath
         let activeIsVideo = imagePath == nil && videoPath != nil
-        let slotLabel = app.action == "wan22" ? (activeIsVideo ? "首幀影片" : "首幀圖片") : "參考圖片"
+        let slotLabel = app.isBuiltinLocalVideoAction ? (activeIsVideo ? "首幀影片" : "首幀圖片") : "參考圖片"
         let borderColor: Color = interaction.isDropTargeted
             ? studioAccent
             : activePath != nil ? studioAccent.opacity(0.45) : .white.opacity(0.1)
@@ -1263,15 +1276,15 @@ private struct ReferenceSequenceSection: View {
                         }
                         .controlSize(.mini)
                     } else {
-                        Text(app.action == "wan22" ? "尚未指定首幀素材（不加入則依文字生成）" : "尚未指定參考圖片")
+                        Text(app.isBuiltinLocalVideoAction ? "尚未指定首幀素材（不加入則依文字生成）" : "尚未指定參考圖片")
                             .font(.callout.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                 }
 
-                Text(app.action == "wan22"
-                     ? "Wan 2.2 5B 本機影片單次支援 1 張首幀圖或 1 支參考影片（支援從左側素材庫／Finder 拖放）。"
+                Text(app.isBuiltinLocalVideoAction
+                     ? "本機內建影片模型單次支援 1 張首幀圖或 1 支參考影片（支援從左側素材庫／Finder 拖放）。"
                      : "本機自訂 ComfyUI 工作流會透過 {{IMAGE}} 讀取 1 張參考圖片，並以 {{SECONDS}} 傳入目標片長。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1567,6 +1580,12 @@ private struct TextVideoSequenceSection: View {
         }
         if app.action == "wan22" {
             return "本機 · Wan 2.2 5B"
+        }
+        if app.action == "wan22_14b" {
+            return "本機 · Wan 2.2 14B (4-step)"
+        }
+        if app.action == "ltxv13b" {
+            return "本機 · LTX-Video 13B"
         }
         return "本機 · 自訂 ComfyUI"
     }

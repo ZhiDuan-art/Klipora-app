@@ -200,6 +200,95 @@ NODE_SCHEMAS: dict[str, dict[str, Any]] = {
         "outputs": [("LATENT", "LATENT")],
         "size": [320, 160],
     },
+    "WanImageToVideo": {
+        "links": [
+            ("positive", "CONDITIONING", False),
+            ("negative", "CONDITIONING", False),
+            ("vae", "VAE", False),
+            ("clip_vision_output", "CLIP_VISION_OUTPUT", True),
+            ("start_image", "IMAGE", True),
+            ("ref_pad_image", "IMAGE", True),
+        ],
+        "widgets": [
+            ("width", "INT", 832, None),
+            ("height", "INT", 480, None),
+            ("length", "INT", 81, None),
+            ("batch_size", "INT", 1, None),
+        ],
+        "outputs": [
+            ("positive", "CONDITIONING"),
+            ("negative", "CONDITIONING"),
+            ("latent", "LATENT"),
+        ],
+        "size": [340, 200],
+    },
+    "EmptyLTXVLatentVideo": {
+        "links": [],
+        "widgets": [
+            ("width", "INT", 768, None),
+            ("height", "INT", 512, None),
+            ("length", "INT", 97, None),
+            ("batch_size", "INT", 1, None),
+        ],
+        "outputs": [("LATENT", "LATENT")],
+        "size": [300, 134],
+    },
+    "LTXVImgToVideo": {
+        "links": [
+            ("positive", "CONDITIONING", False),
+            ("negative", "CONDITIONING", False),
+            ("vae", "VAE", False),
+            ("image", "IMAGE", False),
+        ],
+        "widgets": [
+            ("width", "INT", 768, None),
+            ("height", "INT", 512, None),
+            ("length", "INT", 97, None),
+            ("batch_size", "INT", 1, None),
+            ("strength", "FLOAT", 1.0, None),
+        ],
+        "outputs": [
+            ("positive", "CONDITIONING"),
+            ("negative", "CONDITIONING"),
+            ("latent", "LATENT"),
+        ],
+        "size": [340, 210],
+    },
+    "LTXVConditioning": {
+        "links": [
+            ("positive", "CONDITIONING", False),
+            ("negative", "CONDITIONING", False),
+        ],
+        "widgets": [
+            ("frame_rate", "FLOAT", 24.0, None),
+        ],
+        "outputs": [
+            ("positive", "CONDITIONING"),
+            ("negative", "CONDITIONING"),
+        ],
+        "size": [280, 96],
+    },
+    "KSamplerAdvanced": {
+        "links": [
+            ("model", "MODEL", False),
+            ("positive", "CONDITIONING", False),
+            ("negative", "CONDITIONING", False),
+            ("latent_image", "LATENT", False),
+        ],
+        "widgets": [
+            ("add_noise", "COMBO", "enable", None),
+            ("noise_seed", "INT", 0, "control_after_generate"),
+            ("steps", "INT", 20, None),
+            ("cfg", "FLOAT", 8.0, None),
+            ("sampler_name", "COMBO", "euler", None),
+            ("scheduler", "COMBO", "simple", None),
+            ("start_at_step", "INT", 0, None),
+            ("end_at_step", "INT", 10000, None),
+            ("return_with_leftover_noise", "COMBO", "disable", None),
+        ],
+        "outputs": [("LATENT", "LATENT")],
+        "size": [320, 320],
+    },
     "KSampler": {
         "links": [
             ("model", "MODEL", False),
@@ -730,6 +819,8 @@ def resolve_builtin_graph(
         shift_id = nodes.get("shift")
         if shift_id and shift_id in workflow:
             workflow[shift_id]["inputs"]["shift"] = shift
+        if preset == "wan22_14b" and "17" in workflow:
+            workflow["17"]["inputs"]["shift"] = shift
 
     guidance: float | None = None
     if caps.get("supportsGuidance"):
@@ -753,12 +844,32 @@ def resolve_builtin_graph(
         if neg_id and neg_id in workflow:
             workflow[neg_id]["inputs"]["text"] = negative_prompt
 
-    workflow[sampler_id]["inputs"].update(
-        steps=steps,
-        cfg=cfg,
-        sampler_name=sampler,
-        scheduler=scheduler,
-    )
+    if workflow[sampler_id].get("class_type") == "KSamplerAdvanced":
+        mid_step = max(1, steps // 2)
+        workflow[sampler_id]["inputs"].update(
+            steps=steps,
+            cfg=cfg,
+            sampler_name=sampler,
+            scheduler=scheduler,
+            start_at_step=0,
+            end_at_step=mid_step,
+        )
+        if "18" in workflow and workflow["18"].get("class_type") == "KSamplerAdvanced":
+            workflow["18"]["inputs"].update(
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler,
+                scheduler=scheduler,
+                start_at_step=mid_step,
+                end_at_step=10000,
+            )
+    else:
+        workflow[sampler_id]["inputs"].update(
+            steps=steps,
+            cfg=cfg,
+            sampler_name=sampler,
+            scheduler=scheduler,
+        )
 
     lora = (request.get("lora") or "").strip() if isinstance(request.get("lora"), str) else ""
     lora_strength: float | None = None
@@ -806,8 +917,28 @@ def resolve_builtin_graph(
                 "class_type": "LoadImage",
                 "inputs": {"image": image_value},
             }
-            workflow[latent_id]["inputs"]["start_image"] = ["12", 0]
-        workflow[sampler_id]["inputs"]["denoise"] = denoise
+            if workflow[latent_id].get("class_type") == "EmptyLTXVLatentVideo":
+                workflow[latent_id] = {
+                    "class_type": "LTXVImgToVideo",
+                    "inputs": {
+                        "positive": ["7", 0],
+                        "negative": ["7", 1],
+                        "vae": ["1", 2],
+                        "image": ["12", 0],
+                        "width": int(width),
+                        "height": int(height),
+                        "length": length,
+                        "batch_size": 1,
+                        "strength": 1.0,
+                    },
+                }
+                workflow[sampler_id]["inputs"]["positive"] = [latent_id, 0]
+                workflow[sampler_id]["inputs"]["negative"] = [latent_id, 1]
+                workflow[sampler_id]["inputs"]["latent_image"] = [latent_id, 2]
+            else:
+                workflow[latent_id]["inputs"]["start_image"] = ["12", 0]
+        if workflow[sampler_id].get("class_type") != "KSamplerAdvanced":
+            workflow[sampler_id]["inputs"]["denoise"] = denoise
     else:
         if image_value is not None:
             denoise = (
@@ -1542,6 +1673,15 @@ def _run_self_test(resource_dir: Path, out_dir: Path | None) -> int:
         ("wan22_t2v", "wan22", {"prompt": "gentle breeze through curtains", "seed": 109, "aspect": "16:9", "seconds": 3}),
         ("wan22_i2v", "wan22", {
             "prompt": "person waves gently", "seed": 110, "aspect": "16:9", "seconds": 2,
+            "reference": "/tmp/start_frame.png",
+        }),
+        ("wan22_14b_i2v", "wan22_14b", {
+            "prompt": "woman smiling softly in a sunlit cafe", "seed": 113, "aspect": "16:9", "seconds": 5,
+            "reference": "/tmp/start_frame.png",
+        }),
+        ("ltxv13b_t2v", "ltxv13b", {"prompt": "aerial drone shot over emerald mountains", "seed": 114, "aspect": "16:9", "seconds": 4}),
+        ("ltxv13b_i2v", "ltxv13b", {
+            "prompt": "gentle camera push-in on ceramic teacups", "seed": 115, "aspect": "16:9", "seconds": 4,
             "reference": "/tmp/start_frame.png",
         }),
     ]

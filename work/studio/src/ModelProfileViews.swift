@@ -673,7 +673,7 @@ struct LocalModelProfile: Codable, Equatable, Identifiable, Sendable {
             ?? decodedDisplay
         let decodedKind = (try? container.decode(String.self, forKey: .kind))
             ?? fallback?.kind
-            ?? (decodedID == "wan22" ? "video" : "image")
+            ?? (["wan22", "wan22_14b", "ltxv13b"].contains(decodedID) ? "video" : "image")
         let decodedArch = container.decodeFirst(String.self, keys: [.architecture, .arch])
             ?? fallback?.architecture
             ?? "DiT"
@@ -729,7 +729,7 @@ struct LocalModelProfile: Codable, Equatable, Identifiable, Sendable {
         } else {
             let fb = fallback?.capabilities
             let img2img = container.decodeFirst(Bool.self, keys: [.supportsImg2Img, .supports_img2img]) ?? fb?.supportsImg2Img ?? false
-            let videoFirst = container.decodeFirst(Bool.self, keys: [.supportsVideoFirstFrame, .supports_video_first_frame]) ?? fb?.supportsVideoFirstFrame ?? (decodedID == "wan22")
+            let videoFirst = container.decodeFirst(Bool.self, keys: [.supportsVideoFirstFrame, .supports_video_first_frame]) ?? fb?.supportsVideoFirstFrame ?? ["wan22", "wan22_14b", "ltxv13b"].contains(decodedID)
             let lora = container.decodeFirst(Bool.self, keys: [.supportsLoRA, .supports_lora]) ?? fb?.supportsLoRA ?? false
             let neg = container.decodeFirst(Bool.self, keys: [.supportsNegativePrompt, .supports_negative_prompt]) ?? fb?.supportsNegativePrompt ?? !(decodedDefaults.negativePrompt ?? "").isEmpty
             let shift = container.decodeFirst(Bool.self, keys: [.supportsShift, .supports_shift]) ?? fb?.supportsShift ?? (decodedDefaults.shift != nil)
@@ -956,7 +956,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
     init(
         version: String,
         engineLabel: String = "本機 ComfyUI",
-        modelOrder: [String] = ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22"],
+        modelOrder: [String] = ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"],
         removedModels: [String: RemovedModelNotice],
         loras: [LoRAProfile],
         models: [LocalModelProfile]
@@ -1015,7 +1015,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
         }
 
         let explicitOrder = container.decodeFirst([String].self, keys: [.modelOrder, .model_order])
-            ?? ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22"]
+            ?? ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"]
         modelOrder = explicitOrder
 
         let decodedModels: [LocalModelProfile]
@@ -1047,7 +1047,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
     static let fallback = ModelProfileCatalog(
         version: "1",
         engineLabel: "本機 ComfyUI",
-        modelOrder: ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22"],
+        modelOrder: ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"],
         removedModels: [
             "realxl": RemovedModelNotice(
                 id: "realxl",
@@ -1490,6 +1490,131 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
                     "uni_pc 在本機 Apple Silicon MPS 實測 832×480 與 512×288 均曾出現嚴重條紋與噪點失敗，請預設維持已驗證之 euler。",
                     "僅支援單一首幀參考（圖片或影片取首幀），不支援首尾雙幀、多影格模式與 LoRA。",
                     "VAEDecodeTiled 與 CLIPLoader device=cpu 屬官方文件／理論記憶體優化，本機尚未實測驗證，故未設為預設。"
+                ],
+                negativePromptDisabledNote: nil
+            ),
+            LocalModelProfile(
+                id: "wan22_14b",
+                displayName: "Wan 2.2 14B MoE + 4-step 加速 (FP8)",
+                shortName: "Wan 2.2 14B",
+                kind: "video",
+                architecture: "Wan 2.2 14B Dual-Expert MoE (High/Low Noise FP8 + LightX2V 4-step LoRA + Wan 2.1 VAE)",
+                precision: "FP8",
+                clipType: "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+                vaeName: "wan_2.1_vae.safetensors",
+                alignment: 16,
+                maxPixels: 921_600,
+                defaults: ModelDefaults(
+                    steps: 4,
+                    cfg: 1.0,
+                    sampler: "euler",
+                    scheduler: "simple",
+                    shift: 5.0,
+                    guidance: nil,
+                    negativePrompt: "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+                    denoise: 1.0,
+                    img2imgDenoise: nil,
+                    fps: 16,
+                    seconds: 5
+                ),
+                ranges: ModelParameterRanges(
+                    steps: IntRangeSpec(min: 4, max: 12, step: 1),
+                    cfg: DoubleRangeSpec(min: 1.0, max: 3.0, step: 0.5),
+                    samplers: ["euler", "uni_pc"],
+                    schedulers: ["simple", "sgm_uniform"],
+                    shift: DoubleRangeSpec(min: 3.0, max: 8.0, step: 0.5),
+                    guidance: nil,
+                    denoise: nil,
+                    seconds: IntRangeSpec(min: 2, max: 15, step: 1)
+                ),
+                capabilities: ModelCapabilities(
+                    supportsImg2Img: false,
+                    supportsVideoFirstFrame: true,
+                    supportsLoRA: false,
+                    supportsNegativePrompt: true,
+                    supportsShift: true,
+                    supportsGuidance: false,
+                    supportsSkipLayer: false,
+                    compatibleLoRAs: [],
+                    unsupportedNotes: [
+                        "本工作流已內建 LightX2V 4-step 加速 LoRA（CFG 1.0），不支援額外外掛 LoRA。",
+                        "僅支援單一首幀參考（圖生影效果最佳）或文字生成，不支援首尾雙幀與多影格模式。",
+                        "需先於「可選模型下載」下載 5 個檔案（合計約 31.3 GB，共用既有 UMT5-XXL）。"
+                    ]
+                ),
+                nativeSizes: ["16:9": [832, 480], "9:16": [480, 832], "1:1": [640, 640]],
+                nativeSizeNote: "原生影片尺寸需為 16 的倍數且總像素 ≤ 921,600（16 fps）。",
+                recommendationNote: "高畫質人物動作與手部物理首選（建議 36GB+ RAM）：採用 ComfyUI 原生 FP8 雙專家（High/Low Noise）搭配 LightX2V 4-step 加速 LoRA，僅需 4–8 步（CFG 1.0、16fps）即可完成，手部與互動穩定度遠勝 5B。",
+                sourceSummary: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged · https://docs.comfy.org/tutorials/video/wan/wan2_2",
+                officialSources: [
+                    "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+                    "https://docs.comfy.org/tutorials/video/wan/wan2_2"
+                ],
+                topLevelUnsupportedNotes: [
+                    "本工作流已內建 LightX2V 4-step 加速 LoRA（CFG 1.0），不支援額外外掛 LoRA。",
+                    "僅支援單一首幀參考（圖生影效果最佳）或文字生成，不支援首尾雙幀與多影格模式。"
+                ],
+                negativePromptDisabledNote: nil
+            ),
+            LocalModelProfile(
+                id: "ltxv13b",
+                displayName: "LTX-Video 13B Distilled (FP8)",
+                shortName: "LTX-Video 13B",
+                kind: "video",
+                architecture: "LTX-Video 0.9.7 13B Distilled FP8 (T5-XXL FP8 + Built-in VAE)",
+                precision: "FP8",
+                clipType: "t5xxl_fp8_e4m3fn.safetensors",
+                vaeName: "Built-in LTXV VAE",
+                alignment: 32,
+                maxPixels: 921_600,
+                defaults: ModelDefaults(
+                    steps: 8,
+                    cfg: 1.0,
+                    sampler: "euler",
+                    scheduler: "simple",
+                    shift: nil,
+                    guidance: nil,
+                    negativePrompt: "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly",
+                    denoise: 1.0,
+                    img2imgDenoise: nil,
+                    fps: 24,
+                    seconds: 4
+                ),
+                ranges: ModelParameterRanges(
+                    steps: IntRangeSpec(min: 4, max: 16, step: 1),
+                    cfg: DoubleRangeSpec(min: 1.0, max: 3.5, step: 0.5),
+                    samplers: ["euler", "res_multistep"],
+                    schedulers: ["simple", "normal"],
+                    shift: nil,
+                    guidance: nil,
+                    denoise: nil,
+                    seconds: IntRangeSpec(min: 2, max: 15, step: 1)
+                ),
+                capabilities: ModelCapabilities(
+                    supportsImg2Img: false,
+                    supportsVideoFirstFrame: true,
+                    supportsLoRA: false,
+                    supportsNegativePrompt: true,
+                    supportsShift: false,
+                    supportsGuidance: false,
+                    supportsSkipLayer: false,
+                    compatibleLoRAs: [],
+                    unsupportedNotes: [
+                        "LTX-Video 13B Distilled 建議維持 8 steps / CFG 1.0 與 32 倍數尺寸（預設 768×512），幀數自動對齊 8n+1（24fps）。",
+                        "僅支援文字生成或單一首幀圖／影片參考，不支援首尾雙幀、多影格模式與 LoRA。"
+                    ]
+                ),
+                nativeSizes: ["16:9": [768, 512], "9:16": [512, 768], "1:1": [640, 640]],
+                nativeSizeNote: "原生影片尺寸需為 32 的倍數且總像素 ≤ 921,600（24 fps，8n+1 幀）。",
+                recommendationNote: "Apple Silicon 極速出片首選（建議 32GB+ RAM）：8 步蒸餾模型、鏡頭運動流暢，5 秒影片僅約 1–3 分鐘即可完成，極適合快速試錯與大量剪輯鏡頭（約 15.7 GB，共用既有 T5-XXL）。",
+                sourceSummary: "https://huggingface.co/Lightricks/LTX-Video · https://docs.comfy.org/tutorials/video/ltx/ltx-video",
+                officialSources: [
+                    "https://huggingface.co/Lightricks/LTX-Video",
+                    "https://docs.comfy.org/tutorials/video/ltx/ltx-video"
+                ],
+                topLevelUnsupportedNotes: [
+                    "LTX-Video 13B Distilled 建議維持 8 steps / CFG 1.0 與 32 倍數尺寸（預設 768×512）。",
+                    "僅支援文字生成或單一首幀圖／影片參考，不支援首尾雙幀、多影格模式與 LoRA。"
                 ],
                 negativePromptDisabledNote: nil
             )
@@ -2140,7 +2265,7 @@ extension Studio {
         let seedText = (project.fixedSeed ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let seed = UInt32(seedText) ?? UInt32.random(in: 1...2147483646)
         let ref = localModelSupportsReference ? referenceImage.trimmingCharacters(in: .whitespacesAndNewlines) : ""
-        let refVideo = (project.kind == "video" && localModel == "wan22") ? (project.referenceVideo ?? "") : ""
+        let refVideo = (project.kind == "video" && ["wan22", "wan22_14b", "ltxv13b"].contains(localModel)) ? (project.referenceVideo ?? "") : ""
         let cleanBase = baseName.isEmpty ? "\(localModel)-workflow" : baseName
         let apiURL = destinationDirectory.appendingPathComponent("\(cleanBase).api.json")
         let workflowURL = destinationDirectory.appendingPathComponent("\(cleanBase).workflow.json")
