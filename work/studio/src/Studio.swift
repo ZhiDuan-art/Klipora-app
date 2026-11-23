@@ -1619,6 +1619,51 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         else { generateSelection = path }
     }
 
+    @discardableResult
+    func importDroppedMediaURLs(_ urls: [URL], selectingIn target: Workspace? = nil) -> Bool {
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isRegularFileKey]
+        var collected: [String] = []
+        var seenDropped = Set<String>()
+        func appendIfSupported(_ fileURL: URL) {
+            let std = fileURL.standardizedFileURL
+            let ext = std.pathExtension.lowercased()
+            guard multitrackMediaTypes.contains(ext),
+                  (try? std.resourceValues(forKeys: keys).isRegularFile) == true else { return }
+            if seenDropped.insert(std.path).inserted {
+                collected.append(std.path)
+            }
+        }
+        for url in urls where url.isFileURL {
+            if (try? url.resourceValues(forKeys: keys).isDirectory) == true {
+                if let enumerator = fs.enumerator(
+                    at: url,
+                    includingPropertiesForKeys: Array(keys),
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                ) {
+                    let entries = enumerator.compactMap { $0 as? URL }
+                        .sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+                    entries.forEach(appendIfSupported)
+                }
+            } else {
+                appendIfSupported(url)
+            }
+        }
+        guard !collected.isEmpty else {
+            status = "拖入的檔案不含支援的影片、圖片或音訊格式。"
+            return false
+        }
+        let existing = Set(project.media)
+        let newlyAddedCount = collected.filter { !existing.contains($0) }.count
+        importPaths(collected, selectingIn: target)
+        if newlyAddedCount > 0 {
+            status = "已拖入匯入 \(newlyAddedCount) 個素材至素材庫"
+        } else {
+            status = "所拖入的素材已存在於素材庫中"
+        }
+        Task { await loadMultitrackDurations() }
+        return true
+    }
+
     func removeFromLibrary(_ paths: Set<String>) {
         let removed = paths.intersection(project.media)
         guard !removed.isEmpty else { return }
@@ -3764,6 +3809,126 @@ private enum EditPreviewMode: String {
     }
 }
 
+struct LibraryItemFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+@MainActor
+final class LibraryInteractionState: ObservableObject {
+    @Published var isDropTargeted: Bool = false
+    @Published var marqueeStart: CGPoint? = nil
+    @Published var marqueeCurrent: CGPoint? = nil
+    var itemFrames: [String: CGRect] = [:]
+    var preDragSelection: Set<String> = []
+
+    var marqueeRect: CGRect? {
+        guard let start = marqueeStart, let current = marqueeCurrent else { return nil }
+        let x = min(start.x, current.x)
+        let y = min(start.y, current.y)
+        let w = abs(current.x - start.x)
+        let h = abs(current.y - start.y)
+        guard w >= 4 || h >= 4 else { return nil }
+        return CGRect(x: x, y: y, width: w, height: h)
+    }
+
+    func updateMarquee(value: DragGesture.Value, app: Studio) {
+        if marqueeStart == nil {
+            marqueeStart = value.startLocation
+            let flags = NSEvent.modifierFlags
+            if flags.contains(.shift) || flags.contains(.command) {
+                preDragSelection = app.libraryBatchSelection ?? []
+            } else {
+                preDragSelection = []
+            }
+        }
+        marqueeCurrent = value.location
+        guard let rect = marqueeRect else { return }
+        var hits = preDragSelection
+        for (path, frame) in itemFrames where frame.intersects(rect) {
+            hits.insert(path)
+        }
+        app.libraryBatchSelection = hits
+    }
+
+    func endMarquee(app: Studio) {
+        marqueeStart = nil
+        marqueeCurrent = nil
+        preDragSelection = []
+        if app.libraryBatchSelection?.isEmpty == true {
+            app.libraryBatchSelection = nil
+        }
+    }
+}
+
+struct LibraryDropHighlightOverlay: View {
+    let isTargeted: Bool
+
+    var body: some View {
+        if isTargeted {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(studioAccent.opacity(0.14))
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(studioAccent, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                VStack(spacing: 6) {
+                    Image(systemName: "arrow.down.doc.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(studioAccent)
+                    Text("放開滑鼠以匯入素材")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .padding(4)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+struct LibraryMarqueeBoxOverlay: View {
+    let rect: CGRect?
+
+    var body: some View {
+        if let rect {
+            Rectangle()
+                .fill(studioAccent.opacity(0.20))
+                .overlay(
+                    Rectangle()
+                        .strokeBorder(studioAccent, lineWidth: 1.25)
+                )
+                .frame(width: rect.width, height: rect.height)
+                .position(x: rect.midX, y: rect.midY)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+struct ConditionalLibraryDragModifier: ViewModifier {
+    let enabled: Bool
+    let url: URL
+    let onMarqueeChanged: (DragGesture.Value) -> Void
+    let onMarqueeEnded: () -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.draggable(url)
+        } else {
+            content.highPriorityGesture(
+                DragGesture(minimumDistance: 5, coordinateSpace: .named("kliporaEditLibrarySpace"))
+                    .onChanged(onMarqueeChanged)
+                    .onEnded { _ in onMarqueeEnded() }
+            )
+        }
+    }
+}
+
 struct StudioView: View {
     @ObservedObject var app: Studio
     @ObservedObject private var network = NetworkReachabilityMonitor.shared
@@ -3773,6 +3938,7 @@ struct StudioView: View {
     @AppStorage("MotionDesk.onlineImage.gemini_image.billingAcknowledged") private var geminiBillingAccepted = false
     @StateObject private var multitrackState = MultitrackEditState()
     @StateObject private var multitrackPlayback = MultitrackPlaybackController()
+    @StateObject private var libraryInteraction = LibraryInteractionState()
 
     private var editLayout: MultitrackLayout {
         app.currentMultitrackLayout()
@@ -4228,63 +4394,123 @@ struct StudioView: View {
                 .padding(.horizontal, 14).padding(.bottom, 8)
             if app.project.media.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("匯入影片、圖片或音檔").foregroundStyle(.secondary)
+                    Text("拖曳影片、圖片或音檔至此，或點下方選擇檔案")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Button("選擇檔案", action: app.importMedia)
                 }.padding(12)
             }
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(app.project.media, id: \.self) { path in
-                        Button {
-                            if var selected = app.libraryBatchSelection {
-                                if selected.contains(path) { selected.remove(path) }
-                                else { selected.insert(path) }
-                                app.libraryBatchSelection = selected
-                            } else {
-                                app.selection = path
-                            }
-                        } label: {
-                            HStack(spacing: 9) {
-                                if let batch {
-                                    Image(systemName: batch.contains(path) ? "checkmark.square.fill" : "square")
-                                        .foregroundStyle(batch.contains(path) ? studioAccent : .secondary)
-                                        .accessibilityLabel(batch.contains(path) ? "已勾選" : "未勾選")
+            GeometryReader { scrollGeo in
+                ScrollView {
+                    ZStack(alignment: .topLeading) {
+                        Color.clear
+                            .frame(minWidth: scrollGeo.size.width, minHeight: max(180, scrollGeo.size.height))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if app.libraryBatchSelection != nil {
+                                    app.libraryBatchSelection = nil
                                 }
-                                MediaThumbnail(path: path, reloadToken: app.mediaReloadToken)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)
-                                        .font(.callout.weight(.medium)).lineLimit(1)
-                                    Text(URL(fileURLWithPath: path).pathExtension.uppercased())
-                                        .font(.caption2.monospaced()).foregroundStyle(.secondary)
+                            }
+                            .gesture(
+                                DragGesture(minimumDistance: 5, coordinateSpace: .named("kliporaGenLibrarySpace"))
+                                    .onChanged { value in
+                                        libraryInteraction.updateMarquee(value: value, app: app)
+                                    }
+                                    .onEnded { _ in
+                                        libraryInteraction.endMarquee(app: app)
+                                    }
+                            )
+
+                        LazyVStack(spacing: 3) {
+                            ForEach(app.project.media, id: \.self) { path in
+                                let row = Button {
+                                    if NSEvent.modifierFlags.contains(.command) {
+                                        var selected = app.libraryBatchSelection ?? []
+                                        if selected.contains(path) { selected.remove(path) }
+                                        else { selected.insert(path) }
+                                        app.libraryBatchSelection = selected.isEmpty ? nil : selected
+                                    } else if var selected = app.libraryBatchSelection {
+                                        if selected.contains(path) { selected.remove(path) }
+                                        else { selected.insert(path) }
+                                        app.libraryBatchSelection = selected
+                                    } else {
+                                        app.selection = path
+                                    }
+                                } label: {
+                                    HStack(spacing: 9) {
+                                        if let batch {
+                                            Image(systemName: batch.contains(path) ? "checkmark.square.fill" : "square")
+                                                .foregroundStyle(batch.contains(path) ? studioAccent : .secondary)
+                                                .accessibilityLabel(batch.contains(path) ? "已勾選" : "未勾選")
+                                        }
+                                        MediaThumbnail(path: path, reloadToken: app.mediaReloadToken)
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)
+                                                .font(.callout.weight(.medium)).lineLimit(1)
+                                            Text(URL(fileURLWithPath: path).pathExtension.uppercased())
+                                                .font(.caption2.monospaced()).foregroundStyle(.secondary)
+                                        }
+                                        Spacer(minLength: 0)
+                                    }.padding(7)
+                                        .background((batch?.contains(path) ?? (app.selection == path))
+                                            ? studioAccent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
                                 }
-                                Spacer(minLength: 0)
-                            }.padding(7)
-                                .background((batch?.contains(path) ?? (app.selection == path))
-                                    ? studioAccent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
-                        }.buttonStyle(.plain).draggable(URL(fileURLWithPath: path))
-                        .contextMenu {
-                            let url = URL(fileURLWithPath: path)
-                            let ext = url.pathExtension.lowercased()
-                            if multitrackMediaTypes.contains(ext) {
-                                Button(isAudioMediaPath(path) ? "加入音訊軌" : "加入時間軸") {
-                                    app.addToTimeline(path)
-                                }.disabled(app.busy)
+                                .buttonStyle(.plain)
+                                .background(
+                                    GeometryReader { itemGeo in
+                                        Color.clear.preference(
+                                            key: LibraryItemFramePreferenceKey.self,
+                                            value: [path: itemGeo.frame(in: .named("kliporaGenLibrarySpace"))]
+                                        )
+                                    }
+                                )
+                                .contextMenu {
+                                    let url = URL(fileURLWithPath: path)
+                                    let ext = url.pathExtension.lowercased()
+                                    if multitrackMediaTypes.contains(ext) {
+                                        Button(isAudioMediaPath(path) ? "加入音訊軌" : "加入時間軸") {
+                                            app.addToTimeline(path)
+                                        }.disabled(app.busy)
+                                    }
+                                    if (app.takesReference && imageTypes.contains(ext)) || (app.acceptsVideoReference && movieTypes.contains(ext)) {
+                                        Button("加入生成參考") { app.attachReference(url) }.disabled(app.busy)
+                                    }
+                                    if app.project.kind == "video", app.usesMultiFrames, imageTypes.contains(ext) {
+                                        Button("加入多影格") { app.addKeyframes([url]) }
+                                            .disabled(app.busy || app.orderedFrames.count >= Studio.maxKeyframes)
+                                    }
+                                    if let settings = app.recordedGeneration(for: path) {
+                                        Button("載入原生成設定") { app.restoreGeneration(settings) }.disabled(app.busy)
+                                    }
+                                    Button("在 Finder 顯示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
+                                    Button("從素材庫移除") { app.removeFromLibrary([path]) }
+                                }
+
+                                if batch == nil {
+                                    row.draggable(URL(fileURLWithPath: path))
+                                } else {
+                                    row.highPriorityGesture(
+                                        DragGesture(minimumDistance: 5, coordinateSpace: .named("kliporaGenLibrarySpace"))
+                                            .onChanged { value in
+                                                libraryInteraction.updateMarquee(value: value, app: app)
+                                            }
+                                            .onEnded { _ in
+                                                libraryInteraction.endMarquee(app: app)
+                                            }
+                                    )
+                                }
                             }
-                            if (app.takesReference && imageTypes.contains(ext)) || (app.acceptsVideoReference && movieTypes.contains(ext)) {
-                                Button("加入生成參考") { app.attachReference(url) }.disabled(app.busy)
-                            }
-                            if app.project.kind == "video", app.usesMultiFrames, imageTypes.contains(ext) {
-                                Button("加入多影格") { app.addKeyframes([url]) }
-                                    .disabled(app.busy || app.orderedFrames.count >= Studio.maxKeyframes)
-                            }
-                            if let settings = app.recordedGeneration(for: path) {
-                                Button("載入原生成設定") { app.restoreGeneration(settings) }.disabled(app.busy)
-                            }
-                            Button("在 Finder 顯示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
-                            Button("從素材庫移除") { app.removeFromLibrary([path]) }
                         }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+
+                        LibraryMarqueeBoxOverlay(rect: libraryInteraction.marqueeRect)
                     }
-                }.padding(.horizontal, 7)
+                    .coordinateSpace(name: "kliporaGenLibrarySpace")
+                    .onPreferenceChange(LibraryItemFramePreferenceKey.self) { frames in
+                        libraryInteraction.itemFrames = frames
+                    }
+                }
             }
             if let batch {
                 Divider()
@@ -4313,7 +4539,16 @@ struct StudioView: View {
                         .disabled(!multitrackMediaTypes.contains(ext))
                 }.padding(12)
             }
-        }.frame(maxHeight: .infinity).background(panel)
+        }
+        .frame(maxHeight: .infinity)
+        .background(panel)
+        .overlay { LibraryDropHighlightOverlay(isTargeted: libraryInteraction.isDropTargeted) }
+        .dropDestination(for: URL.self) { urls, _ in
+            libraryInteraction.isDropTargeted = false
+            return app.importDroppedMediaURLs(urls, selectingIn: .generate)
+        } isTargeted: { targeted in
+            libraryInteraction.isDropTargeted = targeted
+        }
     }
 
     func bridgeBanner(_ bridge: BridgeShot) -> some View {

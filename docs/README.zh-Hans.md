@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
-[![Release](https://img.shields.io/badge/下载-v1.0.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下载-v1.0.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新与除错记录](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%99%A4%E9%94%99%E8%AE%B0%E5%BD%95-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.0.1`（2026-11-23 00:58 UTC+8）**：修复新建音轨（`A2+`）、视频轨（`V2+`）与文字轨（`T2+`）无法拖放素材的多轨 Bug。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.1 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.1)**。
+> **最新更新 — `v1.0.2`（2026-11-23 08:16 UTC+8）**：素材库新增「鼠标直接从 Finder 拖入导入」与「鼠标框选多选／`⌘+点击`／批量加入轨道」（生成与剪辑页均支持）。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.0.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**。
 
 ## 界面展示
 
@@ -62,7 +62,7 @@
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.1-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.2-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 

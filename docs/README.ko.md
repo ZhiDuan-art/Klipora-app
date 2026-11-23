@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#권장-사양)
 [![Languages](https://img.shields.io/badge/지원언어-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5개국어-현지화)
-[![Release](https://img.shields.io/badge/다운로드-v1.0.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/다운로드-v1.0.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![변경 및 디버그 로그](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **최신 업데이트 — `v1.0.1` (2026-11-23 00:58 UTC+8)**: 새로 만든 오디오(`A2+`), 비디오(`V2+`), 텍스트(`T2+`) 트랙에 미디어를 드래그 앤 드롭할 수 없던 버그를 수정했습니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.0.1 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.1)**.
+> **최신 업데이트 — `v1.0.2` (2026-11-23 08:16 UTC+8)**: 미디어 라이브러리에서 Finder 직접 드래그 앤 드롭 가져오기 및 마우스 박스 다중 선택(`⌘+클릭` 및 트랙 일괄 추가)을 지원합니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.0.2 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.0.2)**.
 
 ## 인터페이스 미리보기
 
@@ -62,7 +62,7 @@
 
 ## 설치 방법
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.1-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.2-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
 

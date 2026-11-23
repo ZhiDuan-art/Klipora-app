@@ -315,6 +315,7 @@ struct MultitrackLibraryPanel: View {
     @ObservedObject var app: Studio
     @ObservedObject var state: MultitrackEditState
     @ObservedObject var playback: MultitrackPlaybackController
+    @StateObject private var libraryInteraction = LibraryInteractionState()
 
     private var layout: MultitrackLayout {
         app.currentMultitrackLayout()
@@ -553,7 +554,7 @@ struct MultitrackLibraryPanel: View {
                             .foregroundStyle(.secondary)
                         Text("尚無素材")
                             .font(.caption.weight(.medium))
-                        Text("匯入影片、圖片或音檔，或從生成頁產出後自動出現在此。")
+                        Text("直接拖曳影片、圖片或音檔至此，或按下方按鈕匯入。")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -568,17 +569,42 @@ struct MultitrackLibraryPanel: View {
                     .frame(maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
-                            spacing: 6
-                        ) {
-                            ForEach(app.project.media, id: \.self) { path in
-                                mediaGridTile(path: path, batch: batch)
+                        ZStack(alignment: .topLeading) {
+                            Color.clear
+                                .frame(minWidth: availW, minHeight: max(180, geo.size.height - 110))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if app.libraryBatchSelection != nil {
+                                        app.libraryBatchSelection = nil
+                                    }
+                                }
+                                .gesture(
+                                    DragGesture(minimumDistance: 5, coordinateSpace: .named("kliporaEditLibrarySpace"))
+                                        .onChanged { value in
+                                            libraryInteraction.updateMarquee(value: value, app: app)
+                                        }
+                                        .onEnded { _ in
+                                            libraryInteraction.endMarquee(app: app)
+                                        }
+                                )
+
+                            LazyVGrid(
+                                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                                spacing: 8
+                            ) {
+                                ForEach(app.project.media, id: \.self) { path in
+                                    mediaGridTile(path: path, batch: batch)
+                                }
                             }
+                            .padding(9)
+                            .frame(width: availW, alignment: .leading)
+
+                            LibraryMarqueeBoxOverlay(rect: libraryInteraction.marqueeRect)
                         }
-                        .padding(7)
-                        .frame(width: availW, alignment: .leading)
-                        .clipped()
+                        .coordinateSpace(name: "kliporaEditLibrarySpace")
+                        .onPreferenceChange(LibraryItemFramePreferenceKey.self) { frames in
+                            libraryInteraction.itemFrames = frames
+                        }
                     }
                     .frame(width: availW, alignment: .topLeading)
                 }
@@ -597,15 +623,32 @@ struct MultitrackLibraryPanel: View {
                             }
                             .controlSize(.mini)
                         }
-                        Button(role: .destructive) {
-                            app.removeFromLibrary(batch)
-                        } label: {
-                            Text("從素材庫移除所選項目")
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: 6) {
+                            Button {
+                                let ordered = app.project.media.filter { batch.contains($0) }
+                                for path in ordered {
+                                    addMediaPathToActiveTrack(path)
+                                }
+                            } label: {
+                                Text("加入軌道")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.borderedProminent)
+                            .tint(mtCyanAccent)
+                            .foregroundStyle(canvas)
+                            .disabled(batch.isEmpty || app.busy)
+
+                            Button(role: .destructive) {
+                                app.removeFromLibrary(batch)
+                            } label: {
+                                Text("移除所選")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .controlSize(.small)
+                            .disabled(batch.isEmpty)
+                            .help("只從此專案的素材庫移除，保留磁碟上的檔案")
                         }
-                        .controlSize(.small)
-                        .disabled(batch.isEmpty)
-                        .help("只從此專案的素材庫移除，保留磁碟上的檔案")
                     }
                     .padding(8)
                     .frame(width: availW, alignment: .leading)
@@ -641,6 +684,13 @@ struct MultitrackLibraryPanel: View {
             }
             .frame(width: availW, height: max(120, geo.size.height), alignment: .topLeading)
             .clipped()
+            .overlay { LibraryDropHighlightOverlay(isTargeted: libraryInteraction.isDropTargeted) }
+            .dropDestination(for: URL.self) { urls, _ in
+                libraryInteraction.isDropTargeted = false
+                return app.importDroppedMediaURLs(urls, selectingIn: .edit)
+            } isTargeted: { targeted in
+                libraryInteraction.isDropTargeted = targeted
+            }
         }
     }
 
@@ -738,8 +788,21 @@ struct MultitrackLibraryPanel: View {
                 .strokeBorder(isSelected ? mtCyanAccent : .white.opacity(0.07), lineWidth: isSelected ? 1.2 : 0.8)
         )
         .contentShape(Rectangle())
+        .background(
+            GeometryReader { itemGeo in
+                Color.clear.preference(
+                    key: LibraryItemFramePreferenceKey.self,
+                    value: [path: itemGeo.frame(in: .named("kliporaEditLibrarySpace"))]
+                )
+            }
+        )
         .onTapGesture {
-            if var selected = app.libraryBatchSelection {
+            if NSEvent.modifierFlags.contains(.command) {
+                var selected = app.libraryBatchSelection ?? []
+                if selected.contains(path) { selected.remove(path) }
+                else { selected.insert(path) }
+                app.libraryBatchSelection = selected.isEmpty ? nil : selected
+            } else if var selected = app.libraryBatchSelection {
                 if selected.contains(path) { selected.remove(path) }
                 else { selected.insert(path) }
                 app.libraryBatchSelection = selected
@@ -753,7 +816,11 @@ struct MultitrackLibraryPanel: View {
                 addMediaPathToActiveTrack(path)
             }
         }
-        .draggable(url)
+        .modifier(ConditionalLibraryDragModifier(enabled: batch == nil, url: url, onMarqueeChanged: { value in
+            libraryInteraction.updateMarquee(value: value, app: app)
+        }, onMarqueeEnded: {
+            libraryInteraction.endMarquee(app: app)
+        }))
         .contextMenu {
             if multitrackMediaTypes.contains(ext) {
                 Button(isAudio ? "加入音訊軌" : "加入時間軸") {
