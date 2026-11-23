@@ -4790,7 +4790,7 @@ struct StudioView: View {
                         bridgeBanner(bridge)
                     }
                     generationSettings
-                    if app.source != "colab" {
+                    if app.project.kind != "motion" && app.source != "colab" {
                         if app.isRemovedModelSelected {
                             RemovedModelBanner(app: app)
                         } else {
@@ -4819,17 +4819,19 @@ struct StudioView: View {
                         }
                     }
                     if !app.usesFirstLastFrames {
-                        promptEditor("畫面與動作", placeholder: "請在這裡輸入提示詞")
+                        promptEditor(app.project.kind == "motion" ? "動態圖形需求" : "畫面與動作", placeholder: "請在這裡輸入提示詞")
                     }
                     if !app.generateSelection.isEmpty {
                         RecordedGenerationSummaryCard(app: app, assetPath: app.generateSelection)
                     }
-                    Divider()
-                    DisclosureGroup("風格、鏡頭與 Seed") {
-                        refinementSettings.padding(.top, 9)
-                    }
-                    DisclosureGroup("動態片頭") {
-                        motionTitles.padding(.top, 9)
+                    if app.project.kind != "motion" {
+                        Divider()
+                        DisclosureGroup("風格、鏡頭與 Seed") {
+                            refinementSettings.padding(.top, 9)
+                        }
+                        DisclosureGroup("動態片頭") {
+                            motionTitles.padding(.top, 9)
+                        }
                     }
                 }.padding(14)
             }

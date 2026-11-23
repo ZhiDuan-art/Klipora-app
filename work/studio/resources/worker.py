@@ -1451,7 +1451,14 @@ def run_mografy_motion(request, folder):
     if agent == "claude":
         cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
     elif agent == "codex":
-        cmd = [agent_bin, "exec", "--full-auto", instruction]
+        cmd = [
+            agent_bin, "exec",
+            "--sandbox", "workspace-write",
+            "--skip-git-repo-check",
+            "--add-dir", str(folder),
+            "-C", str(workspace),
+            instruction,
+        ]
     elif agent == "antigravity":
         cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions"]
     else:
@@ -1470,13 +1477,32 @@ def run_mografy_motion(request, folder):
 
     started_at = time.time()
     emit_progress(pct=0.18, stage=f"{agent} 製作動畫中")
-    proc = subprocess.run(cmd, cwd=str(workspace), env=env, capture_output=True, text=True, timeout=1800)
-    if proc.stdout:
-        log(proc.stdout[-4000:])
-    if proc.stderr:
-        log(proc.stderr[-2000:])
-    if proc.returncode != 0 and not target_mp4.is_file():
-        raise ValueError(f"Agent（{agent}）執行失敗（代碼 {proc.returncode}），請查看工作紀錄。")
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(workspace),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    try:
+        if proc.stdout is not None:
+            for line in proc.stdout:
+                text = line.rstrip("\r\n")
+                if text:
+                    log(text)
+                    low = text.lower()
+                    if "mografy check" in low or "review" in low:
+                        emit_progress(pct=0.58, stage="檢查動畫畫面中")
+                    elif "export" in low or "render" in low or "ffmpeg" in low:
+                        emit_progress(pct=0.76, stage="渲染輸出 MP4 中")
+        returncode = proc.wait(timeout=1800)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise TimeoutError(f"Agent（{agent}）執行超過 30 分鐘已中斷，請查看工作紀錄。")
+    if returncode != 0 and not target_mp4.is_file():
+        raise ValueError(f"Agent（{agent}）執行失敗（代碼 {returncode}），請查看工作紀錄。")
 
     emit_progress(pct=0.88, stage="檢查輸出 MP4")
     if not target_mp4.is_file() or target_mp4.stat().st_size == 0:
