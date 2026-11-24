@@ -27,12 +27,12 @@
 *纯窗口 `v1.1.1` 实机画面——旁白由 Klipora 内置本地 Qwen3-TTS 离线合成，展示全新胶囊 UI、6 分页设置页与 Breeze-ASR-26 字幕：*
 **[▶ 观看／下载 v1.1.1 中文配音版（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)** · **[▶ English Version（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)**
 
-https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 <details>
-<summary>▶ Watch English Voiceover Version (英文配音版 · 44s)</summary>
+<summary>▶ Watch English Voiceover Version (英文配音版 · 62s)</summary>
 
-https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 </details>
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.0.9-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.1.1-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 

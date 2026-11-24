@@ -27,12 +27,12 @@
 *Recorded from live `v1.1.1` macOS app — voiced with offline Qwen3-TTS, unified Capsule UI, Breeze-ASR-26 & 6-tab Settings:*
 **[▶ Watch / Download v1.1.1 English 1080p Demo](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ Watch / Download v1.1.1 繁體中文配音版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
-https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 <details>
-<summary>▶ Watch Traditional Chinese Voiceover Version (繁體中文配音版 · 45s)</summary>
+<summary>▶ Watch Traditional Chinese Voiceover Version (繁體中文配音版 · 60s)</summary>
 
-https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 </details>
 
@@ -89,7 +89,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.0.9-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.1.1-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

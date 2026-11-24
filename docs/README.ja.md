@@ -27,12 +27,12 @@
 *`v1.1.1` 実機画面＋ローカル Qwen3-TTS ナレーション（新カプセル UI・6 タブ設定・Breeze-ASR-26 対応）：*
 **[▶ v1.1.1 英語版 1080p を見る](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ v1.1.1 繁體中文版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
-https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 <details>
-<summary>▶ 繁體中文ナレーション版を見る（45s）</summary>
+<summary>▶ 繁體中文ナレーション版を見る（60s）</summary>
 
-https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 </details>
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
 ## インストール方法
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.0.9-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.1.1-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
 2. 初回起動時に警告が表示された場合は、**Klipora.app を右クリック → 開く → 開く** で起動してください。
 3. Codex や各種 AI エージェントに `https://github.com/ZhiDuan-art/Klipora-app` を渡し、**[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** に従って自動セットアップすることも可能です。
 

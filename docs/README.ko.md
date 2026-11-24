@@ -27,12 +27,12 @@
 *`v1.1.1` 실기 화면 + 로컬 Qwen3-TTS 내레이션(신규 캡슐 UI·6탭 설정·Breeze-ASR-26 자막 지원):*
 **[▶ v1.1.1 영문판 1080p 보기](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ v1.1.1 번체중문판 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
-https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 <details>
-<summary>▶ 繁體中文 내레이션 버전 보기 (45s)</summary>
+<summary>▶ 繁體中文 내레이션 버전 보기 (60s)</summary>
 
-https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 </details>
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 
 ## 설치 방법
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.0.9-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.1.1-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
 

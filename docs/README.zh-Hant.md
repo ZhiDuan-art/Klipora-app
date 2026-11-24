@@ -27,12 +27,12 @@
 *純視窗 `v1.1.1` 實機畫面——旁白由 Klipora 內建本機 Qwen3-TTS 離線合成，展示全新膠囊 UI、6 分頁設定頁與台灣 Breeze-ASR-26 字幕：*
 **[▶ 觀看／下載 v1.1.1 繁體中文配音版（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)** · **[▶ English Version（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)**
 
-https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 <details>
-<summary>▶ Watch English Voiceover Version (英文配音版 · 44s)</summary>
+<summary>▶ Watch English Voiceover Version (英文配音版 · 62s)</summary>
 
-https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 </details>
 
@@ -79,7 +79,7 @@ https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 ## 安裝方式
 
 ### 方式一：直接下載 `.dmg` 安裝檔（推薦）
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.0.9-arm64.dmg`**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.1.1-arm64.dmg`**。
 2. 將 **Klipora.app** 拖曳至 **Applications** 資料夾。
 3. 首次開啟時若 macOS 提示無法驗證開發者（內測簽章版），請對 `Klipora.app` **按右鍵 → 打開 → 打開**。
 4. 跟著內建 4 步驟安裝引導即可完成硬體檢測、ComfyUI 連線與模型下載。
