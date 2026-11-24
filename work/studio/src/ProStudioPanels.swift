@@ -1767,8 +1767,8 @@ struct ShapesLibrarySectionView: View {
                                 }
                             }
                             .padding(6)
-                            .background(surface.opacity(0.68), in: RoundedRectangle(cornerRadius: 6))
-                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.08)))
+                            .background(surface.opacity(0.68), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
                         }
                         .buttonStyle(.plain)
                         .disabled(app.busy)
@@ -2378,8 +2378,8 @@ struct ProVisualEffectsLibraryTab: View {
                                         }
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 5)
-                                        .background(active ? proCyan.opacity(0.20) : surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 5))
-                                        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(active ? proCyan : .white.opacity(0.08)))
+                                        .background(active ? proCyan.opacity(0.20) : surface.opacity(0.65), in: Capsule())
+                                        .overlay(Capsule().strokeBorder(active ? proCyan : .white.opacity(0.08)))
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(seg == nil || app.busy)
@@ -2464,8 +2464,8 @@ struct ProVisualEffectsLibraryTab: View {
                                         }
                                         .padding(6)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .background(active ? proViolet.opacity(0.22) : surface.opacity(0.62), in: RoundedRectangle(cornerRadius: 6))
-                                        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(active ? proViolet : .white.opacity(0.08)))
+                                        .background(active ? proViolet.opacity(0.22) : surface.opacity(0.62), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                                        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(active ? proViolet : .white.opacity(0.08)))
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(seg == nil || app.busy)
@@ -2490,7 +2490,7 @@ struct ProVisualEffectsLibraryTab: View {
                                 .foregroundStyle(active ? canvas : .white.opacity(0.88))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 5)
-                                .background(active ? proCyan : surface.opacity(0.7), in: RoundedRectangle(cornerRadius: 5))
+                                .background(active ? proCyan : surface.opacity(0.7), in: Capsule())
                                 .disabled(seg == nil || app.busy)
                             }
                         }
@@ -2518,7 +2518,7 @@ struct ProVisualEffectsLibraryTab: View {
                                     .foregroundStyle(active ? canvas : .white.opacity(0.88))
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 5)
-                                    .background(active ? proAmber : surface.opacity(0.68), in: RoundedRectangle(cornerRadius: 5))
+                                    .background(active ? proAmber : surface.opacity(0.68), in: Capsule())
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(seg == nil || app.busy)
@@ -2588,7 +2588,7 @@ struct ProVisualEffectsLibraryTab: View {
                             .disabled(seg == nil || app.busy)
                         }
                         .padding(8)
-                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
+                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                     }
 
                     Divider().overlay(.white.opacity(0.08))
@@ -2611,6 +2611,7 @@ struct ProVisualEffectsLibraryTab: View {
                                     mutateSelectedVideo({ $0.chromaKeyEnabled = next }, status: next ? "已開啟綠幕去背" : "已關閉綠幕去背")
                                 }
                                 .buttonStyle(.borderedProminent)
+                                .buttonBorderShape(.capsule)
                                 .tint(seg?.clip.chromaKeyEnabled == true ? proEmerald : surface)
                                 .controlSize(.small)
                                 .disabled(seg == nil || app.busy)
@@ -2638,7 +2639,7 @@ struct ProVisualEffectsLibraryTab: View {
                             }
                         }
                         .padding(8)
-                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
+                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                     }
 
                     Divider().overlay(.white.opacity(0.08))
@@ -2676,6 +2677,7 @@ struct ProVisualEffectsLibraryTab: View {
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.capsule)
                                     .tint(proCyan)
                                     .controlSize(.small)
                                     .disabled(seg.clip.still || local.proxyBusyClipID != nil || app.busy)
@@ -2707,7 +2709,7 @@ struct ProVisualEffectsLibraryTab: View {
                             }
                         }
                         .padding(8)
-                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
+                        .background(surface.opacity(0.55), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                     }
                 }
                 .padding(8)
@@ -2738,7 +2740,7 @@ struct ProVisualEffectsLibraryTab: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
+        .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
     }
 
     private func generateProxy(for seg: VideoSegmentLayout) {
@@ -2919,7 +2921,7 @@ struct AudioAndVoiceoverLibraryTab: View {
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
+                        .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
 
                         // Voice Cleanup (afftdn + loudnorm) one-click toggle
                         HStack(spacing: 6) {
@@ -2946,7 +2948,7 @@ struct AudioAndVoiceoverLibraryTab: View {
                             .disabled(target == nil || app.busy)
                         }
                         .padding(8)
-                        .background(surface.opacity(0.58), in: RoundedRectangle(cornerRadius: 6))
+                        .background(surface.opacity(0.58), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
 
                         // Category filter + Reset to Dry
                         HStack(spacing: 4) {
@@ -3033,6 +3035,7 @@ struct AudioAndVoiceoverLibraryTab: View {
                                                 .frame(maxWidth: .infinity)
                                             }
                                             .buttonStyle(.bordered)
+                                            .buttonBorderShape(.capsule)
                                             .controlSize(.mini)
                                             .disabled(target == nil && recorder.lastRecordingPath == nil)
 
@@ -3048,6 +3051,7 @@ struct AudioAndVoiceoverLibraryTab: View {
                                                     .frame(maxWidth: .infinity)
                                             }
                                             .buttonStyle(.borderedProminent)
+                                            .buttonBorderShape(.capsule)
                                             .tint(isApplied ? proEmerald : proCyan)
                                             .controlSize(.mini)
                                             .disabled(target == nil || app.busy)
@@ -3055,8 +3059,8 @@ struct AudioAndVoiceoverLibraryTab: View {
                                     }
                                     .padding(7)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(isApplied ? proEmerald.opacity(0.16) : surface.opacity(0.58), in: RoundedRectangle(cornerRadius: 6))
-                                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(isApplied ? proEmerald : .white.opacity(0.07)))
+                                    .background(isApplied ? proEmerald.opacity(0.16) : surface.opacity(0.58), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(isApplied ? proEmerald : .white.opacity(0.07)))
                                 }
                             }
                         }
@@ -3158,8 +3162,8 @@ struct AudioAndVoiceoverLibraryTab: View {
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
-                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.10)))
+                            .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.10)))
                         }
                         .menuStyle(.borderlessButton)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3230,6 +3234,7 @@ struct AudioAndVoiceoverLibraryTab: View {
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
                     .tint(recorder.isRecording ? proRose : proCyan)
                     .controlSize(.small)
                     .disabled(app.busy || (!recorder.isRecording && (recorder.authorizationStatus == .denied || recorder.authorizationStatus == .restricted)))
@@ -3257,8 +3262,8 @@ struct AudioAndVoiceoverLibraryTab: View {
                 }
             }
             .padding(8)
-            .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(recorder.isRecording ? proRose.opacity(0.7) : .white.opacity(0.08)))
+            .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(recorder.isRecording ? proRose.opacity(0.7) : .white.opacity(0.08)))
         }
     }
 }
@@ -3368,6 +3373,7 @@ struct AIToolsStudioTab: View {
                                             .font(.system(size: 10, weight: .semibold))
                                     }
                                     .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.capsule)
                                     .tint(proCyan)
                                     .controlSize(.small)
                                     .disabled(!vocalStatus.isReady || audioAI.busyModule != nil || app.busy)
@@ -3434,6 +3440,7 @@ struct AIToolsStudioTab: View {
                                             .lineLimit(1)
                                     }
                                     .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.capsule)
                                     .tint(proAmber)
                                     .controlSize(.small)
                                     .disabled(!asrStatus.isReady || audioAI.busyModule != nil || app.busy)
@@ -3493,6 +3500,7 @@ struct AIToolsStudioTab: View {
                                                     .font(.system(size: 9.5, weight: .semibold))
                                             }
                                             .buttonStyle(.borderedProminent)
+                                            .buttonBorderShape(.capsule)
                                             .tint(proEmerald)
                                             .controlSize(.small)
 
@@ -3503,8 +3511,8 @@ struct AIToolsStudioTab: View {
                                         }
                                     }
                                     .padding(6)
-                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
-                                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(proAmber.opacity(0.3)))
+                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(proAmber.opacity(0.3)))
                                 }
 
                                 if let srt = local.lastSRTPath {
@@ -3526,8 +3534,8 @@ struct AIToolsStudioTab: View {
                                     .frame(height: 54)
                                     .scrollContentBackground(.hidden)
                                     .padding(4)
-                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
-                                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.08)))
+                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.08)))
 
                                 HStack(spacing: 6) {
                                     Text("說話人")
@@ -3557,6 +3565,7 @@ struct AIToolsStudioTab: View {
                                             .font(.system(size: 10, weight: .semibold))
                                     }
                                     .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.capsule)
                                     .tint(proEmerald)
                                     .controlSize(.small)
                                     .disabled(!ttsStatus.isReady || local.ttsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || audioAI.busyModule != nil || app.busy)
@@ -3612,8 +3621,8 @@ struct AIToolsStudioTab: View {
                                     .frame(height: 52)
                                     .scrollContentBackground(.hidden)
                                     .padding(4)
-                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
-                                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.08)))
+                                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.08)))
 
                                 proSliderRow(
                                     title: "語速",
@@ -3630,6 +3639,7 @@ struct AIToolsStudioTab: View {
                                             .font(.system(size: 10, weight: .semibold))
                                     }
                                     .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.capsule)
                                     .tint(proViolet)
                                     .controlSize(.small)
                                     .disabled(!cloneStatus.isReady
@@ -3747,6 +3757,7 @@ struct AIToolsStudioTab: View {
                             audioAI.install(module: "venv")
                         }
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(proCyan)
                         .controlSize(.mini)
                         .disabled(audioAI.busyModule != nil)
@@ -3798,6 +3809,7 @@ struct AIToolsStudioTab: View {
                         audioAI.refreshStatus()
                     }
                     .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
                     .tint(proAmber)
                     .controlSize(.mini)
                     .disabled(audioAI.isRefreshingStatus)
@@ -3818,8 +3830,8 @@ struct AIToolsStudioTab: View {
             }
         }
         .padding(8)
-        .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.08)))
+        .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
     }
 
     private func aiModuleCard<Content: View>(
@@ -3881,6 +3893,7 @@ struct AIToolsStudioTab: View {
                     Button("取消") {
                         audioAI.cancelStatusRefresh()
                     }
+                    .buttonBorderShape(.capsule)
                     .controlSize(.mini)
                 }
             } else if audioAI.statusTimedOut {
@@ -3892,6 +3905,7 @@ struct AIToolsStudioTab: View {
                     Button("重試檢查") {
                         audioAI.refreshStatus()
                     }
+                    .buttonBorderShape(.capsule)
                     .controlSize(.mini)
                 }
             } else {
@@ -3904,6 +3918,7 @@ struct AIToolsStudioTab: View {
                                 .font(.system(size: 9.5, weight: .semibold))
                         }
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(accent)
                         .controlSize(.mini)
                         .disabled(audioAI.busyModule != nil)
@@ -3915,6 +3930,7 @@ struct AIToolsStudioTab: View {
                         Button("移除模型", role: .destructive) {
                             audioAI.uninstall(module: status.id)
                         }
+                        .buttonBorderShape(.capsule)
                         .controlSize(.mini)
                         .disabled(audioAI.busyModule != nil)
                     }
@@ -3931,8 +3947,8 @@ struct AIToolsStudioTab: View {
             }
         }
         .padding(8)
-        .background(surface.opacity(0.58), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(status.isReady ? accent.opacity(0.35) : .white.opacity(0.08)))
+        .background(surface.opacity(0.58), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(status.isReady ? accent.opacity(0.35) : .white.opacity(0.08)))
     }
 
     private func pickAudioOrVideoFile(title: String, receive: @escaping (String) -> Void) {
@@ -4289,6 +4305,7 @@ struct KeyframeAndSpeedRampInspectorSection: View {
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
                     .tint(proAmber)
                     .controlSize(.small)
                     .disabled(app.busy)
@@ -4377,8 +4394,8 @@ struct KeyframeAndSpeedRampInspectorSection: View {
                 // Miniature Speed Ramp Curve Graph
                 speedCurveGraph(points: seg.clip.speedCurve)
                     .frame(height: 54)
-                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: 5))
-                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.08)))
+                    .background(proDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.08)))
 
                 // Speed Ramp Preset Cards
                 let activePresetID = matchingSpeedRampPresetID()
@@ -4400,8 +4417,8 @@ struct KeyframeAndSpeedRampInspectorSection: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(6)
-                            .background(isCur ? proCyan : surface.opacity(0.68), in: RoundedRectangle(cornerRadius: 5))
-                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(isCur ? proCyan : .white.opacity(0.08)))
+                            .background(isCur ? proCyan : surface.opacity(0.68), in: Capsule())
+                            .overlay(Capsule().strokeBorder(isCur ? proCyan : .white.opacity(0.08)))
                         }
                         .buttonStyle(.plain)
                         .disabled(seg.clip.still || app.busy)
@@ -4410,8 +4427,8 @@ struct KeyframeAndSpeedRampInspectorSection: View {
             }
         }
         .padding(8)
-        .background(surface.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.08)))
+        .background(surface.opacity(0.35), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
     }
 
     private func speedCurveGraph(points: [SpeedRampPoint]) -> some View {

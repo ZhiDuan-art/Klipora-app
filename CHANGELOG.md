@@ -1,5 +1,19 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.2 — 2026-11-25 02:14 (UTC+8)
+### MediaTek BreezyVoice (Taiwanese Mandarin · 68 Shared Voices), Edit Mode Capsule UI & Focus Fix / 聯發創新基地 BreezyVoice（台灣國語 · 68 聲線共用）、剪輯模式全站膠囊 R 角統一與專案命名焦點修復
+- **接入 MediaTek `BreezyVoice`（台灣國語 Zero-Shot TTS · 共用 68 聲線）**：
+  - 新增獨立本機執行腳本 `breezyvoice_tts.py`（隔離於 `breezyvoice-venv`，按需一鍵安裝，不膨脹 DMG 體積），支援 `MediaTek-Research/BreezyVoice`（Apache-2.0）自然台灣國語合成與注音多音字標註（如 `[:ㄏㄠ3]`）。
+  - 直接共用 Klipora 現有 **68 種聲音角色**的參考 `.wav` 與逐字稿，無須重新錄音或重建角色；合成前自動卸載 MLX 語音模型以保護 Apple Silicon 統一記憶體。
+  - 於「本機神經語音工作室」引擎選單與設定頁「管理語音模型」彈窗加入一鍵下載、即時進度條與移除釋放空間功能（並預留 `BreezyVoice-26` 台語權重接入介面）。
+- **剪輯模式全站 R 角統一（Capsule & `StudioTheme.Radius`）**：
+  - 全面升級 `MultitrackViews.swift`、`ProStudioPanels.swift`、`VoiceboxIntegration.swift`：將預覽上方 `時間軸 / 素材原檔` 切換鈕、右側 Inspector 頁籤與輸出面板（`720p / 1080p / 4K / 直式 9:16 / 方形 1:1`、`影格率`、`編碼器`、`位元深度`、`預覽成片 / 匯出 MP4`）、空狀態按鈕、左側搜尋欄、AI 工具卡片與所有功能按鈕統一為圓潤 `Capsule()` 與 `12pt` 連續圓角卡片。
+- **修復剪輯頁輸入焦點卡在「專案名稱」的問題**：
+  - 將頂部專案名稱改為**點擊才進入編輯模式**（預設顯示靜態文字＋鉛筆圖示），並於按下 Enter / Esc、失焦或切換「生成／剪輯」工作區時自動釋放 First Responder，確保剪輯頁空白鍵播放與快速鍵不再被專案名稱欄攔截。
+- **Affected Files**：`work/studio/resources/breezyvoice_tts.py`, `work/studio/build-app.sh`, `work/studio/src/VoiceboxIntegration.swift`, `work/studio/src/PortabilitySetupViews.swift`, `work/studio/src/MultitrackViews.swift`, `work/studio/src/ProStudioPanels.swift`, `work/studio/src/Studio.swift`, `work/studio/Info.plist`
+
+---
+
 ## v1.1.1 — 2026-11-24 19:36 (UTC+8)
 ### Edits-Style 6-Tab Settings, Unified Capsule UI, Antigravity No-API Image Gen & Taiwan Breeze-ASR-26 Subtitles / 極簡雙欄設定頁、全站膠囊 R 角統一、Antigravity 免 API 生圖與台灣 Breeze-ASR-26 自動字幕
 - **全新 6 分頁雙欄極簡設定頁（比照 Edits 設計語言）**：

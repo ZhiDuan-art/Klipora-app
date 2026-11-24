@@ -192,6 +192,8 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
         switch model_name {
         case "qwen-tts-1.7B":
             return "Qwen3 1.7B Base（推薦中文）"
+        case "breezyvoice-tw":
+            return "BreezyVoice 台灣國語（68 聲線）"
         case "qwen-tts-0.6B":
             return "Qwen3 0.6B Base（輕量）"
         case "qwen-custom-voice-1.7B":
@@ -227,6 +229,20 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
             englishOnly: false,
             supportsInstruct: true,
             caveat: nil
+        ),
+        VoiceboxEngineOption(
+            engine: "breezyvoice",
+            model_size: nil,
+            model_name: "breezyvoice-tw",
+            display_name: "MediaTek BreezyVoice（台灣國語 · 共用 68 聲線）",
+            supportsClonedVoices: true,
+            supportsPresetVoices: false,
+            presetEngineMatch: nil,
+            languages: ["zh", "en"],
+            isRecommendedChinese: true,
+            englishOnly: false,
+            supportsInstruct: false,
+            caveat: "專攻道地台灣國語並支援注音多音字標註（如 [:ㄏㄠ3]），直接沿用現有 68 個聲音角色參考音檔。BreezyVoice-26 台語權重待聯發創新基地公開後將無縫接入。"
         ),
         VoiceboxEngineOption(
             engine: "qwen",
@@ -486,6 +502,11 @@ final class VoiceboxServiceController: ObservableObject {
     @Published var recentHistory: [VoiceboxHistoryItem] = []
 
     @Published var activeDownloads: [String: VoiceboxActiveDownloadTask] = [:]
+    @Published var breezyVoiceInstalling: Bool = false
+    @Published var breezyVoiceInstallProgress: Double = 0
+    @Published var breezyVoiceInstallStage: String = ""
+    @Published var breezyVoiceStatusTick: Int = 0
+    private var breezyVoiceProcess: Process?
     @Published var isGenerating: Bool = false
     @Published var activeGenerationID: String? = nil
     @Published var activeColabJobID: String? = nil
@@ -1262,6 +1283,9 @@ final class VoiceboxServiceController: ObservableObject {
     }
 
     func isOptionDownloaded(_ option: VoiceboxEngineOption) -> Bool {
+        if option.model_name == "breezyvoice-tw" {
+            return isBreezyVoiceInstalled
+        }
         if let status = modelStatus(for: option) {
             return status.downloaded
         }
@@ -1448,6 +1472,15 @@ final class VoiceboxServiceController: ObservableObject {
         guard compatible.contains(where: { $0.model_name == engineOption.model_name }) else {
             throw VoiceboxIntegrationError.incompatibleEngine(
                 "所選引擎「\(engineOption.display_name)」與聲音「\(profile.name)（\(profile.voiceTypeTag)）」不相容。"
+            )
+        }
+
+        if engineOption.engine == "breezyvoice" {
+            return try await generateLocalWithBreezyVoice(
+                profile: profile,
+                text: trimmedText,
+                seed: seed,
+                outputRootDir: outputRootDir
             )
         }
 
@@ -1927,7 +1960,317 @@ final class VoiceboxServiceController: ObservableObject {
 
     // MARK: 6. Model Download / Cancel / Retry via Official Endpoints
 
+    var isBreezyVoiceInstalled: Bool {
+        _ = breezyVoiceStatusTick
+        let appSupport = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Klipora", isDirectory: true)
+        let fm = FileManager.default
+        let venvPy = appSupport.appendingPathComponent("breezyvoice-venv/bin/python3").path
+        let repoScript = appSupport.appendingPathComponent("breezyvoice-repo/single_inference.py").path
+        let llmPt = appSupport.appendingPathComponent("breezyvoice-models/BreezyVoice/llm.pt").path
+        return fm.fileExists(atPath: venvPy) && fm.fileExists(atPath: repoScript) && fm.fileExists(atPath: llmPt)
+    }
+
+    var breezyVoiceDiskBytes: Int64 {
+        _ = breezyVoiceStatusTick
+        let appSupport = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Klipora", isDirectory: true)
+        let dirs = ["breezyvoice-models", "breezyvoice-repo", "breezyvoice-venv"]
+        let fm = FileManager.default
+        var total: Int64 = 0
+        for rel in dirs {
+            let url = appSupport.appendingPathComponent(rel, isDirectory: true)
+            guard fm.fileExists(atPath: url.path) else { continue }
+            if let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
+                for case let f as URL in en {
+                    if let sz = try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+                        total += Int64(sz)
+                    }
+                }
+            }
+        }
+        return total
+    }
+
+    func breezyVoiceScriptURL() -> URL? {
+        if let res = Bundle.main.resourceURL {
+            let bundled = res.appendingPathComponent("breezyvoice_tts.py")
+            if FileManager.default.fileExists(atPath: bundled.path) {
+                return bundled
+            }
+        }
+        let devPaths = [
+            "/Users/zhangzhiduan/Documents/Codex/2026-11-09/https-github-com-dseditor-h3-colab/work/studio/resources/breezyvoice_tts.py"
+        ]
+        for p in devPaths where FileManager.default.fileExists(atPath: p) {
+            return URL(fileURLWithPath: p)
+        }
+        return nil
+    }
+
+    func installBreezyVoice() {
+        guard !breezyVoiceInstalling else { return }
+        guard let scriptURL = breezyVoiceScriptURL() else {
+            lastError = "找不到內建 BreezyVoice 安裝腳本（breezyvoice_tts.py）。"
+            return
+        }
+        breezyVoiceInstalling = true
+        breezyVoiceInstallProgress = 0.05
+        breezyVoiceInstallStage = "正在準備 BreezyVoice 台灣國語環境與模型…"
+        lastError = nil
+        activeDownloads["breezyvoice-tw"] = VoiceboxActiveDownloadTask(
+            model_name: "breezyvoice-tw",
+            status: "downloading",
+            error: nil,
+            progress: 5,
+            current: 0,
+            total: 100,
+            filename: breezyVoiceInstallStage
+        )
+
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            proc.arguments = ["-u", scriptURL.path, "install"]
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = pipe
+            await MainActor.run { self?.breezyVoiceProcess = proc }
+
+            let handle = pipe.fileHandleForReading
+            handle.readabilityHandler = { fh in
+                let data = fh.availableData
+                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                for rawLine in chunk.split(separator: "\n") {
+                    let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if line.hasPrefix("{"),
+                       let d = line.data(using: .utf8),
+                       let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+                        let stage = obj["stage"] as? String
+                        let prog = obj["progress"] as? Double
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            if let stage { self.breezyVoiceInstallStage = stage }
+                            if let prog { self.breezyVoiceInstallProgress = prog }
+                            self.activeDownloads["breezyvoice-tw"] = VoiceboxActiveDownloadTask(
+                                model_name: "breezyvoice-tw",
+                                status: "downloading",
+                                error: nil,
+                                progress: (self.breezyVoiceInstallProgress * 100.0),
+                                current: Int64(self.breezyVoiceInstallProgress * 100.0),
+                                total: 100,
+                                filename: self.breezyVoiceInstallStage
+                            )
+                        }
+                    }
+                }
+            }
+
+            do {
+                try proc.run()
+                proc.waitUntilExit()
+                handle.readabilityHandler = nil
+                let exitCode = proc.terminationStatus
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.breezyVoiceProcess = nil
+                    self.breezyVoiceInstalling = false
+                    self.activeDownloads.removeValue(forKey: "breezyvoice-tw")
+                    self.breezyVoiceStatusTick += 1
+                    if exitCode == 0 && self.isBreezyVoiceInstalled {
+                        self.breezyVoiceInstallProgress = 1.0
+                        self.breezyVoiceInstallStage = "BreezyVoice 台灣國語已就緒"
+                        self.statusMessage = "MediaTek BreezyVoice（台灣國語 · 共用 68 聲線）安裝完成！"
+                    } else if exitCode != 15 && exitCode != 9 {
+                        self.lastError = "BreezyVoice 安裝失敗（代碼 \(exitCode)），請確認網路連線與磁碟空間後重試。"
+                    }
+                }
+            } catch {
+                handle.readabilityHandler = nil
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.breezyVoiceProcess = nil
+                    self.breezyVoiceInstalling = false
+                    self.activeDownloads.removeValue(forKey: "breezyvoice-tw")
+                    self.lastError = "無法啟動 BreezyVoice 安裝程序：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func cancelBreezyVoiceInstall() {
+        breezyVoiceProcess?.terminate()
+        breezyVoiceProcess = nil
+        breezyVoiceInstalling = false
+        breezyVoiceInstallStage = ""
+        activeDownloads.removeValue(forKey: "breezyvoice-tw")
+        statusMessage = "已取消 BreezyVoice 下載安裝。"
+    }
+
+    func uninstallBreezyVoice(removeAll: Bool = false) {
+        guard let scriptURL = breezyVoiceScriptURL() else { return }
+        Task.detached(priority: .utility) { [weak self] in
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            proc.arguments = [scriptURL.path, "uninstall"] + (removeAll ? ["--all"] : [])
+            try? proc.run()
+            proc.waitUntilExit()
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.breezyVoiceStatusTick += 1
+                self.statusMessage = "已移除 BreezyVoice 台灣國語模型快取。"
+            }
+        }
+    }
+
+    private func generateLocalWithBreezyVoice(
+        profile: VoiceboxProfile,
+        text: String,
+        seed: Int?,
+        outputRootDir: URL
+    ) async throws -> URL {
+        guard isBreezyVoiceInstalled else {
+            throw VoiceboxIntegrationError.serverError("尚未安裝 MediaTek BreezyVoice（台灣國語），請先點擊「下載模型」完成安裝。")
+        }
+        guard let scriptURL = breezyVoiceScriptURL() else {
+            throw VoiceboxIntegrationError.serverError("找不到內建 BreezyVoice 推論腳本（breezyvoice_tts.py）。")
+        }
+
+        // Resolve reference sample WAV + transcript from Klipora's 68-voice library
+        var refAudioPath: String?
+        var refText: String = ""
+
+        if await ensureServiceReady() {
+            let samples = await fetchSamples(for: profile.id, forceRefresh: false)
+            if let first = samples.first {
+                refText = first.reference_text
+                if FileManager.default.fileExists(atPath: first.audio_path) {
+                    refAudioPath = first.audio_path
+                } else {
+                    let cacheDir = FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent("Library/Application Support/Klipora/cache/voicebox-previews", isDirectory: true)
+                    try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+                    let dest = cacheDir.appendingPathComponent("sample-\(first.id).wav")
+                    if FileManager.default.fileExists(atPath: dest.path) {
+                        refAudioPath = dest.path
+                    } else if let sampleURL = URL(string: "http://127.0.0.1:\(activePort)/samples/\(first.id)"),
+                              let (data, resp) = try? await URLSession.shared.data(from: sampleURL),
+                              (resp as? HTTPURLResponse)?.statusCode == 200,
+                              data.count > 44 {
+                        try? data.write(to: dest, options: .atomic)
+                        refAudioPath = dest.path
+                    }
+                }
+            }
+            // Free MLX unified memory before running PyTorch BreezyVoice
+            await unloadLocalModels()
+        }
+
+        if refAudioPath == nil {
+            let profileDir = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/Klipora/voicebox-data/profiles/\(profile.id)", isDirectory: true)
+            if let entries = try? FileManager.default.contentsOfDirectory(at: profileDir, includingPropertiesForKeys: nil),
+               let wav = entries.first(where: { ["wav", "mp3", "m4a", "flac"].contains($0.pathExtension.lowercased()) }) {
+                refAudioPath = wav.path
+            }
+        }
+
+        guard let resolvedRefPath = refAudioPath else {
+            throw VoiceboxIntegrationError.serverError("找不到聲音角色「\(profile.name)」的參考音檔，無法進行 BreezyVoice 聲紋合成。")
+        }
+
+        let dayFmt = DateFormatter()
+        dayFmt.dateFormat = "yyyy-MM-dd"
+        let tsFmt = DateFormatter()
+        tsFmt.dateFormat = "HHmmss"
+        let now = Date()
+        let outDir = outputRootDir.appendingPathComponent(dayFmt.string(from: now), isDirectory: true)
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        let safeName = profile.name.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: " ", with: "_")
+        let outURL = outDir.appendingPathComponent("BreezyVoice_\(safeName)_\(tsFmt.string(from: now)).wav")
+
+        isGenerating = true
+        generationStage = "正在啟動 MediaTek BreezyVoice（台灣國語）…"
+        generationProgress = 0.15
+        lastError = nil
+        statusMessage = nil
+
+        defer {
+            self.isGenerating = false
+            self.generationStage = ""
+            self.generationProgress = nil
+        }
+
+        var args = [
+            "-u", scriptURL.path, "synthesize",
+            "--ref-audio", resolvedRefPath,
+            "--ref-text", refText,
+            "--text", text,
+            "--output", outURL.path
+        ]
+        if let seed {
+            args += ["--seed", String(seed)]
+        }
+
+        let (exitCode, lastErrMsg): (Int32, String) = await Task.detached(priority: .userInitiated) { [weak self] in
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            proc.arguments = args
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = pipe
+            var collectedError = ""
+
+            let handle = pipe.fileHandleForReading
+            handle.readabilityHandler = { fh in
+                let data = fh.availableData
+                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                for rawLine in chunk.split(separator: "\n") {
+                    let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if line.hasPrefix("{"),
+                       let d = line.data(using: .utf8),
+                       let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+                        if let err = obj["error"] as? String {
+                            collectedError = err
+                        }
+                        let stage = obj["stage"] as? String
+                        let prog = obj["progress"] as? Double
+                        Task { @MainActor [weak self] in
+                            if let stage { self?.generationStage = stage }
+                            if let prog { self?.generationProgress = prog }
+                        }
+                    } else if !line.isEmpty {
+                        collectedError = line
+                    }
+                }
+            }
+
+            do {
+                try proc.run()
+                proc.waitUntilExit()
+                handle.readabilityHandler = nil
+                return (proc.terminationStatus, collectedError)
+            } catch {
+                handle.readabilityHandler = nil
+                return (-1, error.localizedDescription)
+            }
+        }.value
+
+        guard exitCode == 0, FileManager.default.fileExists(atPath: outURL.path) else {
+            throw VoiceboxIntegrationError.serverError(
+                lastErrMsg.isEmpty ? "BreezyVoice 語音合成失敗（代碼 \(exitCode)）。" : "BreezyVoice 語音合成失敗：\(lastErrMsg)"
+            )
+        }
+
+        statusMessage = "已以 MediaTek BreezyVoice（台灣國語 · \(profile.name)）完成配音！"
+        return outURL
+    }
+
     func startModelDownload(modelName: String) {
+        if modelName == "breezyvoice-tw" {
+            installBreezyVoice()
+            return
+        }
         Task { @MainActor in
             let currentHasToken = (Self.readStoredHuggingFaceToken() != nil)
             if ownership == .ownedByMotionDesk && currentHasToken != activeServerHFTokenSet && !isGenerating {
@@ -1969,6 +2312,10 @@ final class VoiceboxServiceController: ObservableObject {
     }
 
     func cancelModelDownload(modelName: String) {
+        if modelName == "breezyvoice-tw" {
+            cancelBreezyVoiceInstall()
+            return
+        }
         Task { @MainActor in
             guard let url = URL(string: "http://127.0.0.1:\(activePort)/models/download/cancel") else { return }
             var req = URLRequest(url: url)
@@ -2436,8 +2783,8 @@ struct VoiceboxStudioSectionView: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(surface.opacity(0.60), in: RoundedRectangle(cornerRadius: 7))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.white.opacity(0.08)))
+            .background(surface.opacity(0.60), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onAppear {
@@ -2483,8 +2830,8 @@ struct VoiceboxStudioSectionView: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(vbCyan.opacity(0.28)))
+        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbCyan.opacity(0.28)))
     }
 
     private var centralSelectedVoiceHeaderBar: some View {
@@ -2531,6 +2878,7 @@ struct VoiceboxStudioSectionView: View {
                             .font(.system(size: 12, weight: .medium))
                         }
                         .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
                         .tint(isPlayingThis ? vbAmber : vbCyan)
                         .controlSize(.small)
                         .fixedSize(horizontal: true, vertical: false)
@@ -2545,8 +2893,8 @@ struct VoiceboxStudioSectionView: View {
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbCyan.opacity(0.14), in: RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(vbCyan.opacity(0.42), lineWidth: 1))
+                .background(vbCyan.opacity(0.14), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbCyan.opacity(0.42), lineWidth: 1))
             }
         }
     }
@@ -2649,7 +2997,7 @@ struct VoiceboxStudioSectionView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 5))
+        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
     }
 
     private var comfyUIMemoryCoordinationNotice: some View {
@@ -2673,8 +3021,8 @@ struct VoiceboxStudioSectionView: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(vbAmber.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(vbAmber.opacity(0.35)))
+        .background(vbAmber.opacity(0.14), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbAmber.opacity(0.35)))
     }
 
     // MARK: Voice Profiles Selector & Preview (Bounded + Searchable + 12-13pt Typography)
@@ -2712,6 +3060,7 @@ struct VoiceboxStudioSectionView: View {
                             .font(.system(size: 12, weight: .medium))
                         }
                         .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
                         .tint(isPlayingThis ? vbAmber : vbCyan)
                         .controlSize(.small)
                         .accessibilityLabel(isPlayingThis ? "停止試聽目前角色 \(profile.name)" : "試聽目前角色 \(profile.name)")
@@ -2726,8 +3075,8 @@ struct VoiceboxStudioSectionView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbCyan.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(vbCyan.opacity(0.42), lineWidth: 1))
+                .background(vbCyan.opacity(0.14), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbCyan.opacity(0.42), lineWidth: 1))
             }
 
             // 2. Voice Search Field & Count Header
@@ -2757,8 +3106,8 @@ struct VoiceboxStudioSectionView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.12)))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.12)))
 
                 Text("\(displayedProfiles.count)/\(controller.profiles.count)")
                     .font(.system(size: 11, design: .monospaced))
@@ -2829,7 +3178,7 @@ struct VoiceboxStudioSectionView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(isSelected ? vbCyan.opacity(0.20) : vbDarkWell, in: RoundedRectangle(cornerRadius: 5))
+                            .background(isSelected ? vbCyan.opacity(0.20) : vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 5)
                                     .strokeBorder(isSelected ? vbCyan : .white.opacity(0.07), lineWidth: isSelected ? 1.1 : 0.6)
@@ -2840,8 +3189,8 @@ struct VoiceboxStudioSectionView: View {
                 }
                 .frame(minHeight: 104, maxHeight: isCentralLayout ? 200 : 144)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.08)))
+                .background(vbDarkWell.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2952,8 +3301,8 @@ struct VoiceboxStudioSectionView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .padding(.horizontal, 6)
-            .background(active ? accent : vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(active ? accent : .white.opacity(0.10)))
+            .background(active ? accent : vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(active ? accent : .white.opacity(0.10)))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("切換至\(title)模式")
@@ -2999,8 +3348,8 @@ struct VoiceboxStudioSectionView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.12)))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.12)))
             }
             .menuStyle(.borderlessButton)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -3047,6 +3396,7 @@ struct VoiceboxStudioSectionView: View {
                                 .font(.system(size: 11.5, weight: .semibold))
                         }
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(vbCyan)
                         .controlSize(.small)
                         .accessibilityLabel("下載所選語音模型")
@@ -3055,7 +3405,7 @@ struct VoiceboxStudioSectionView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 5))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
             }
 
             if let caveat = option.caveat, !caveat.isEmpty {
@@ -3126,8 +3476,8 @@ struct VoiceboxStudioSectionView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.12)))
+                    .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.12)))
                 }
                 .menuStyle(.borderlessButton)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -3140,7 +3490,7 @@ struct VoiceboxStudioSectionView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(7)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 5))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -3165,8 +3515,8 @@ struct VoiceboxStudioSectionView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .scrollContentBackground(.hidden)
                 .padding(6)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.12)))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.12)))
                 .accessibilityLabel("旁白稿件輸入框")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3201,7 +3551,7 @@ struct VoiceboxStudioSectionView: View {
                 }
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     primaryGenerateAndInsertButton
@@ -3228,6 +3578,7 @@ struct VoiceboxStudioSectionView: View {
             .padding(.vertical, 2)
         }
         .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
         .tint(store.mode == .local ? vbCyan : vbViolet)
         .controlSize(.regular)
         .disabled(!canStartGeneration)
@@ -3245,6 +3596,7 @@ struct VoiceboxStudioSectionView: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
         .controlSize(.small)
         .disabled(!canStartGeneration)
         .accessibilityLabel("僅生成配音")
@@ -3348,8 +3700,8 @@ struct VoiceboxStudioSectionView: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(vbEmerald.opacity(0.35)))
+        .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbEmerald.opacity(0.35)))
     }
 
     private func auditionLastOutputButton(path: String, isAuditioning: Bool) -> some View {
@@ -3457,8 +3809,8 @@ struct VoiceboxStudioSectionView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .scrollContentBackground(.hidden)
                                 .padding(4)
-                                .background(canvas.opacity(0.6), in: RoundedRectangle(cornerRadius: 5))
-                                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.10)))
+                                .background(canvas.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.10)))
                                 .accessibilityLabel("參考音訊逐字稿編輯框")
 
                             HStack(spacing: 6) {
@@ -3594,7 +3946,7 @@ struct VoiceboxStudioSectionView: View {
                 }
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 6))
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3662,6 +4014,7 @@ struct NativeVoiceCentralWorkspaceView: View {
                             .font(.system(size: 12, weight: .medium))
                     }
                     .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
                     .controlSize(.small)
                     .accessibilityLabel("切換至時間軸畫面預覽")
                 }

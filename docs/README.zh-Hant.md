@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬體需求建議)
 [![Languages](https://img.shields.io/badge/支援語言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-國語言在地化)
-[![Release](https://img.shields.io/badge/下載-v1.1.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下載-v1.1.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![贊助支持](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新與除錯紀錄](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E8%88%87%E9%99%A4%E9%8C%AF%E7%B4%80%E9%8C%84-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.1.1`（2026-11-24 19:36 UTC+8）**：全面換上 **6 分頁雙欄極簡設定頁**與**全站統一圓潤膠囊 R 角**，新增聯發創新基地 **`Breeze-ASR-26` 台灣語音自動字幕（台語／國台英夾雜）**、**Antigravity 免 API 直連生圖**、一鍵下載 Qwen3-TTS 語音模型與專屬管理頁、並將預設風格改為「不套用風格」。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.1 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.1)**。
+> **最新更新 — `v1.1.2`（2026-11-25 02:14 UTC+8）**：新增聯發創新基地 **`BreezyVoice` 台灣國語語音引擎**（按需一鍵安裝、直接共用現有 68 種聲音角色）、完成**剪輯模式全站膠囊 R 角與卡片圓角統一**，並將頂部專案名稱改為**點擊才進入編輯**以徹底解決剪輯頁游標卡住問題。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.2)**。
 
 ## 實機操作宣傳影片
 
@@ -79,7 +79,7 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 ## 安裝方式
 
 ### 方式一：直接下載 `.dmg` 安裝檔（推薦）
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.1.1-arm64.dmg`**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.1.2-arm64.dmg`**。
 2. 將 **Klipora.app** 拖曳至 **Applications** 資料夾。
 3. 首次開啟時若 macOS 提示無法驗證開發者（內測簽章版），請對 `Klipora.app` **按右鍵 → 打開 → 打開**。
 4. 跟著內建 4 步驟安裝引導即可完成硬體檢測、ComfyUI 連線與模型下載。

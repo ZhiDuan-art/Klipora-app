@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#권장-사양)
 [![Languages](https://img.shields.io/badge/지원언어-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5개국어-현지화)
-[![Release](https://img.shields.io/badge/다운로드-v1.1.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/다운로드-v1.1.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![변경 및 디버그 로그](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **최신 업데이트 — `v1.1.1` (2026-11-24 19:36 UTC+8)**: 6탭 2단 미니멀 설정 UI 및 전체 캡슐 라운드 통일, MediaTek **`Breeze-ASR-26`**(대만어·중국어·영어 코드스위칭 로컬 자동 자막), **Antigravity 무API 이미지 생성**, Qwen3-TTS 원클릭 다운로드 관리 창을 추가했습니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.1.1 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.1)**.
+> **최신 업데이트 — `v1.1.2` (2026-11-25 02:14 UTC+8)**: MediaTek **`BreezyVoice`**(대만 화어 제로샷 TTS · 기존 68 보이스 공유 / 원클릭 설치) 추가, **편집 모드 전체 캡슐 라운드 UI 통일**, 그리고 편집 화면에서 프로젝트 이름 입력창에 포커스가 고정되던 문제를 수정했습니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.1.2 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.2)**.
 
 ## 실기 데모 영상
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 ## 설치 방법
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.1.1-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.1.2-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
 

@@ -1133,6 +1133,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var jobStageLabel: String = ""
     @Published var showLog = false
     @Published var showPrompt = false
+    @Published var isEditingProjectTitle = false
     @Published var promptDraft = ""
     @Published var editedPrompt: String?
     @Published var vlmDraftPrompt = ""
@@ -4138,6 +4139,7 @@ struct StudioView: View {
     @StateObject private var multitrackState = MultitrackEditState()
     @StateObject private var multitrackPlayback = MultitrackPlaybackController()
     @StateObject private var libraryInteraction = LibraryInteractionState()
+    @FocusState private var projectTitleFocused: Bool
 
     private var editLayout: MultitrackLayout {
         app.currentMultitrackLayout()
@@ -4556,26 +4558,68 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(l10n.text("app.name", fallback: "Klipora")).font(.system(size: 19, weight: .semibold))
                 HStack(spacing: 4) {
-                    TextField(
-                        l10n.text("app.untitled", fallback: "未命名專案"),
-                        text: Binding(
-                            get: {
-                                let t = app.project.title.trimmingCharacters(in: .whitespacesAndNewlines)
-                                if !t.isEmpty { return app.project.title }
-                                return app.projectURL?.deletingPathExtension().lastPathComponent ?? ""
-                            },
-                            set: { app.project.title = $0 }
+                    if app.isEditingProjectTitle {
+                        TextField(
+                            l10n.text("app.untitled", fallback: "未命名專案"),
+                            text: Binding(
+                                get: {
+                                    let t = app.project.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    if !t.isEmpty { return app.project.title }
+                                    return app.projectURL?.deletingPathExtension().lastPathComponent ?? ""
+                                },
+                                set: { app.project.title = $0 }
+                            )
                         )
-                    )
-                    .textFieldStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(StudioTheme.textSecondary)
-                    .frame(minWidth: 100, idealWidth: 145, maxWidth: 210)
-                    .accessibilityLabel("專案名稱")
-                    .help("點選可直接編輯專案名稱")
-                    Image(systemName: "pencil")
-                        .font(.system(size: 9))
-                        .foregroundStyle(StudioTheme.textMuted)
+                        .textFieldStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(StudioTheme.textPrimary)
+                        .frame(minWidth: 100, idealWidth: 145, maxWidth: 210)
+                        .focused($projectTitleFocused)
+                        .onSubmit {
+                            app.isEditingProjectTitle = false
+                            projectTitleFocused = false
+                            NSApp.keyWindow?.makeFirstResponder(nil)
+                        }
+                        .onExitCommand {
+                            app.isEditingProjectTitle = false
+                            projectTitleFocused = false
+                            NSApp.keyWindow?.makeFirstResponder(nil)
+                        }
+                        .onChange(of: projectTitleFocused) { _, focused in
+                            if !focused {
+                                app.isEditingProjectTitle = false
+                            }
+                        }
+                        .accessibilityLabel("專案名稱")
+                    } else {
+                        let shownTitle: String = {
+                            let t = app.project.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !t.isEmpty { return t }
+                            let fromURL = app.projectURL?.deletingPathExtension().lastPathComponent ?? ""
+                            return fromURL.isEmpty ? l10n.text("app.untitled", fallback: "未命名專案") : fromURL
+                        }()
+                        Button {
+                            app.isEditingProjectTitle = true
+                            DispatchQueue.main.async {
+                                projectTitleFocused = true
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(shownTitle)
+                                    .font(.caption)
+                                    .foregroundStyle(StudioTheme.textSecondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(StudioTheme.textMuted)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("編輯專案名稱：\(shownTitle)")
+                        .help("點選可編輯專案名稱")
+                    }
                 }
             }
             Spacer()
@@ -4583,6 +4627,9 @@ struct StudioView: View {
                 ForEach([Workspace.generate, Workspace.edit], id: \.self) { ws in
                     let isSelected = app.workspace == ws
                     Button {
+                        app.isEditingProjectTitle = false
+                        projectTitleFocused = false
+                        NSApp.keyWindow?.makeFirstResponder(nil)
                         withAnimation(.easeInOut(duration: 0.16)) { app.workspace = ws }
                     } label: {
                         Text(ws == .generate ? l10n.text("workspace.generate", fallback: "生成") : l10n.text("workspace.edit", fallback: "剪輯"))

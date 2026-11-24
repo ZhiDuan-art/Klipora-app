@@ -73,6 +73,7 @@ cp "$here/resources/worker.py" \
    "$here/resources/online_image.py" \
    "$here/resources/timeline_render.py" \
    "$here/resources/audio_ai.py" \
+   "$here/resources/breezyvoice_tts.py" \
    "$here/resources/effects_catalog.json" \
    "$here/resources/model_profiles.json" \
    "$here/resources/zimage.json" \

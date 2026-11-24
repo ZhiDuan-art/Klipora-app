@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
-[![Release](https://img.shields.io/badge/下载-v1.1.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下载-v1.1.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新与除错记录](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%99%A4%E9%94%99%E8%AE%B0%E5%BD%95-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.1.1`（2026-11-24 19:36 UTC+8）**：全新 **6 分页双栏极简设置页**与**全站统一胶囊圆角**，新增联发创新基地 **`Breeze-ASR-26` 台湾语音自动字幕（台语／国台英夹杂）**、**Antigravity 免 API 直连生图**、一键下载 Qwen3-TTS 语音模型与专属管理页。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.1.1 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.1)**。
+> **最新更新 — `v1.1.2`（2026-11-25 02:14 UTC+8）**：新增联发创新基地 **`BreezyVoice` 台湾国语语音引擎**（按需一键安装、直接共用现有 68 种声音角色）、完成**剪辑模式全站胶囊圆角与卡片圆角统一**，并将顶部项目名称改为**点击才进入编辑**以彻底解决剪辑页光标卡住问题。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.1.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.2)**。
 
 ## 实机操作宣传视频
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.1.1-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.1.2-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 

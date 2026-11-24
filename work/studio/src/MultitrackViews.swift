@@ -393,10 +393,13 @@ struct MultitrackLibraryPanel: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(mtDarkWell.opacity(0.92), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 0.8))
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(mtDarkWell.opacity(0.85))
     }
 
     private var textAndShapesLibraryTab: some View {
@@ -439,13 +442,13 @@ struct MultitrackLibraryPanel: View {
                     .foregroundStyle(active ? mtCyanAccent : .secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 5)
-                    .background(active ? mtCyanAccent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 5))
+                    .background(active ? mtCyanAccent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.control, style: .continuous))
                     .overlay(alignment: .bottom) {
                         if active {
-                            Rectangle()
+                            Capsule()
                                 .fill(mtCyanAccent)
                                 .frame(height: 2)
-                                .padding(.horizontal, 6)
+                                .padding(.horizontal, 8)
                         }
                     }
                 }
@@ -491,6 +494,7 @@ struct MultitrackLibraryPanel: View {
                         }
                         .controlSize(.mini)
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(mtCyanAccent)
                         .foregroundStyle(canvas)
                         .help("匯入影片、圖片或音訊素材")
@@ -561,6 +565,7 @@ struct MultitrackLibraryPanel: View {
                         Button("匯入素材…", action: app.importMedia)
                             .controlSize(.small)
                             .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
                             .tint(mtCyanAccent)
                             .foregroundStyle(canvas)
                     }
@@ -635,6 +640,7 @@ struct MultitrackLibraryPanel: View {
                             }
                             .controlSize(.small)
                             .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
                             .tint(mtCyanAccent)
                             .foregroundStyle(canvas)
                             .disabled(batch.isEmpty || app.busy)
@@ -673,6 +679,7 @@ struct MultitrackLibraryPanel: View {
                         }
                         .controlSize(.mini)
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
                         .tint(mtCyanAccent)
                         .foregroundStyle(canvas)
                         .disabled(app.busy || !multitrackMediaTypes.contains(ext))
@@ -782,7 +789,7 @@ struct MultitrackLibraryPanel: View {
                 .truncationMode(.middle)
         }
         .padding(4)
-        .background(isSelected ? mtCyanAccent.opacity(0.16) : surface.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
+        .background(isSelected ? mtCyanAccent.opacity(0.16) : surface.opacity(0.55), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(isSelected ? mtCyanAccent : .white.opacity(0.07), lineWidth: isSelected ? 1.2 : 0.8)
@@ -940,8 +947,8 @@ struct MultitrackLibraryPanel: View {
                                 }
                             }
                             .padding(6)
-                            .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
-                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.08)))
+                            .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
                         }
                         .buttonStyle(.plain)
                         .disabled(app.busy)
@@ -1172,7 +1179,7 @@ struct MultitrackLibraryPanel: View {
                                         .lineLimit(1)
                                 }
                                 .padding(4)
-                                .background(isSel ? mtCyanAccent.opacity(0.16) : surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                                .background(isSel ? mtCyanAccent.opacity(0.16) : surface.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
                                         .strokeBorder(isSel ? mtCyanAccent : .white.opacity(0.08), lineWidth: isSel ? 1.3 : 0.8)
@@ -1202,7 +1209,7 @@ struct MultitrackLibraryPanel: View {
                                 .frame(width: 34, height: 34)
                                 .background(
                                     chromaOn ? Color(red: 0.28, green: 0.90, blue: 0.45) : Color(red: 0.10, green: 0.26, blue: 0.15),
-                                    in: RoundedRectangle(cornerRadius: 6)
+                                    in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous)
                                 )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("綠幕去背（色度鍵）")
@@ -1221,7 +1228,7 @@ struct MultitrackLibraryPanel: View {
                                 .background(chromaOn ? Color(red: 0.28, green: 0.90, blue: 0.45) : mtDarkWell, in: Capsule())
                         }
                         .padding(7)
-                        .background(chromaOn ? Color(red: 0.14, green: 0.28, blue: 0.19) : surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 7))
+                        .background(chromaOn ? Color(red: 0.14, green: 0.28, blue: 0.19) : surface.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 7)
                                 .strokeBorder(chromaOn ? Color(red: 0.28, green: 0.90, blue: 0.45) : .white.opacity(0.09), lineWidth: chromaOn ? 1.3 : 0.8)
@@ -1320,7 +1327,7 @@ struct MultitrackLibraryPanel: View {
                                     .lineLimit(1)
                             }
                             .padding(5)
-                            .background(isSel ? mtCyanAccent.opacity(0.16) : surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                            .background(isSel ? mtCyanAccent.opacity(0.16) : surface.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
                                     .strokeBorder(isSel ? mtCyanAccent : .white.opacity(0.08), lineWidth: isSel ? 1.3 : 0.8)
@@ -1482,8 +1489,8 @@ struct MultitrackPreviewMonitor: View {
                         timelinePreviewStage
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.white.opacity(0.08)))
+                .clipShape(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08)))
                 .padding(.horizontal, 8)
 
                 if state.previewMode == .timeline {
@@ -1498,14 +1505,11 @@ struct MultitrackPreviewMonitor: View {
 
     private var headerBar: some View {
         HStack(spacing: 8) {
-            Picker("預覽模式", selection: $state.previewMode) {
-                Text("時間軸").tag(MultitrackPreviewMode.timeline)
-                Text("素材原檔").tag(MultitrackPreviewMode.source)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 132)
-            .controlSize(.small)
+            KliporaSegmentedControl(
+                options: [(MultitrackPreviewMode.timeline, "時間軸"), (MultitrackPreviewMode.source, "素材原檔")],
+                selection: $state.previewMode
+            )
+            .frame(width: 152)
 
             Text(outputSpecLabel)
                 .font(.system(size: 10.5, design: .monospaced))
@@ -1522,11 +1526,8 @@ struct MultitrackPreviewMonitor: View {
                         voiceStore.showCentralVoiceWorkspace ? "畫面預覽" : "中央配音工作台",
                         systemImage: voiceStore.showCentralVoiceWorkspace ? "tv" : "waveform.badge.mic"
                     )
-                    .font(.system(size: 11.5, weight: .medium))
                 }
-                .buttonStyle(.bordered)
-                .tint(voiceStore.showCentralVoiceWorkspace ? mtCyanAccent : surface)
-                .controlSize(.small)
+                .buttonStyle(KliporaPillButtonStyle(variant: voiceStore.showCentralVoiceWorkspace ? .primary : .secondary, compact: true))
                 .accessibilityLabel(voiceStore.showCentralVoiceWorkspace ? "切換至時間軸畫面預覽" : "切換至中央配音工作台")
             }
 
@@ -1646,8 +1647,7 @@ struct MultitrackPreviewMonitor: View {
                                         state.selection = sel
                                     }
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
+                                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                             }
                         }
                         Button("新增字幕") {
@@ -1655,7 +1655,7 @@ struct MultitrackPreviewMonitor: View {
                                 state.selection = sel
                             }
                         }
-                        .controlSize(.small)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     }
                     .padding(.top, 2)
                 }
@@ -1718,10 +1718,12 @@ struct MultitrackPreviewMonitor: View {
                                             if playback.playbackNeedsPermission {
                                                 Button("授權素材資料夾…") { app.grantMediaFolderAccess() }
                                                     .buttonStyle(.borderedProminent)
+                                                    .buttonBorderShape(.capsule)
                                                     .controlSize(.small)
                                             }
                                             Button("重試讀取") { app.retryMediaLoad() }
                                                 .buttonStyle(.bordered)
+                                                .buttonBorderShape(.capsule)
                                                 .controlSize(.small)
                                         }
                                     }
@@ -2312,7 +2314,7 @@ struct MultitrackPreviewMonitor: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(isEmpty ? .secondary : canvas)
                         .frame(width: 34, height: 24)
-                        .background(isEmpty ? surface : mtCyanAccent, in: RoundedRectangle(cornerRadius: 6))
+                        .background(isEmpty ? surface : mtCyanAccent, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(isEmpty)
@@ -2671,6 +2673,7 @@ struct MultitrackTimelineDockView: View {
             }
             .controlSize(.small)
             .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
             .tint(state.rippleDelete ? mtCyanAccent : .secondary)
             .help("開啟時刪除片段會將同軌後續片段自動向左接合")
 
@@ -2684,6 +2687,7 @@ struct MultitrackTimelineDockView: View {
             }
             .controlSize(.small)
             .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
             .tint(snapEnabled ? mtSnapYellow : .secondary)
             .help("拖曳片段時自動吸附到播放頭與其他軌道片段起迄點")
 
@@ -4393,29 +4397,29 @@ struct MultitrackInspectorView: View {
 
         VStack(spacing: 0) {
             // Compact segmented tab header
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 ForEach(tabs) { tab in
                     let isSelected = activeTab == tab
                     Button {
                         state.inspectorTab = tab
                     } label: {
                         Text(tab.title)
-                            .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                            .foregroundStyle(isSelected ? mtCyanAccent : .secondary)
+                            .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? .white : .secondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
-                            .background(isSelected ? mtCyanAccent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 4))
-                            .overlay(alignment: .bottom) {
+                            .background(isSelected ? mtCyanAccent.opacity(0.24) : .clear, in: Capsule())
+                            .overlay {
                                 if isSelected {
-                                    Rectangle().fill(mtCyanAccent).frame(height: 2).padding(.horizontal, 6)
+                                    Capsule().strokeBorder(mtCyanAccent.opacity(0.6), lineWidth: 1)
                                 }
                             }
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
             .background(mtDarkWell)
             Divider().overlay(.white.opacity(0.08))
 
@@ -4487,7 +4491,7 @@ struct MultitrackInspectorView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 7))
+        .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
     }
 
     // MARK: Video — 變換 Tab
@@ -4993,7 +4997,7 @@ struct MultitrackInspectorView: View {
                     .foregroundStyle(.secondary)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 7))
+                    .background(surface.opacity(0.6), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
             } else {
                 inspectorSection("影片原聲控制") {
                     Toggle("靜音影片原聲", isOn: Binding(
@@ -5504,11 +5508,12 @@ struct MultitrackInspectorView: View {
                             app.timelineOutput.dimensions = OutputDimensions(width: p.w, height: p.h)
                         }
                         .buttonStyle(.plain)
-                        .font(.system(size: 10, weight: isCur ? .semibold : .regular))
-                        .foregroundStyle(isCur ? canvas : .white)
+                        .font(.system(size: 10.5, weight: isCur ? .semibold : .regular))
+                        .foregroundStyle(isCur ? .white : .white.opacity(0.86))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
-                        .background(isCur ? mtCyanAccent : mtDarkWell, in: RoundedRectangle(cornerRadius: 4))
+                        .padding(.vertical, 6)
+                        .background(isCur ? mtCyanAccent : mtDarkWell, in: Capsule())
+                        .overlay(Capsule().strokeBorder(isCur ? mtCyanAccent.opacity(0.75) : .white.opacity(0.08), lineWidth: 0.8))
                     }
                 }
 
@@ -5545,55 +5550,46 @@ struct MultitrackInspectorView: View {
             inspectorSection("影格率 / 編碼 / 位元深度") {
                 HStack(spacing: 6) {
                     Text("影格率").font(.caption2).foregroundStyle(.secondary).frame(width: 48, alignment: .leading)
-                    Picker("影格率", selection: Binding(
-                        get: { currentFPS },
-                        set: { app.timelineOutput.fps = $0 }
-                    )) {
-                        Text("24 fps").tag(24)
-                        Text("30 fps").tag(30)
-                        Text("60 fps").tag(60)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .controlSize(.mini)
+                    KliporaSegmentedControl(
+                        options: [(24, "24 fps"), (30, "30 fps"), (60, "60 fps")],
+                        selection: Binding(
+                            get: { currentFPS },
+                            set: { app.timelineOutput.fps = $0 }
+                        )
+                    )
                 }
 
                 HStack(spacing: 6) {
                     Text("編碼器").font(.caption2).foregroundStyle(.secondary).frame(width: 48, alignment: .leading)
-                    Picker("編碼器", selection: Binding(
-                        get: { currentCodec },
-                        set: { newCodec in
-                            app.timelineOutput.codec = newCodec
-                            if (newCodec == "h264" || newCodec == "h264_videotoolbox") && (app.timelineOutput.bitDepth ?? 8) == 10 {
-                                app.timelineOutput.bitDepth = 8
+                    KliporaPillMenuPicker(
+                        options: TimelineExportCodec.allCases.map { ($0.rawValue, $0.displayName) },
+                        selection: Binding(
+                            get: { currentCodec },
+                            set: { newCodec in
+                                app.timelineOutput.codec = newCodec
+                                if (newCodec == "h264" || newCodec == "h264_videotoolbox") && (app.timelineOutput.bitDepth ?? 8) == 10 {
+                                    app.timelineOutput.bitDepth = 8
+                                }
                             }
-                        }
-                    )) {
-                        ForEach(TimelineExportCodec.allCases) { codec in
-                            Text(codec.displayName).tag(codec.rawValue)
-                        }
-                    }
-                    .labelsHidden()
-                    .controlSize(.mini)
+                        )
+                    )
+                    Spacer(minLength: 0)
                 }
 
                 HStack(spacing: 6) {
                     Text("位元深度").font(.caption2).foregroundStyle(.secondary).frame(width: 48, alignment: .leading)
-                    Picker("位元深度", selection: Binding(
-                        get: { currentBitDepth },
-                        set: { depth in
-                            app.timelineOutput.bitDepth = depth
-                            if depth == 10 && currentCodec != "hevc" && currentCodec != "hevc_videotoolbox" {
-                                app.timelineOutput.codec = "hevc_videotoolbox"
+                    KliporaSegmentedControl(
+                        options: [(8, "8-bit"), (10, "10-bit HEVC")],
+                        selection: Binding(
+                            get: { currentBitDepth },
+                            set: { depth in
+                                app.timelineOutput.bitDepth = depth
+                                if depth == 10 && currentCodec != "hevc" && currentCodec != "hevc_videotoolbox" {
+                                    app.timelineOutput.codec = "hevc_videotoolbox"
+                                }
                             }
-                        }
-                    )) {
-                        Text("8-bit").tag(8)
-                        Text("10-bit HEVC").tag(10)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .controlSize(.mini)
+                        )
+                    )
                 }
             }
 
@@ -5614,20 +5610,15 @@ struct MultitrackInspectorView: View {
                         .foregroundStyle(.orange)
                 }
 
-                HStack(spacing: 7) {
+                HStack(spacing: 8) {
                     Button("預覽成片", action: app.previewTimeline)
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true, fullWidth: true))
                         .disabled(app.busy || layout.isEmpty || layout.hasInvalidTransitions)
 
                     Button { app.export() } label: {
                         Label("匯出 MP4", systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(mtCyanAccent)
-                    .foregroundStyle(canvas)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: true, fullWidth: true))
                     .disabled(app.busy || layout.isEmpty || layout.hasInvalidTransitions)
                 }
             }
@@ -5643,10 +5634,10 @@ struct MultitrackInspectorView: View {
                 .foregroundStyle(.white.opacity(0.88))
             content()
         }
-        .padding(8)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.07), lineWidth: 0.8))
+        .background(surface.opacity(0.72), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 0.8))
     }
 
     private func compactSliderRow(

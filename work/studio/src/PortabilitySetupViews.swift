@@ -5037,6 +5037,7 @@ The above copyright notice and this permission notice shall be included in all c
 struct LocalVoiceModelManagerSheet: View {
     @ObservedObject var app: Studio
     @ObservedObject var manager: PortabilitySetupManager
+    @ObservedObject private var voicebox = VoiceboxServiceController.shared
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -5138,6 +5139,64 @@ struct LocalVoiceModelManagerSheet: View {
                                             .font(.system(size: 10.5))
                                             .foregroundStyle(StudioTheme.textSecondary)
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    // MediaTek BreezyVoice (Taiwanese Mandarin Zero-Shot TTS sharing all 68 voice profiles)
+                    KliporaGroupedCard(padding: 14) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .center, spacing: 10) {
+                                Image(systemName: voicebox.isBreezyVoiceInstalled ? "checkmark.seal.fill" : (voicebox.breezyVoiceInstalling ? "arrow.down.circle.fill" : "waveform.badge.mic"))
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(voicebox.isBreezyVoiceInstalled ? setupEmerald : (voicebox.breezyVoiceInstalling ? StudioTheme.neutralAccent : setupAmber))
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text("MediaTek BreezyVoice（台灣國語 · 共用 68 聲線）")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(StudioTheme.textPrimary)
+                                        Text("Apache-2.0")
+                                            .font(.system(size: 9.5, weight: .semibold))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 1.5)
+                                            .background(Color.white.opacity(0.08), in: Capsule())
+                                            .foregroundStyle(StudioTheme.textSecondary)
+                                    }
+                                    Text("MediaTek-Research/BreezyVoice · 預估 ~2.8 GB\(voicebox.breezyVoiceDiskBytes > 0 ? "（本機已佔用 \(setupFormatBytes(voicebox.breezyVoiceDiskBytes))）" : "")")
+                                        .font(.system(size: 10.5, design: .monospaced))
+                                        .foregroundStyle(StudioTheme.textMuted)
+                                    Text("專攻道地台灣國語並支援注音標註，直接沿用現有 68 個聲音角色。BreezyVoice-26 台語權重待聯發創新基地公開後將無縫接入。")
+                                        .font(.system(size: 10.5))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                if voicebox.breezyVoiceInstalling {
+                                    Button("取消") {
+                                        voicebox.cancelBreezyVoiceInstall()
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                                } else if voicebox.isBreezyVoiceInstalled {
+                                    Button("移除釋放空間") {
+                                        voicebox.uninstallBreezyVoice(removeAll: false)
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .destructive, compact: true))
+                                } else {
+                                    Button {
+                                        voicebox.installBreezyVoice()
+                                    } label: {
+                                        Label("一鍵安裝", systemImage: "arrow.down.circle")
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                                }
+                            }
+                            if voicebox.breezyVoiceInstalling {
+                                ProgressView(value: voicebox.breezyVoiceInstallProgress)
+                                    .tint(StudioTheme.neutralAccent)
+                                if !voicebox.breezyVoiceInstallStage.isEmpty {
+                                    Text(voicebox.breezyVoiceInstallStage)
+                                        .font(.system(size: 10.5))
+                                        .foregroundStyle(StudioTheme.textSecondary)
                                 }
                             }
                         }
