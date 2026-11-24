@@ -129,6 +129,8 @@ VOCOS_24KHZ_URL = (
 
 ASR_SUBDIR = "faster-whisper-base"
 ASR_SMALL_SUBDIR = "faster-whisper-small"
+ASR_BREEZE26_SUBDIR = "faster-whisper-Breeze-ASR-26-int8"
+ASR_BREEZE26_REPO = "WizardForest/faster-whisper-Breeze-ASR-26-int8"
 DEFAULT_ZH_PROMPT = "以下是繁體中文的字幕內容，請使用自然流暢的台灣繁體中文與標準標點符號。"
 
 
@@ -625,6 +627,13 @@ def _find_asr_model_dir() -> Optional[Path]:
     return None
 
 
+def _find_breeze26_model_dir() -> Optional[Path]:
+    cand = MODELS_DIR / "asr" / ASR_BREEZE26_SUBDIR
+    if cand.is_dir() and (cand / "model.bin").is_file():
+        return cand
+    return None
+
+
 def _find_kokoro_assets() -> Optional[Dict[str, str]]:
     base = MODELS_DIR / "tts" / KOKORO_SUBDIR
     if not base.is_dir():
@@ -749,6 +758,8 @@ def collect_status(*, force_refresh_size: bool = False) -> Dict[str, Any]:
 
     asr_dir = _find_asr_model_dir()
     asr_installed = asr_dir is not None
+    asr_breeze26_dir = _find_breeze26_model_dir()
+    asr_breeze26_installed = asr_breeze26_dir is not None
     asr_venv_ok = bool(venv_pkgs.get("faster_whisper"))
 
     kokoro_assets = _find_kokoro_assets()
@@ -784,9 +795,22 @@ def collect_status(*, force_refresh_size: bool = False) -> Dict[str, Any]:
             "ready": asr_installed and asr_venv_ok and bool(ffmpeg_path),
             "needsVenv": not asr_venv_ok,
             "estimatedSizeMB": 145,
-            "diskSizeBytes": dir_size_bytes(MODELS_DIR / "asr", force_refresh=force_refresh_size),
+            "diskSizeBytes": dir_size_bytes(MODELS_DIR / "asr" / ASR_SUBDIR, force_refresh=force_refresh_size),
             "modelPath": str(asr_dir) if asr_dir else str(MODELS_DIR / "asr" / ASR_SUBDIR),
             "sourceUrl": "https://huggingface.co/Systran/faster-whisper-base",
+        },
+        "asr_breeze26": {
+            "id": "asr_breeze26",
+            "title": "台灣語音自動字幕 (Breeze-ASR-26 INT8)",
+            "engine": "CTranslate2 INT8 (MediaTek-Research/Breeze-ASR-26)",
+            "license": "Apache-2.0",
+            "installed": asr_breeze26_installed,
+            "ready": asr_breeze26_installed and asr_venv_ok and bool(ffmpeg_path),
+            "needsVenv": not asr_venv_ok,
+            "estimatedSizeMB": 1550,
+            "diskSizeBytes": dir_size_bytes(MODELS_DIR / "asr" / ASR_BREEZE26_SUBDIR, force_refresh=force_refresh_size),
+            "modelPath": str(asr_breeze26_dir) if asr_breeze26_dir else str(MODELS_DIR / "asr" / ASR_BREEZE26_SUBDIR),
+            "sourceUrl": "https://huggingface.co/MediaTek-Research/Breeze-ASR-26",
         },
         "tts": {
             "id": "tts",
@@ -1058,6 +1082,41 @@ def install_asr() -> None:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def install_asr_breeze26() -> None:
+    install_venv()
+    asr_parent = MODELS_DIR / "asr"
+    asr_parent.mkdir(parents=True, exist_ok=True)
+    final_dir = asr_parent / ASR_BREEZE26_SUBDIR
+    if final_dir.is_dir() and (final_dir / "model.bin").is_file():
+        log(f"Breeze-ASR-26 INT8 already installed at {final_dir}.")
+        return
+
+    tmp_dir = asr_parent / f".downloading.{ASR_BREEZE26_SUBDIR}.{os.getpid()}"
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    vpy = str(venv_python_path())
+    dl_script = (
+        "from huggingface_hub import snapshot_download; "
+        f"p = snapshot_download(repo_id={repr(ASR_BREEZE26_REPO)}, local_dir={repr(str(tmp_dir))}, local_dir_use_symlinks=False); "
+        "print('Downloaded Breeze-ASR-26 INT8 to:', p)"
+    )
+    log(f"Downloading {ASR_BREEZE26_REPO} (MediaTek Breeze-ASR-26 INT8, ~1.55 GB) into isolated model cache ...")
+    env = os.environ.copy()
+    env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    try:
+        _run_subprocess([vpy, "-c", dl_script], check=True, capture=False, env=env)
+        if not (tmp_dir / "model.bin").is_file():
+            raise RuntimeError("Breeze-ASR-26 download completed without model.bin")
+        if final_dir.exists():
+            shutil.rmtree(final_dir)
+        os.replace(str(tmp_dir), str(final_dir))
+    finally:
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def install_tts() -> None:
     install_venv()
     if _find_kokoro_assets() is not None:
@@ -1133,6 +1192,7 @@ def cmd_install(module: str) -> None:
         "venv": install_venv,
         "vocal_sep": install_vocal_sep,
         "asr": install_asr,
+        "asr_breeze26": install_asr_breeze26,
         "tts": install_tts,
         "voice_clone": install_voice_clone,
     }
@@ -1155,7 +1215,18 @@ def cmd_uninstall(module: str) -> None:
                 if target.exists():
                     log(f"Removing {target} ...")
                     shutil.rmtree(target)
-        elif module in ("vocal_sep", "asr", "tts", "voice_clone"):
+        elif module == "asr":
+            for sub in (ASR_SUBDIR, ASR_SMALL_SUBDIR):
+                target = MODELS_DIR / "asr" / sub
+                if target.exists():
+                    log(f"Removing {target} ...")
+                    shutil.rmtree(target)
+        elif module == "asr_breeze26":
+            target = MODELS_DIR / "asr" / ASR_BREEZE26_SUBDIR
+            if target.exists():
+                log(f"Removing {target} ...")
+                shutil.rmtree(target)
+        elif module in ("vocal_sep", "tts", "voice_clone"):
             target = MODELS_DIR / module
             if target.exists():
                 log(f"Removing {target} ...")
@@ -1541,15 +1612,41 @@ def _run_faster_whisper(
     *,
     language: Optional[str] = "zh",
     initial_prompt: Optional[str] = None,
+    model_choice: str = "auto",
 ) -> Tuple[List[Dict[str, Any]], str, float, float, str, Optional[str]]:
-    asr_dir = _find_asr_model_dir()
-    if not asr_dir:
-        raise RuntimeError("ASR_NOT_INSTALLED")
+    breeze_dir = _find_breeze26_model_dir()
+    base_dir = _find_asr_model_dir()
+    use_breeze = False
+    if model_choice == "breeze26":
+        if not breeze_dir:
+            raise RuntimeError("ASR_BREEZE26_NOT_INSTALLED")
+        asr_dir = breeze_dir
+        use_breeze = True
+    elif model_choice == "base":
+        if not base_dir:
+            raise RuntimeError("ASR_NOT_INSTALLED")
+        asr_dir = base_dir
+    else:
+        # Auto: prefer Breeze-ASR-26 when installed for Taiwanese/Mandarin, otherwise fallback to base
+        if breeze_dir and (not language or language.lower() in ("zh", "tw", "nan", "auto")):
+            asr_dir = breeze_dir
+            use_breeze = True
+        elif base_dir:
+            asr_dir = base_dir
+        elif breeze_dir:
+            asr_dir = breeze_dir
+            use_breeze = True
+        else:
+            raise RuntimeError("ASR_NOT_INSTALLED")
 
     from faster_whisper import WhisperModel  # type: ignore
 
-    effective_prompt = _build_asr_prompt(language, initial_prompt)
-    model_label = f"Systran/{asr_dir.name} (INT8)"
+    effective_prompt = _build_asr_prompt("zh" if use_breeze else language, initial_prompt)
+    model_label = (
+        "MediaTek-Research/Breeze-ASR-26 (INT8)"
+        if use_breeze
+        else f"Systran/{asr_dir.name} (INT8)"
+    )
 
     with tempfile.TemporaryDirectory(prefix="md_asr_") as td:
         wav_16k = Path(td) / "input_16k.wav"
@@ -1572,7 +1669,7 @@ def _run_faster_whisper(
             local_files_only=True,
         )
 
-        lang_arg = None if (not language or language.lower() == "auto") else language
+        lang_arg = "zh" if use_breeze else (None if (not language or language.lower() == "auto") else language)
 
         def _do_transcribe(use_vad: bool) -> Tuple[List[Dict[str, Any]], Any]:
             seg_iter, info = model.transcribe(
@@ -1616,11 +1713,20 @@ def cmd_asr(
     language: str,
     initial_prompt: Optional[str],
     output_srt_str: Optional[str] = None,
+    model_choice: str = "auto",
 ) -> None:
     ensure_venv_reexec("asr")
-    if _find_asr_model_dir() is None:
+    if model_choice == "breeze26":
+        if _find_breeze26_model_dir() is None:
+            emit_error(
+                "尚未安裝台灣語音辨識模型 (Breeze-ASR-26 INT8)。請先點選安裝。",
+                module="asr_breeze26",
+                needs_install=True,
+            )
+            return
+    elif _find_asr_model_dir() is None and _find_breeze26_model_dir() is None:
         emit_error(
-            "尚未安裝自動字幕 ASR 模型 (Faster-Whisper INT8)。請先執行 install --module asr。",
+            "尚未安裝自動字幕 ASR 模型。請先安裝 Faster-Whisper 或 Breeze-ASR-26。",
             module="asr",
             needs_install=True,
         )
@@ -1644,6 +1750,7 @@ def cmd_asr(
             input_path,
             language=language,
             initial_prompt=initial_prompt,
+            model_choice=model_choice,
         )
         _write_srt(segments, srt_path)
 
@@ -1970,14 +2077,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_inst.add_argument(
         "--module",
         required=True,
-        choices=["venv", "vocal_sep", "asr", "tts", "voice_clone"],
+        choices=["venv", "vocal_sep", "asr", "asr_breeze26", "tts", "voice_clone"],
     )
 
     p_uninst = sub.add_parser("uninstall", help="Remove a specific audio AI module or entire isolated env.")
     p_uninst.add_argument(
         "--module",
         required=True,
-        choices=["vocal_sep", "asr", "tts", "voice_clone", "all"],
+        choices=["vocal_sep", "asr", "asr_breeze26", "tts", "voice_clone", "all"],
     )
 
     p_sep = sub.add_parser("separate", help="Separate vocals and accompaniment via UVR MDX-Net ONNX.")
@@ -1992,6 +2099,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_asr.add_argument("--output-srt", default=None, help="Optional explicit output path for SRT.")
     p_asr.add_argument("--language", default="zh", help="Language code (default: zh, or auto).")
     p_asr.add_argument("--initial-prompt", default=None, help="Optional Whisper initial prompt.")
+    p_asr.add_argument("--model", default="auto", choices=["auto", "base", "breeze26"], help="ASR model choice.")
 
     p_tts = sub.add_parser("tts", help="Synthesize Chinese/multilingual speech via Sherpa-ONNX Kokoro INT8.")
     p_tts.add_argument("--text", required=True, help="Input text to synthesize.")
@@ -2023,7 +2131,7 @@ def main() -> None:
         elif args.command == "separate":
             cmd_separate(args.input, args.output_dir, args.vocals_output, args.accompaniment_output)
         elif args.command == "asr":
-            cmd_asr(args.input, args.output_dir, args.language, args.initial_prompt, args.output_srt)
+            cmd_asr(args.input, args.output_dir, args.language, args.initial_prompt, args.output_srt, args.model)
         elif args.command == "tts":
             cmd_tts(args.text, args.output, args.speaker, args.speed)
         elif args.command == "voice-clone":

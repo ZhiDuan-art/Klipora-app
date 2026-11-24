@@ -1,5 +1,26 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.1 — 2026-11-24 19:36 (UTC+8)
+### Edits-Style 6-Tab Settings, Unified Capsule UI, Antigravity No-API Image Gen & Taiwan Breeze-ASR-26 Subtitles / 極簡雙欄設定頁、全站膠囊 R 角統一、Antigravity 免 API 生圖與台灣 Breeze-ASR-26 自動字幕
+- **全新 6 分頁雙欄極簡設定頁（比照 Edits 設計語言）**：
+  - 取消頂部佔位狀態卡與長捲動，改為左側 6 分頁導覽列（`一般` / `本機引擎` / `雲端與 API` / `AI 代理與自動化` / `模型與快取` / `元件與關於`，帶精巧狀態圓點）＋ 右側低噪 `14pt` 分組卡片與低調深灰 `儲存` 膠囊按鈕。
+  - **「AI 代理與自動化」分頁**：內建漸進顯示的 `Enable Automation Server`（MCP）預留設定卡片（開啟後展開 `Port` / `Endpoint` / `Access token` 與 `Claude Code` / `Codex` / `Antigravity` 一鍵複製設定）。
+- **全站 R 角統一（`Capsule()` 圓潤膠囊按鈕、下拉選單與分段開關）**：
+  - 於 `StudioTheme.swift` 建立統一設計規範 `StudioTheme.Radius`（卡片 `14pt`、輸入框／內嵌槽 `10pt`）與自訂 **`KliporaPillButtonStyle`、`KliporaSegmentedControl`、`KliporaPillMenuPicker`**，將主工作台與設定頁全面統一為圓潤膠囊風格。
+- **本機模型管理升級（圖片＋語音對稱體驗）**：
+  - 設定頁 **ComfyUI 卡片**與「模型與快取」分頁新增 **`管理圖片模型`** 直達入口。
+  - 設定頁 **本機語音引擎** 支援直接點擊 **`未下載`** 的 Qwen3-TTS 模型從 HuggingFace 背景下載（含即時進度條），並新增對稱的 **`本機語音模型管理`（`LocalVoiceModelManagerSheet`）** 視窗（支援一鍵下載與移除釋放空間）。
+- **免 API 直連生圖（Antigravity `agy`）＋ 來源選單淨化 ＋ 風格預設修正**：
+  - 偵測到本機 `Gemini.app` 內建 `agy` CLI 時，自動解鎖 **`桌面 Agent · Antigravity（免 API）`** 圖片來源（免 API Key、支援多圖參考、生成完自動入庫）。
+  - 未設定 OpenAI / Gemini API Key 時，這兩項自動從 `來源` 選單退場；來源未就緒時自動隱藏下方無效提示詞與參數區。
+  - 左側素材庫新增 **`貼上圖片`** 膠囊按鈕（一鍵從剪貼簿匯入 ChatGPT / Gemini 複製的圖片）與外部桌面 AI 快捷選單。
+  - 「風格」選單預設改為 **`不套用風格`**，不再自動附加紀實風格英文詞干擾提示詞。
+- **接入台灣語音自動字幕引擎 `MediaTek-Research/Breeze-ASR-26`（INT8 / Apache-2.0）**：
+  - 於 `audio_ai.py` 與剪輯工作區 **AI 工具** 接入聯發創新基地開源的 **`Breeze-ASR-26`**（專為台灣台語與國／台／英夾雜日常對話優化，直接輸出繁體漢字字幕並匯入多軌 T 軌與 `.srt`），支援一鍵安裝、移除與與 Faster-Whisper Base 並存切換。
+- **Affected Files**：`work/studio/src/StudioTheme.swift`, `work/studio/src/Studio.swift`, `work/studio/src/PortabilitySetupViews.swift`, `work/studio/src/OnlineImageService.swift`, `work/studio/src/GenerationDockViews.swift`, `work/studio/src/LocalModelManager.swift`, `work/studio/src/CustomWorkflow.swift`, `work/studio/src/MografySkillIntegration.swift`, `work/studio/src/ModelProfileViews.swift`, `work/studio/src/ProStudioPanels.swift`, `work/studio/resources/worker.py`, `work/studio/resources/audio_ai.py`, `work/studio/Info.plist`
+
+---
+
 ## v1.1.0 — 2026-11-23 22:32 (UTC+8)
 ### UI Layout Polish, Online Controls Cleanup & Desktop App Quick-Launch / 介面排版優化、線上設定欄淨化與桌面程式快捷啟動
 - **「元件與連線設定」上方 1~4 狀態卡改為單排 4 欄顯示**：

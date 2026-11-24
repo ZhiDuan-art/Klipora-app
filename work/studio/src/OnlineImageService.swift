@@ -248,149 +248,162 @@ struct OnlineImageControls: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Section 1: Official Desktop App & Web Browser Entry
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("官方桌面程式與網頁入口（免 API 金鑰）")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(StudioTheme.textPrimary)
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     if let appURL = installedDesktopAppURL {
                         Button {
                             NSWorkspace.shared.open(appURL)
                         } label: {
                             Label(provider == .openai ? "開啟 ChatGPT 桌面版" : "開啟 Gemini 桌面版", systemImage: "macwindow")
+                                .lineLimit(1)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(StudioTheme.neutralAccent)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
                     }
                     Button {
                         NSWorkspace.shared.open(provider.webURL)
                     } label: {
-                        Label(provider.webButtonTitle, systemImage: "safari")
+                        Label("開啟官網", systemImage: "safari")
+                            .lineLimit(1)
                     }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     .disabled(network.isOffline)
-                }
-                HStack(spacing: 8) {
-                    Button("官方定價與文件") {
+
+                    Button {
                         NSWorkspace.shared.open(provider.pricingURL)
+                    } label: {
+                        Text("定價")
+                            .lineLimit(1)
                     }
-                    .font(.caption)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     .disabled(network.isOffline)
                 }
-                Text("桌面版 App 未開放第三方直接串接生圖 API；可用既有訂閱於桌面版／網頁生圖後，直接拖入 Klipora 左側素材庫。")
+                Text("可用既有訂閱於桌面版／網頁生圖後，直接拖入 Klipora 左側素材庫。")
                     .font(.caption2)
                     .foregroundStyle(StudioTheme.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(9)
-            .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: 8))
+            .padding(11)
+            .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
 
-            // Section 2: Opt-in Official REST API
-            VStack(alignment: .leading, spacing: 7) {
+            // Section 2: Opt-in Official REST API (progressive disclosure: hide parameters when API key is not configured)
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("官方 REST API（支援純文字與多圖參考）")
+                    Text("官方 REST API")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.textPrimary)
                     Spacer()
-                    Text(gate.allowed ? "API 已就緒" : "API 已停用")
+                    Text(gate.allowed ? "已就緒" : (vm.hasKey ? "待確認計費" : "未啟用"))
                         .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background((gate.allowed ? StudioTheme.success : StudioTheme.warning).opacity(0.2), in: Capsule())
-                        .foregroundStyle(gate.allowed ? StudioTheme.success : StudioTheme.warning)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background((gate.allowed ? StudioTheme.success : StudioTheme.textMuted).opacity(0.18), in: Capsule())
+                        .foregroundStyle(gate.allowed ? StudioTheme.success : StudioTheme.textSecondary)
                 }
-
-                Text("支援純文字生圖或於中央下方「參考素材板」加入最多 8 張參考圖片（角色三視圖／場景／物品）；不支援參考影片或本機 LoRA。")
-                    .font(.caption2)
-                    .foregroundStyle(StudioTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if network.isOffline {
                     HStack(spacing: 6) {
                         Image(systemName: "wifi.slash").foregroundStyle(StudioTheme.warning)
-                        Text("目前離線，線上 API 與官網按鈕已暫時停用；本機 ComfyUI 與剪輯功能不受影響。")
+                        Text("目前離線，線上 API 暫時停用；本機 ComfyUI 與剪輯不受影響。")
                             .font(.caption2)
                             .foregroundStyle(StudioTheme.warning)
                         Spacer()
-                        Button("重試") { network.recheckNow() }.font(.caption2)
+                        Button("重試") { network.recheckNow() }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     }
                 }
 
-                HStack(spacing: 8) {
-                    Text("模型 ID")
-                        .font(.caption)
+                if vm.hasKey {
+                    Text("支援純文字與最多 8 張多參考圖（角色三視圖／場景／物品）。")
+                        .font(.caption2)
                         .foregroundStyle(StudioTheme.textSecondary)
-                        .fixedSize()
-                    TextField(provider.defaultModelID, text: $vm.modelID)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.caption.monospaced())
-                        .onChange(of: vm.modelID) { _, newValue in
-                            provider.setSavedModelID(newValue)
-                        }
-                }
-                .disabled(network.isOffline)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                if provider == .openai {
                     HStack(spacing: 8) {
-                        Text("品質")
+                        Text("模型 ID")
                             .font(.caption)
                             .foregroundStyle(StudioTheme.textSecondary)
                             .fixedSize()
-                        Picker("品質", selection: $vm.openAIQuality) {
-                            Text("低").tag("low")
-                            Text("中").tag("medium")
-                            Text("高").tag("high")
+                        TextField(provider.defaultModelID, text: $vm.modelID)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption.monospaced())
+                            .onChange(of: vm.modelID) { _, newValue in
+                                provider.setSavedModelID(newValue)
+                            }
+                    }
+                    .disabled(network.isOffline)
+
+                    if provider == .openai {
+                        HStack(spacing: 8) {
+                            Text("品質")
+                                .font(.caption)
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .fixedSize()
+                            KliporaSegmentedControl(
+                                options: [("low", "低"), ("medium", "中"), ("high", "高")],
+                                selection: $vm.openAIQuality
+                            )
+                            .disabled(network.isOffline)
+                            .onChange(of: vm.openAIQuality) { _, val in provider.setSavedOpenAIQuality(val) }
                         }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .font(.caption)
-                        .disabled(network.isOffline)
-                        .onChange(of: vm.openAIQuality) { _, val in provider.setSavedOpenAIQuality(val) }
+                    } else {
+                        HStack(spacing: 8) {
+                            Text("解析度")
+                                .font(.caption)
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .fixedSize()
+                            KliporaSegmentedControl(
+                                options: [("1K", "1K"), ("2K", "2K")],
+                                selection: $vm.geminiImageSize
+                            )
+                            .disabled(network.isOffline)
+                            .onChange(of: vm.geminiImageSize) { _, val in provider.setSavedGeminiImageSize(val) }
+                        }
+                    }
+
+                    Toggle(isOn: $vm.billingAccepted) {
+                        Text("我了解此操作將呼叫 \(provider.fixedAPIHost) 官方付費 API。")
+                            .font(.caption2)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                    }
+                    .toggleStyle(.checkbox)
+                    .disabled(network.isOffline)
+                    .onChange(of: vm.billingAccepted) { _, val in provider.setBillingAcknowledged(val) }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "key.fill")
+                            .foregroundStyle(StudioTheme.success)
+                            .font(.caption2)
+                        Text("已設定 API 金鑰")
+                            .font(.caption2)
+                            .foregroundStyle(StudioTheme.success)
+                        Spacer()
+                        Button("管理金鑰") {
+                            PortabilitySetupManager.shared.selectedSidebar = .cloudAPI
+                            NotificationCenter.default.post(name: .motionDeskOpenSettings, object: nil)
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     }
                 } else {
                     HStack(spacing: 8) {
-                        Text("解析度")
-                            .font(.caption)
-                            .foregroundStyle(StudioTheme.textSecondary)
-                            .fixedSize()
-                        Picker("解析度", selection: $vm.geminiImageSize) {
-                            Text("1K").tag("1K")
-                            Text("2K").tag("2K")
+                        Text("設定 API 金鑰後即可在 Klipora 內直接生圖（支援多圖參考）。")
+                            .font(.caption2)
+                            .foregroundStyle(StudioTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 4)
+                        Button("設定金鑰") {
+                            PortabilitySetupManager.shared.selectedSidebar = .cloudAPI
+                            NotificationCenter.default.post(name: .motionDeskOpenSettings, object: nil)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .font(.caption)
-                        .disabled(network.isOffline)
-                        .onChange(of: vm.geminiImageSize) { _, val in provider.setSavedGeminiImageSize(val) }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     }
-                }
-
-                Toggle(isOn: $vm.billingAccepted) {
-                    Text("我了解此操作將呼叫 \(provider.fixedAPIHost) 官方付費 API，且網頁版免費額度不適用。")
-                        .font(.caption2)
-                        .foregroundStyle(StudioTheme.textSecondary)
-                }
-                .toggleStyle(.checkbox)
-                .disabled(network.isOffline)
-                .onChange(of: vm.billingAccepted) { _, val in provider.setBillingAcknowledged(val) }
-
-                Text(provider.billingDisclaimer)
-                    .font(.caption2)
-                    .foregroundStyle(StudioTheme.textMuted)
-
-                HStack(spacing: 8) {
-                    Image(systemName: vm.hasKey ? "key.fill" : "key.slash")
-                        .foregroundStyle(vm.hasKey ? StudioTheme.success : StudioTheme.warning)
-                    Text(vm.hasKey ? "Keychain 已設定 API 金鑰" : "Keychain 尚未設定 API 金鑰")
-                        .font(.caption2)
-                        .foregroundStyle(vm.hasKey ? StudioTheme.success : StudioTheme.warning)
-                    Spacer()
-                    Button("前往元件與連線設定…") {
-                        NotificationCenter.default.post(name: .motionDeskOpenSettings, object: nil)
-                    }
-                    .font(.caption2)
                 }
             }
-            .padding(9)
-            .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: 8))
+            .padding(11)
+            .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
             .opacity(network.isOffline ? 0.65 : 1.0)
         }
         .onAppear { syncState() }

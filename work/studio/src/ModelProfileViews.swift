@@ -2989,8 +2989,7 @@ struct LocalModelProfilePanel: View {
                     Label("恢復 \(profile.shortName) 原生預設", systemImage: "arrow.counterclockwise")
                         .frame(maxWidth: .infinity)
                 }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true, fullWidth: true))
                 .disabled(app.busy)
             }
         }
@@ -3011,12 +3010,10 @@ struct LocalModelProfilePanel: View {
                 Button {
                     app.exportCurrentWorkflowFiles()
                 } label: {
-                    Label("匯出工作流 (Canvas + API)", systemImage: "square.and.arrow.up")
+                    Label("匯出工作流", systemImage: "square.and.arrow.up")
                         .lineLimit(1)
-                        .frame(maxWidth: .infinity)
                 }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true, fullWidth: true))
                 .disabled(app.busy || app.isRemovedModelSelected)
                 .help("以同源引擎輸出當下實際參數的 .api.json 與 .workflow.json")
 
@@ -3026,8 +3023,7 @@ struct LocalModelProfilePanel: View {
                     Label("本機 ComfyUI", systemImage: "safari")
                         .lineLimit(1)
                 }
-                .controlSize(.small)
-                .buttonStyle(.bordered)
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                 .help("在瀏覽器開啟 \(app.endpoint)")
             }
 

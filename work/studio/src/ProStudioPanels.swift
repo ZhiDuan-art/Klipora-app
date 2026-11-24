@@ -623,6 +623,19 @@ struct AudioAIModuleStatus: Identifiable, Equatable {
             sourceURL: "https://huggingface.co/Systran/faster-whisper-base",
             installedPath: ""
         ),
+        "asr_breeze26": AudioAIModuleStatus(
+            id: "asr_breeze26",
+            installed: false,
+            venvInstalled: false,
+            modelInstalled: false,
+            displayName: "台灣語音自動字幕 (Breeze-ASR-26 INT8)",
+            modelName: "MediaTek-Research/Breeze-ASR-26 (INT8)",
+            sizeMB: 1550,
+            diskSizeBytes: 0,
+            license: "Apache-2.0",
+            sourceURL: "https://huggingface.co/MediaTek-Research/Breeze-ASR-26",
+            installedPath: ""
+        ),
         "tts": AudioAIModuleStatus(
             id: "tts",
             installed: false,
@@ -1213,21 +1226,24 @@ final class AudioAIManager: ObservableObject {
         inputPath: String,
         language: String,
         initialPrompt: String = "",
+        model: String = "auto",
         outputDir: URL,
         outputSRTURL: URL? = nil
     ) async throws -> ASRTranscriptionResult {
         guard busyModule == nil else {
             throw AudioAIError.executionFailed("目前有其他音訊 AI 任務正在執行，請稍候。")
         }
-        busyModule = "asr"
+        busyModule = model == "breeze26" ? "asr_breeze26" : "asr"
         lastError = nil
-        progressLog = "啟動自動字幕辨識 (Faster-Whisper INT8)..."
+        progressLog = model == "breeze26"
+            ? "啟動台灣語音字幕辨識 (MediaTek Breeze-ASR-26 INT8)..."
+            : "啟動自動字幕辨識 (Faster-Whisper INT8)..."
         lastStatusMessage = "正在進行語音轉字幕草稿..."
         defer { busyModule = nil }
 
         do {
             try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
-            var cmdArgs = ["asr", "--input", inputPath, "--output-dir", outputDir.path, "--language", language]
+            var cmdArgs = ["asr", "--input", inputPath, "--output-dir", outputDir.path, "--language", language, "--model", model]
             if let outputSRTURL {
                 try FileManager.default.createDirectory(at: outputSRTURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 cmdArgs.append(contentsOf: ["--output-srt", outputSRTURL.path])
@@ -3253,6 +3269,7 @@ struct AudioAndVoiceoverLibraryTab: View {
 private final class AIToolsLocalState: ObservableObject {
     static let shared = AIToolsLocalState()
     @Published var asrLanguage: String = "zh"
+    @Published var asrModelChoice: String = "auto"
     @Published var asrPrompt: String = ""
     @Published var asrDraftSegments: [ASRSubtitleSegment] = []
     @Published var asrDraftBaseOffset: Double = 0
@@ -3322,6 +3339,7 @@ struct AIToolsStudioTab: View {
     var body: some View {
         let vocalStatus = audioAI.modules["vocal_sep"] ?? AudioAIModuleStatus.defaults["vocal_sep"]!
         let asrStatus = audioAI.modules["asr"] ?? AudioAIModuleStatus.defaults["asr"]!
+        let breeze26Status = audioAI.modules["asr_breeze26"] ?? AudioAIModuleStatus.defaults["asr_breeze26"]!
         let ttsStatus = audioAI.modules["tts"] ?? AudioAIModuleStatus.defaults["tts"]!
         let cloneStatus = audioAI.modules["voice_clone"] ?? AudioAIModuleStatus.defaults["voice_clone"]!
 
@@ -3358,7 +3376,32 @@ struct AIToolsStudioTab: View {
                         }
                     }
 
-                    // 2. ASR Auto Subtitles (Glossary Prompt + Editable Review Flow)
+                    // 2A. Taiwan Breeze-ASR-26 (Taigi / Mandarin / English Code-Switching Subtitles)
+                    if matchesSearch("breeze asr 26 台灣 台語 閩南語 國台英 字幕 語音 辨識 mediatek") {
+                        aiModuleCard(status: breeze26Status, icon: "waveform.and.mic", accent: proEmerald) {
+                            let target = selectedMediaForAI
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("聯發創新基地 MediaTek Breeze-ASR-26（Apache 2.0）：專為台灣台語與國／台／英夾雜日常對話優化，直接輸出台灣繁體漢字字幕。")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                HStack(spacing: 6) {
+                                    Button {
+                                        runASRTask(source: target, modelOverride: "breeze26")
+                                    } label: {
+                                        Label("以 Breeze-ASR-26 辨識台灣字幕", systemImage: "captions.bubble.fill")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .lineLimit(1)
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                                    .disabled(!breeze26Status.isReady || audioAI.busyModule != nil || app.busy)
+                                }
+                            }
+                        }
+                    }
+
+                    // 2B. ASR Auto Subtitles (Glossary Prompt + Editable Review Flow)
                     if matchesSearch("asr whisper subtitle 字幕 自動 語音 辨識 srt 繁體中文 校對 詞彙") {
                         aiModuleCard(status: asrStatus, icon: "captions.bubble.fill", accent: proAmber) {
                             let target = selectedMediaForAI
@@ -3961,18 +4004,19 @@ struct AIToolsStudioTab: View {
         }
     }
 
-    private func runASRTask(source: (path: String, timelineStart: Double)?) {
+    private func runASRTask(source: (path: String, timelineStart: Double)?, modelOverride: String? = nil) {
+        let model = modelOverride ?? local.asrModelChoice
         if let source {
-            executeASRTask(inputPath: source.path, baseOffset: source.timelineStart)
+            executeASRTask(inputPath: source.path, baseOffset: source.timelineStart, model: model)
         } else {
             let at = playback.playhead
             pickAudioOrVideoFile(title: "選擇要辨識自動字幕的音訊或影片") { picked in
-                executeASRTask(inputPath: picked, baseOffset: at)
+                executeASRTask(inputPath: picked, baseOffset: at, model: model)
             }
         }
     }
 
-    private func executeASRTask(inputPath: String, baseOffset: Double) {
+    private func executeASRTask(inputPath: String, baseOffset: Double, model: String = "auto") {
         let now = Date()
         let rootDir = app.audioOutputDirectory
         guard app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) else { return }
@@ -3991,6 +4035,7 @@ struct AIToolsStudioTab: View {
                     inputPath: inputPath,
                     language: lang,
                     initialPrompt: promptHint,
+                    model: model,
                     outputDir: scratchDir,
                     outputSRTURL: srtURL
                 )

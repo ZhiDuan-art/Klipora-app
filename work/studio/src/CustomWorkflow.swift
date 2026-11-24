@@ -166,9 +166,9 @@ struct CustomWorkflowControls: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Button { importing = true } label: {
-                    Label("匯入工作流…", systemImage: "doc.badge.plus")
+                    Label("匯入工作流", systemImage: "doc.badge.plus")
                 }
-                .controlSize(.small)
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                 .help("匯入 ComfyUI API 格式 JSON 至中央工作流目錄，加入本機圖片模型清單（不自動執行）。")
 
                 Button {
@@ -176,10 +176,11 @@ struct CustomWorkflowControls: View {
                     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
                     NSWorkspace.shared.open(dir)
                 } label: {
-                    Label("開啟工作流位置", systemImage: "folder")
+                    Label("工作流資料夾", systemImage: "folder")
                 }
-                .controlSize(.small)
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                 .help("在 Finder 開啟中央工作流目錄：~/Library/Application Support/Klipora/workflows/")
+                Spacer(minLength: 0)
             }
 
             if let entry = selectedEntry {

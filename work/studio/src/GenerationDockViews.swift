@@ -1659,7 +1659,9 @@ struct GenerationImageReferenceDock: View {
     private let roles = ["角色", "場景", "物品", "風格"]
 
     private var capabilityBadge: String {
-        if app.source == "openai_image" || app.source == "gemini_image" {
+        if app.source == "antigravity_image" {
+            return "桌面 Agent · Antigravity 免 API 多圖參考（最多 8 張）"
+        } else if app.source == "openai_image" || app.source == "gemini_image" {
             return "線上原生多圖（支援多角色三視圖／場景／物品，最多 8 張）"
         } else if app.source == "colab" {
             return "線上 Colab 多圖融合（最多 8 張，支援 @圖片 標記）"
@@ -1692,14 +1694,14 @@ struct GenerationImageReferenceDock: View {
                     } label: {
                         Label("看圖產生提示詞", systemImage: "sparkles.rectangle.stack")
                     }
-                    .controlSize(.small)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     .disabled(app.busy)
                 }
                 if !images.isEmpty {
                     Button("清空") {
                         app.setReferenceImages([])
                     }
-                    .controlSize(.small)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     .disabled(app.busy)
                 }
                 Button {
@@ -1711,11 +1713,9 @@ struct GenerationImageReferenceDock: View {
                         app.attachReferences(urls)
                     }
                 } label: {
-                    Label(app.supportsMultiImageReference ? "加入多圖…" : "選擇圖片…", systemImage: "plus.circle")
+                    Label(app.supportsMultiImageReference ? "加入多圖" : "選擇圖片", systemImage: "plus.circle")
                 }
-                .controlSize(.small)
-                .buttonStyle(.borderedProminent)
-                .tint(studioAccent)
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                 .disabled(app.busy || (app.supportsMultiImageReference && images.count >= maxCount))
             }
 
@@ -1740,13 +1740,13 @@ struct GenerationImageReferenceDock: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
                         .fill(dockState.isDropTargeted ? studioAccent.opacity(0.12) : canvas.opacity(0.55))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
                         .strokeBorder(
-                            dockState.isDropTargeted ? studioAccent : Color.white.opacity(0.14),
+                            dockState.isDropTargeted ? studioAccent : Color.white.opacity(0.12),
                             style: StrokeStyle(lineWidth: dockState.isDropTargeted ? 1.8 : 1, dash: [4, 3])
                         )
                 )
@@ -1761,10 +1761,10 @@ struct GenerationImageReferenceDock: View {
                 }
             }
         }
-        .padding(10)
-        .background(panel, in: RoundedRectangle(cornerRadius: 10))
+        .padding(12)
+        .background(panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(dockState.isDropTargeted ? studioAccent : Color.white.opacity(0.08), lineWidth: dockState.isDropTargeted ? 2 : 1)
         )
         .contentShape(Rectangle())

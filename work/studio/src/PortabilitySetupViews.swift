@@ -606,7 +606,249 @@ final class PortabilitySetupManager: ObservableObject {
     @Published var isSheetPresented: Bool = false
     @Published var isFirstRunMode: Bool = false
     @Published var selectedTab: SetupSheetTab = .cards
+    @Published var selectedSidebar: SetupSidebarSection = .general
     @Published var statusBannerMessage: String? = nil
+    @Published var showImageModelManagerSheet: Bool = false
+    @Published var showVoiceModelManagerSheet: Bool = false
+
+    // Voice Model Direct Download State
+    @Published var downloadingVoiceModelRepoID: String? = nil
+    @Published var voiceModelDownloadProgress: Double = 0
+    @Published var voiceModelDownloadStatus: String = ""
+
+    func downloadVoiceModel(_ item: VoiceboxModelCacheItem, app: Studio) {
+        guard downloadingVoiceModelRepoID == nil else {
+            statusBannerMessage = "目前已有語音模型正在下載中，請稍候完成。"
+            return
+        }
+        let repoID = item.repoID
+        let cacheRoot = voiceboxModelsDirPath
+        let displayName = item.displayName
+        downloadingVoiceModelRepoID = repoID
+        voiceModelDownloadProgress = 0.02
+        voiceModelDownloadStatus = "正在連線 HuggingFace 取得 \(displayName) 檔案清單…"
+        statusBannerMessage = "開始下載語音模型：\(displayName)（背景執行中）"
+
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let script = """
+            import json, os, sys, urllib.request, urllib.parse
+            from pathlib import Path
+
+            repo_id = sys.argv[1]
+            hub_root = Path(sys.argv[2])
+            hub_root.mkdir(parents=True, exist_ok=True)
+
+            repo_dir = hub_root / ("models--" + repo_id.replace("/", "--"))
+            refs_dir = repo_dir / "refs"
+            refs_dir.mkdir(parents=True, exist_ok=True)
+
+            # Fetch repo metadata for commit SHA
+            meta_url = f"https://huggingface.co/api/models/{repo_id}"
+            with urllib.request.urlopen(meta_url, timeout=30) as r:
+                meta = json.loads(r.read().decode("utf-8"))
+            sha = meta.get("sha") or "main"
+            (refs_dir / "main").write_text(sha, encoding="utf-8")
+
+            snap_dir = repo_dir / "snapshots" / sha
+            snap_dir.mkdir(parents=True, exist_ok=True)
+
+            def list_files(prefix=""):
+                url = f"https://huggingface.co/api/models/{repo_id}/tree/main" + (f"/{urllib.parse.quote(prefix)}" if prefix else "")
+                with urllib.request.urlopen(url, timeout=30) as r:
+                    items = json.loads(r.read().decode("utf-8"))
+                out = []
+                for it in items:
+                    t = it.get("type")
+                    p = it.get("path", "")
+                    if t == "directory":
+                        out.extend(list_files(p))
+                    elif t == "file":
+                        sz = (it.get("lfs") or {}).get("size") or it.get("size") or 0
+                        out.append((p, int(sz)))
+                return out
+
+            files = list_files()
+            total_bytes = max(1, sum(sz for _, sz in files))
+            done_bytes = 0
+
+            for rel_path, sz in files:
+                dest = snap_dir / rel_path
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                if dest.exists() and (sz == 0 or dest.stat().st_size == sz):
+                    done_bytes += sz
+                    pct = min(0.99, done_bytes / total_bytes)
+                    print(f"PROGRESS|{pct:.4f}|已存在 {rel_path}", flush=True)
+                    continue
+                dl_url = f"https://huggingface.co/{repo_id}/resolve/main/{urllib.parse.quote(rel_path)}"
+                tmp = dest.with_suffix(dest.suffix + ".part")
+                req = urllib.request.Request(dl_url, headers={"User-Agent": "Klipora/1.1"})
+                with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as f:
+                    file_done = 0
+                    while True:
+                        chunk = resp.read(1024 * 512)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        file_done += len(chunk)
+                        pct = min(0.99, (done_bytes + file_done) / total_bytes)
+                        print(f"PROGRESS|{pct:.4f}|下載中 {os.path.basename(rel_path)} ({int(pct*100)}%)", flush=True)
+                os.replace(tmp, dest)
+                done_bytes += max(sz, dest.stat().st_size)
+
+            print("PROGRESS|1.0000|下載完成", flush=True)
+            """
+
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            proc.arguments = ["-u", "-c", script, repoID, cacheRoot]
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = pipe
+
+            let handle = pipe.fileHandleForReading
+            do {
+                try proc.run()
+                var buffer = Data()
+                while true {
+                    let chunk = handle.availableData
+                    if chunk.isEmpty { break }
+                    buffer.append(chunk)
+                    while let nl = buffer.firstIndex(of: 0x0A) {
+                        let lineData = buffer.subdata(in: buffer.startIndex..<nl)
+                        buffer.removeSubrange(buffer.startIndex...nl)
+                        if let line = String(data: lineData, encoding: .utf8) {
+                            if line.hasPrefix("PROGRESS|") {
+                                let parts = line.split(separator: "|", maxSplits: 2)
+                                if parts.count == 3, let pct = Double(parts[1]) {
+                                    let msg = String(parts[2])
+                                    await MainActor.run {
+                                        self?.voiceModelDownloadProgress = pct
+                                        self?.voiceModelDownloadStatus = msg
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                proc.waitUntilExit()
+                let ok = proc.terminationStatus == 0
+                await MainActor.run {
+                    self?.downloadingVoiceModelRepoID = nil
+                    self?.voiceModelDownloadProgress = ok ? 1.0 : 0
+                    self?.voiceModelDownloadStatus = ""
+                    self?.statusBannerMessage = ok
+                        ? "語音模型「\(displayName)」下載完成並已驗證就緒！"
+                        : "語音模型「\(displayName)」下載未完成，請確認網路後重試。"
+                    self?.refreshAllLocalStates(app: app, userInitiated: true)
+                }
+            } catch {
+                await MainActor.run {
+                    self?.downloadingVoiceModelRepoID = nil
+                    self?.voiceModelDownloadProgress = 0
+                    self?.voiceModelDownloadStatus = ""
+                    self?.statusBannerMessage = "無法啟動模型下載：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func removeVoiceModelCache(_ item: VoiceboxModelCacheItem, app: Studio) {
+        let folderName = "models--" + item.repoID.replacingOccurrences(of: "/", with: "--")
+        let target = URL(fileURLWithPath: voiceboxModelsDirPath, isDirectory: true).appendingPathComponent(folderName)
+        do {
+            if FileManager.default.fileExists(atPath: target.path) {
+                try FileManager.default.removeItem(at: target)
+            }
+            statusBannerMessage = "已移除語音模型快取「\(item.displayName)」並釋放磁碟空間。"
+            refreshAllLocalStates(app: app, userInitiated: true)
+        } catch {
+            statusBannerMessage = "無法移除語音模型快取：\(error.localizedDescription)"
+        }
+    }
+
+    // Automation / MCP Server Preview Config (v1.2 foundation)
+    static let automationEnabledKey = "Klipora.automation.mcpEnabled"
+    static let automationPortKey = "Klipora.automation.mcpPort"
+    static let automationTokenKey = "Klipora.automation.mcpToken"
+    @Published var automationEnabled: Bool = false
+    @Published var automationPort: Int = 17499
+    @Published var automationToken: String = ""
+    @Published var automationTokenRevealed: Bool = false
+
+    var automationEndpoint: String {
+        "http://127.0.0.1:\(automationPort)/mcp"
+    }
+
+    func setAutomationEnabled(_ enabled: Bool) {
+        automationEnabled = enabled
+        userDefaults.set(enabled, forKey: Self.automationEnabledKey)
+        if enabled && automationToken.isEmpty {
+            regenerateAutomationToken()
+        }
+    }
+
+    func regenerateAutomationToken() {
+        let token = (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased().prefix(32)
+        automationToken = "klp_\(token)"
+        userDefaults.set(automationToken, forKey: Self.automationTokenKey)
+        statusBannerMessage = "已重新產生本機 Automation Access Token。"
+    }
+
+    func copyAutomationToken() {
+        if automationToken.isEmpty { regenerateAutomationToken() }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(automationToken, forType: .string)
+        statusBannerMessage = "已複製 Access Token 到剪貼簿。"
+    }
+
+    func copyAutomationClientCommand(for client: String) {
+        if automationToken.isEmpty { regenerateAutomationToken() }
+        let cmd: String
+        switch client {
+        case "Claude Code":
+            cmd = "claude mcp add --transport http klipora \(automationEndpoint) --header \"Authorization: Bearer \(automationToken)\""
+        case "Codex":
+            cmd = "codex mcp add klipora --url \(automationEndpoint) --bearer-token-env-var KLIPORA_MCP_TOKEN\nexport KLIPORA_MCP_TOKEN=\"\(automationToken)\""
+        default:
+            cmd = """
+            {
+              "mcpServers": {
+                "klipora": {
+                  "serverUrl": "\(automationEndpoint)",
+                  "headers": { "Authorization": "Bearer \(automationToken)" }
+                }
+              }
+            }
+            """
+        }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(cmd, forType: .string)
+        statusBannerMessage = "已複製 \(client) 連接設定，貼上即可使用。"
+    }
+
+    enum SetupSidebarSection: String, CaseIterable, Identifiable {
+        case general = "一般"
+        case localEngines = "本機引擎"
+        case cloudAPI = "雲端與 API"
+        case automation = "AI 代理與自動化"
+        case modelsStorage = "模型與快取"
+        case about = "元件與關於"
+
+        var id: String { rawValue }
+
+        var iconName: String {
+            switch self {
+            case .general: return "slider.horizontal.3"
+            case .localEngines: return "desktopcomputer"
+            case .cloudAPI: return "cloud"
+            case .automation: return "link"
+            case .modelsStorage: return "internaldrive"
+            case .about: return "info.circle"
+            }
+        }
+    }
 
     // DisclosureGroup states: default false so main flow stays concise (Task / State / Action),
     // while engineering diagnostics and full paths remain one click away.
@@ -753,6 +995,18 @@ final class PortabilitySetupManager: ObservableObject {
 
         let savedPort = userDefaults.integer(forKey: Self.voiceboxPortKey)
         self.voiceboxPort = (1024...65535).contains(savedPort) ? savedPort : 17495
+
+        self.automationEnabled = userDefaults.bool(forKey: Self.automationEnabledKey)
+        let savedAutoPort = userDefaults.integer(forKey: Self.automationPortKey)
+        self.automationPort = (1024...65535).contains(savedAutoPort) ? savedAutoPort : 17499
+        let savedAutoToken = userDefaults.string(forKey: Self.automationTokenKey) ?? ""
+        if savedAutoToken.isEmpty {
+            let fresh = (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased().prefix(32)
+            self.automationToken = "klp_\(fresh)"
+            userDefaults.set(self.automationToken, forKey: Self.automationTokenKey)
+        } else {
+            self.automationToken = savedAutoToken
+        }
 
         // Fast, zero-disk-scan initialization so the main window appears immediately on startup without blocking MainActor!
         self.primeDefaultsWithoutDiskScan()
@@ -2741,23 +2995,10 @@ struct PortabilitySetupToolbarButton: View {
         Button {
             setupManager.openSetupSheet(firstRun: false, app: app)
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "slider.horizontal.2.square.on.square")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(l10n.text("toolbar.settings", fallback: "元件與連線設定"))
-                    .font(.system(size: 11, weight: .semibold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(StudioTheme.textPrimary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 7))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(StudioTheme.borderStrong, lineWidth: 1)
-            )
+            Label(l10n.text("toolbar.settings", fallback: "元件與連線設定"), systemImage: "slider.horizontal.3")
+                .lineLimit(1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
         .accessibilityLabel("元件與連線設定")
         .help("開啟首次設定精靈與環境、語音引擎、ComfyUI、Colab、鑰匙圈連線設定")
         .sheet(isPresented: $setupManager.isSheetPresented) {
@@ -2802,131 +3043,512 @@ struct PortabilitySetupSheetView: View {
     @ObservedObject private var audioAI = AudioAIManager.shared
     @ObservedObject private var network = NetworkReachabilityMonitor.shared
     @ObservedObject private var l10n = LocalizationManager.shared
+    @ObservedObject private var mografy = MografySkillManager.shared
     @StateObject private var hardwareStore = HardwareEnvironmentStore()
 
     var body: some View {
-        ScrollViewReader { scrollProxy in
-            VStack(spacing: 0) {
-                headerBar
-                Divider().overlay(.white.opacity(0.08))
-
-                fourPillarStatusBar(scrollProxy: scrollProxy)
-                Divider().overlay(.white.opacity(0.08))
-
-                // Compact Hardware, Network & Central Model Storage bar (progressive disclosure)
-                VStack(alignment: .leading, spacing: 5) {
-                    ViewThatFits(in: .horizontal) {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                settingsSidebar
+                Divider().overlay(Color.white.opacity(0.08))
+                VStack(spacing: 0) {
+                    if let banner = manager.statusBannerMessage {
                         HStack(spacing: 8) {
-                            hardwareSummaryLead
-                            Spacer(minLength: 6)
-                            networkStatusControls
-                        }
-                        VStack(alignment: .leading, spacing: 5) {
-                            hardwareSummaryLead
-                            networkStatusControls
-                        }
-                    }
-                    if hardwareStore.showHardwareDetails {
-                        HStack(spacing: 8) {
-                            Text(hardwareStore.snapshot.modelRequirementsSummary)
-                                .font(.system(size: 10))
-                                .foregroundStyle(StudioTheme.textMuted)
+                            Image(systemName: "info.circle.fill")
+                                .foregroundStyle(setupCyan)
+                                .font(.system(size: 12))
+                            Text(banner)
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(StudioTheme.textPrimary)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 6)
-                            Button("開啟中央圖片模型目錄") {
-                                try? FileManager.default.createDirectory(at: CentralComfyModelStorage.defaultRoot, withIntermediateDirectories: true)
-                                NSWorkspace.shared.activateFileViewerSelecting([CentralComfyModelStorage.defaultRoot])
+                            Spacer()
+                            Button("關閉") {
+                                manager.statusBannerMessage = nil
                             }
-                            .font(.system(size: 10.5))
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         }
-                        .padding(.top, 2)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(setupCyan.opacity(0.10))
+                        Divider().overlay(Color.white.opacity(0.07))
                     }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 7)
-                .background(StudioTheme.well)
-                Divider().overlay(.white.opacity(0.08))
 
-                if let banner = manager.statusBannerMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(setupCyan)
-                        Text(banner)
-                            .font(.system(size: 11))
-                            .foregroundStyle(StudioTheme.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer()
-                        Button("關閉") {
-                            manager.statusBannerMessage = nil
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(spacing: 8) {
+                                Image(systemName: manager.selectedSidebar.iconName)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textSecondary)
+                                Text(manager.selectedSidebar.rawValue)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(StudioTheme.textPrimary)
+                                Spacer()
+                                Button {
+                                    manager.refreshAllLocalStates(app: app, userInitiated: true)
+                                    hardwareStore.refresh()
+                                    mografy.refresh()
+                                    manager.statusBannerMessage = "正在重新掃描本機環境與連線狀態…"
+                                } label: {
+                                    Label(manager.isRefreshingLocalStates ? "掃描中…" : "重新掃描", systemImage: "arrow.clockwise")
+                                }
+                                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                            }
+                            .padding(.bottom, 2)
+
+                            switch manager.selectedSidebar {
+                            case .general:
+                                generalSettingsPane
+                            case .localEngines:
+                                localEnginesSettingsPane
+                            case .cloudAPI:
+                                cloudAPISettingsPane
+                            case .automation:
+                                automationSettingsPane
+                            case .modelsStorage:
+                                modelsStorageSettingsPane
+                            case .about:
+                                manifestAndLicensesSection
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("關閉提示訊息")
-                        .help("關閉此提示橫幅")
+                        .padding(22)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(setupCyan.opacity(0.10))
-                    Divider().overlay(.white.opacity(0.08))
+                    .background(Color(red: 0.082, green: 0.084, blue: 0.094))
                 }
-
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 11) {
-                        if manager.selectedTab == .cards {
-                            setupGroupHeader(
-                                title: "本機環境、模型與服務（離線皆可用）",
-                                subtitle: "輸出目錄、ComfyUI 連線、語音/圖片模型與 FFmpeg 執行環境"
-                            )
-                            card1OutputRootSection
-                            card2LocalComfyUISection
-                                .id(SetupSectionAnchor.service)
-                            card3VoiceboxSection
-                                .id(SetupSectionAnchor.models)
-                            card6FFmpegAndDependenciesSection
-                                .id(SetupSectionAnchor.runtime)
-
-                            setupGroupHeader(
-                                title: "線上帳號登入與 API 金鑰（選用）",
-                                subtitle: "Google Colab OAuth 登入與 OpenAI / Gemini API 金鑰彼此獨立，且皆不代表瀏覽器官網登入狀態"
-                            )
-                            .id(SetupSectionAnchor.account)
-                            .padding(.top, 4)
-
-                            card4GoogleColabSection
-                            card5APIConnectionsSection
-
-                            setupGroupHeader(
-                                title: "AI Agent 技能擴充（選用）",
-                                subtitle: "安裝 Mografy Skill 並偵測到 Claude Code / Codex / Antigravity 後，生成頁會自動解鎖「動態圖形」分頁"
-                            )
-                            .padding(.top, 4)
-                            MografySkillSetupCard()
-                        } else {
-                            manifestAndLicensesSection
-                        }
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .background(canvas)
-
-                Divider().overlay(.white.opacity(0.08))
-                footerBar
             }
+
+            Divider().overlay(Color.white.opacity(0.08))
+            footerBar
         }
-        // Responsive sheet sizing that fits comfortably inside 960x680 compact windows and large displays without clipping
-        .frame(minWidth: 640, idealWidth: 820, maxWidth: 960, minHeight: 500, idealHeight: 620, maxHeight: 760)
+        .frame(minWidth: 740, idealWidth: 880, maxWidth: 1020, minHeight: 540, idealHeight: 650, maxHeight: 780)
         .background(panel)
         .tint(StudioTheme.neutralAccent)
         .preferredColorScheme(.dark)
         .onAppear {
             manager.refreshAllLocalStates(app: app, userInitiated: false)
+            mografy.refresh()
         }
         .onChange(of: manager.colabPendingAuthURL) { _, newValue in
             if newValue != nil {
                 manager.showCard4Details = true
             }
+        }
+        .sheet(isPresented: $manager.showImageModelManagerSheet) {
+            LocalModelManagerSheet(app: app)
+        }
+        .sheet(isPresented: $manager.showVoiceModelManagerSheet) {
+            LocalVoiceModelManagerSheet(app: app, manager: manager)
+        }
+    }
+
+    // MARK: Edits-Style Left Sidebar
+
+    private func sidebarStatusColor(for section: PortabilitySetupManager.SetupSidebarSection) -> Color? {
+        let summary = manager.fourPillarSummary
+        switch section {
+        case .general:
+            return network.isOffline ? StudioTheme.warning : StudioTheme.success
+        case .localEngines:
+            return summary.engineReady.tintColor
+        case .cloudAPI:
+            let hasAny = manager.apiConnections[.openai_image]?.hasStoredCredential == true
+                || manager.apiConnections[.gemini_image]?.hasStoredCredential == true
+                || manager.colabTokenFileExists
+            return hasAny ? StudioTheme.success : nil
+        case .automation:
+            return (manager.automationEnabled || mografy.isUnlocked) ? StudioTheme.success : nil
+        case .modelsStorage:
+            return summary.modelInstalled.tintColor
+        case .about:
+            return nil
+        }
+    }
+
+    private var settingsSidebar: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(manager.isFirstRunMode ? "首次設定" : "設定")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(StudioTheme.textPrimary)
+                Spacer()
+                Text("v1.1")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(StudioTheme.textMuted)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.white.opacity(0.06), in: Capsule())
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
+
+            ForEach(PortabilitySetupManager.SetupSidebarSection.allCases) { section in
+                let isSelected = manager.selectedSidebar == section
+                Button {
+                    withAnimation(.easeInOut(duration: 0.14)) {
+                        manager.selectedSidebar = section
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: section.iconName)
+                            .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? .white : StudioTheme.textSecondary)
+                            .frame(width: 18)
+                        Text(section.rawValue)
+                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? .white : StudioTheme.textSecondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if let dotColor = sidebarStatusColor(for: section) {
+                            Circle()
+                                .fill(dotColor)
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        isSelected ? Color.white.opacity(0.11) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Apple Silicon")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(StudioTheme.textSecondary)
+                Text(hardwareStore.snapshot.summaryLine)
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(StudioTheme.textMuted)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 14)
+        }
+        .padding(.horizontal, 10)
+        .frame(width: 204)
+        .background(Color(red: 0.068, green: 0.070, blue: 0.080))
+    }
+
+    // MARK: Tab 1 — General
+
+    private var generalSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            KliporaGroupedCard {
+                VStack(spacing: 0) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("介面語言")
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text("即時切換 Klipora 操作介面語言")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(StudioTheme.textMuted)
+                        }
+                        Spacer()
+                        Picker(l10n.text("settings.language"), selection: $l10n.language) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.nativeDisplayName).tag(lang)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 150)
+                    }
+                    .padding(.vertical, 4)
+
+                    Divider().overlay(Color.white.opacity(0.07)).padding(.vertical, 10)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("網路與連線狀態")
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(network.isOffline ? StudioTheme.warning : (network.isOnline ? StudioTheme.success : StudioTheme.textMuted))
+                                    .frame(width: 7, height: 7)
+                                Text(network.state.label)
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(StudioTheme.textSecondary)
+                            }
+                        }
+                        Spacer()
+                        Button("重試網路") {
+                            network.recheckNow()
+                            hardwareStore.refresh()
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                    }
+                    .padding(.vertical, 4)
+
+                    Divider().overlay(Color.white.opacity(0.07)).padding(.vertical, 10)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("首次安裝引導")
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text("重新檢查硬體相容性、ComfyUI 路徑與預設模型下載")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(StudioTheme.textMuted)
+                        }
+                        Spacer()
+                        Button("開啟引導") {
+                            manager.isSheetPresented = false
+                            KliporaStartupController.shared.openOnboarding()
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
+            card1OutputRootSection
+        }
+    }
+
+    // MARK: Tab 2 — Local Engines
+
+    private var localEnginesSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card2LocalComfyUISection
+            KliporaGroupedCard {
+                apiProviderRow(for: .comfyui_api)
+            }
+            card3VoiceboxSection
+            KliporaGroupedCard {
+                apiProviderRow(for: .voicebox_api)
+            }
+        }
+    }
+
+    // MARK: Tab 3 — Cloud & API
+
+    private var cloudAPISettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            KliporaGroupedCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("官方 API 金鑰僅加密儲存於 macOS Keychain，絕不寫入專案檔；未設定時對應功能會自動保持精簡隱藏。")
+                        .font(.system(size: 11))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    apiProviderRow(for: .openai_image)
+                    Divider().overlay(Color.white.opacity(0.07))
+                    apiProviderRow(for: .gemini_image)
+                    Divider().overlay(Color.white.opacity(0.07))
+                    apiProviderRow(for: .huggingface)
+                }
+            }
+
+            card4GoogleColabSection
+        }
+    }
+
+    // MARK: Tab 4 — AI Agents & Automation (Edits-Inspired + Progressive Disclosure)
+
+    private var automationSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Card 1: Enable Automation Server (MCP)
+            KliporaGroupedCard {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Enable Automation Server")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            if !manager.automationEnabled {
+                                Text("開啟後可讓 Claude Code、Codex、Antigravity 透過本機 MCP 連接 Klipora（v1.2 自動化介面）。")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(StudioTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer(minLength: 12)
+                        Toggle("", isOn: Binding(
+                            get: { manager.automationEnabled },
+                            set: { val in
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    manager.setAutomationEnabled(val)
+                                }
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                    }
+                    .padding(.vertical, 2)
+
+                    if manager.automationEnabled {
+                        Divider().overlay(Color.white.opacity(0.07)).padding(.vertical, 12)
+
+                        HStack {
+                            Text("Port")
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                            Spacer()
+                            Text("\(manager.automationPort)")
+                                .font(.system(size: 12.5, design: .monospaced))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                        }
+
+                        Divider().overlay(Color.white.opacity(0.07)).padding(.vertical, 12)
+
+                        HStack {
+                            Text("Endpoint")
+                                .font(.system(size: 12.5))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                            Spacer()
+                            Text(manager.automationEndpoint)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+
+            // Progressive disclosure: Access Token & Connect an AI client only appear when Automation Server is enabled
+            if manager.automationEnabled {
+                KliporaGroupedCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Access token")
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(StudioTheme.textSecondary)
+                            Spacer()
+                            Button {
+                                manager.automationTokenRevealed.toggle()
+                            } label: {
+                                Image(systemName: manager.automationTokenRevealed ? "eye.slash" : "eye")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                        }
+
+                        Text(manager.automationTokenRevealed ? manager.automationToken : String(repeating: "•", count: 28))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .textSelection(.enabled)
+
+                        HStack(spacing: 8) {
+                            Spacer()
+                            Button("複製") {
+                                manager.copyAutomationToken()
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                            Button("重新產生") {
+                                manager.regenerateAutomationToken()
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                        }
+                    }
+                }
+
+                KliporaGroupedCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("連接 AI 代理")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+
+                        automationClientRow(
+                            name: "Claude Code",
+                            subtitle: "複製指令並在終端機執行，即可將 Klipora 加入 Claude Code。",
+                            detected: mografy.detectedAgents[.claude] != nil
+                        )
+                        Divider().overlay(Color.white.opacity(0.06))
+                        automationClientRow(
+                            name: "Codex",
+                            subtitle: "啟動 Codex 前於終端機執行複製的設定指令。",
+                            detected: mografy.detectedAgents[.codex] != nil
+                        )
+                        Divider().overlay(Color.white.opacity(0.06))
+                        automationClientRow(
+                            name: "Antigravity",
+                            subtitle: "複製 MCP 設定貼入 Antigravity，開啟新對話即可連接。",
+                            detected: mografy.detectedAgents[.antigravity] != nil
+                        )
+                    }
+                }
+            }
+
+            // Mografy Motion Graphics Skill Card
+            MografySkillSetupCard()
+        }
+    }
+
+    private func automationClientRow(name: String, subtitle: String, detected: Bool) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    if detected {
+                        Circle()
+                            .fill(StudioTheme.success)
+                            .frame(width: 6, height: 6)
+                            .help("已偵測到本機 \(name) CLI")
+                    }
+                }
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(StudioTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("複製") {
+                manager.copyAutomationClientCommand(for: name)
+            }
+            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+        }
+    }
+
+    // MARK: Tab 5 — Models & Storage
+
+    private var modelsStorageSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            KliporaGroupedCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("中央模型儲存目錄")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text(hardwareStore.snapshot.modelRequirementsSummary)
+                                .font(.system(size: 11))
+                                .foregroundStyle(StudioTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 8)
+                        HStack(spacing: 8) {
+                            Button("管理圖片模型") {
+                                manager.showImageModelManagerSheet = true
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                            Button("管理語音模型") {
+                                manager.showVoiceModelManagerSheet = true
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                            Button("開啟目錄") {
+                                try? FileManager.default.createDirectory(at: CentralComfyModelStorage.defaultRoot, withIntermediateDirectories: true)
+                                NSWorkspace.shared.activateFileViewerSelecting([CentralComfyModelStorage.defaultRoot])
+                            }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                        }
+                    }
+                }
+            }
+
+            card6FFmpegAndDependenciesSection
         }
     }
 
@@ -3390,42 +4012,44 @@ struct PortabilitySetupSheetView: View {
     private var comfyPrimaryButtonsCluster: some View {
         HStack(spacing: 6) {
             Button {
+                manager.showImageModelManagerSheet = true
+            } label: {
+                Label("管理圖片模型", systemImage: "square.stack.3d.up")
+            }
+            .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+            .help("開啟本機圖片模型管理頁面，新增或管理 .safetensors 模型")
+
+            Button {
                 Task { await manager.probeComfyUIEndpoint(app: app) }
             } label: {
-                Label(manager.comfyIsProbing ? "探測中…" : "探測端點與模型", systemImage: "antenna.radiowaves.left.and.right")
+                Label(manager.comfyIsProbing ? "探測中…" : "探測端點", systemImage: "antenna.radiowaves.left.and.right")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(setupCyan)
-            .controlSize(.small)
+            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
             .disabled(manager.comfyIsProbing)
-            .accessibilityLabel("探測本機 ComfyUI 端點並驗證模型")
             .help("自動探測本機 ComfyUI 連接埠並檢查本地模型目錄是否就緒")
 
             Button {
                 manager.chooseComfyModelsRoot(app: app)
             } label: {
-                Label("選擇模型目錄…", systemImage: "folder.badge.gearshape")
+                Label("模型目錄", systemImage: "folder.badge.gearshape")
             }
-            .controlSize(.small)
-            .accessibilityLabel("選擇 ComfyUI 模型目錄")
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             .help("指定本機 ComfyUI 的安裝或 models 根目錄")
 
             Button {
                 app.openComfyDesktop()
             } label: {
-                Label("開啟 Comfy Desktop", systemImage: "macwindow")
+                Label("Comfy Desktop", systemImage: "macwindow")
             }
-            .controlSize(.small)
-            .accessibilityLabel("開啟 Comfy Desktop 應用程式")
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             .help("啟動已安裝於 /Applications 的 Comfy Desktop")
 
             Button {
                 manager.openComfyOfficialDownloadGuide()
             } label: {
-                Label("安裝指南", systemImage: "safari")
+                Text("安裝指南")
             }
-            .controlSize(.small)
-            .accessibilityLabel("開啟 ComfyUI 官方下載與安裝指南")
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             .help("於瀏覽器開啟 ComfyUI 官方下載頁面")
         }
     }
@@ -3468,51 +4092,83 @@ struct PortabilitySetupSheetView: View {
                     .foregroundStyle(.white.opacity(0.88))
                     .fixedSize(horizontal: false, vertical: true)
 
-                // Compact Model Status Pills in Main Flow
+                // Compact Interactive Model Status Pills (Click un-downloaded models to start direct HF download!)
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 220, maximum: 440), spacing: 6)],
-                    spacing: 6
+                    columns: [GridItem(.adaptive(minimum: 220, maximum: 440), spacing: 8)],
+                    spacing: 8
                 ) {
                     ForEach(manager.voiceboxModelItems) { item in
-                        HStack(spacing: 6) {
-                            Image(systemName: item.isComplete ? "checkmark.seal.fill" : (item.hasIncompleteBlobs ? "exclamationmark.arrow.circlepath" : "circle.dashed"))
-                                .foregroundStyle(item.isComplete ? setupEmerald : (item.hasIncompleteBlobs ? setupRose : setupAmber))
-                                .font(.system(size: 11))
-                            Text(item.displayName)
-                                .font(.system(size: 10.5, weight: .medium))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            Spacer(minLength: 4)
-                            Text(item.isComplete ? "已就緒" : (item.hasIncompleteBlobs ? "待續傳" : "未下載"))
-                                .font(.system(size: 9.5, weight: .semibold))
-                                .foregroundStyle(item.isComplete ? setupEmerald : (item.hasIncompleteBlobs ? setupRose : .secondary))
+                        let isDownloading = manager.downloadingVoiceModelRepoID == item.repoID
+                        Button {
+                            if !item.isComplete && !isDownloading {
+                                manager.downloadVoiceModel(item, app: app)
+                            } else {
+                                manager.showVoiceModelManagerSheet = true
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: item.isComplete ? "checkmark.seal.fill" : (isDownloading ? "arrow.down.circle.fill" : "icloud.and.arrow.down"))
+                                        .foregroundStyle(item.isComplete ? setupEmerald : (isDownloading ? StudioTheme.neutralAccent : setupAmber))
+                                        .font(.system(size: 11))
+                                    Text(item.displayName)
+                                        .font(.system(size: 10.5, weight: .medium))
+                                        .foregroundStyle(.white)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 4)
+                                    Text(isDownloading ? "\(Int(manager.voiceModelDownloadProgress * 100))%" : (item.isComplete ? "已就緒" : "點此下載"))
+                                        .font(.system(size: 9.5, weight: .semibold))
+                                        .foregroundStyle(item.isComplete ? setupEmerald : (isDownloading ? StudioTheme.neutralAccent : setupAmber))
+                                }
+                                if isDownloading {
+                                    ProgressView(value: manager.voiceModelDownloadProgress)
+                                        .tint(StudioTheme.neutralAccent)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(setupDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous)
+                                    .strokeBorder(isDownloading ? StudioTheme.neutralAccent.opacity(0.5) : Color.white.opacity(0.06), lineWidth: 1)
+                            )
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(setupDarkWell, in: RoundedRectangle(cornerRadius: 6))
+                        .buttonStyle(.plain)
+                        .disabled(manager.downloadingVoiceModelRepoID != nil && !isDownloading)
+                        .help(item.isComplete ? "點選開啟語音模型管理頁" : "點選直接從 HuggingFace 下載 \(item.displayName)（\(item.expectedSizeDescription)）")
                     }
                 }
 
-                // Primary Actions
+                if manager.downloadingVoiceModelRepoID != nil && !manager.voiceModelDownloadStatus.isEmpty {
+                    Text(manager.voiceModelDownloadStatus)
+                        .font(.system(size: 10))
+                        .foregroundStyle(StudioTheme.neutralAccent)
+                }
+
+                // Primary Actions (Unified Capsule Pills)
                 adaptiveButtonRow {
+                    Button {
+                        manager.showVoiceModelManagerSheet = true
+                    } label: {
+                        Label("管理語音模型", systemImage: "waveform.badge.magnifyingglass")
+                    }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                    .help("開啟本機語音模型管理頁，檢視完整名稱、下載或移除模型")
+
                     Button {
                         manager.chooseVoiceboxDataDirectory(app: app)
                     } label: {
-                        Label("選擇聲音角色庫…", systemImage: "folder.badge.person.crop")
+                        Label("聲音角色庫", systemImage: "folder.badge.person.crop")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(studioAccent)
-                    .controlSize(.small)
-                    .accessibilityLabel("選擇既有聲音角色庫資料夾")
+                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     .help("選擇包含 voicebox.db 與 profiles 的既有聲音角色庫資料夾")
 
                     Button {
                         manager.chooseVoiceboxModelsCacheDirectory(app: app)
                     } label: {
-                        Label("選擇模型快取目錄…", systemImage: "folder.badge.gearshape")
+                        Label("快取目錄", systemImage: "folder.badge.gearshape")
                     }
-                    .controlSize(.small)
-                    .accessibilityLabel("選擇 HuggingFace 語音模型快取目錄")
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     .help("指定已下載 Qwen3-TTS 模型的 HuggingFace hub 快取資料夾")
 
                     Button {
@@ -3520,20 +4176,10 @@ struct PortabilitySetupSheetView: View {
                         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
                         NSWorkspace.shared.open(url)
                     } label: {
-                        Label("開啟聲音庫", systemImage: "folder")
+                        Label("開啟資料夾", systemImage: "folder")
                     }
-                    .controlSize(.small)
-                    .accessibilityLabel("於 Finder 開啟目前聲音角色庫資料夾")
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                     .help("在 Finder 中檢視目前使用的聲音角色庫目錄")
-
-                    Button {
-                        manager.openOfficialQwenModelCollection()
-                    } label: {
-                        Label("官方模型來源", systemImage: "safari")
-                    }
-                    .controlSize(.small)
-                    .accessibilityLabel("開啟 HuggingFace 官方語音模型頁面")
-                    .help("於瀏覽器開啟 Qwen3-TTS 官方模型頁面")
                 }
 
                 // Expandable Details
@@ -3980,24 +4626,22 @@ struct PortabilitySetupSheetView: View {
     }
 
     private func apiActionButtons(for provider: SupportedAPIProvider, cfg: APIConnectionConfig) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Button {
                 manager.saveCredentialToKeychain(for: provider, app: app)
             } label: {
-                Label("儲存設定", systemImage: "key.fill")
+                Text("儲存")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(StudioTheme.coral)
-            .controlSize(.small)
+            .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
             .accessibilityLabel("儲存 \(provider.shortName) 網址與金鑰至 Keychain")
             .help("驗證網址並將 \(provider.shortName) 金鑰安全寫入 macOS 鑰匙圈")
 
             Button {
                 Task { await manager.testAPIConnection(for: provider, app: app) }
             } label: {
-                Label(cfg.isTesting ? "測試中…" : "測試連線", systemImage: "network")
+                Text(cfg.isTesting ? "測試中…" : "測試連線")
             }
-            .controlSize(.small)
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             .disabled(cfg.isTesting)
             .accessibilityLabel("測試 \(provider.shortName) 連線")
             .help("向 \(provider.shortName) 端點發送連線與身分驗證測試")
@@ -4006,9 +4650,9 @@ struct PortabilitySetupSheetView: View {
                 Button(role: .destructive) {
                     manager.disconnectAndRemoveCredential(for: provider)
                 } label: {
-                    Label("移除憑證", systemImage: "trash")
+                    Text("移除")
                 }
-                .controlSize(.small)
+                .buttonStyle(KliporaPillButtonStyle(variant: .destructive, compact: true))
                 .accessibilityLabel("從 Keychain 移除 \(provider.shortName) 憑證")
                 .help("從 macOS 鑰匙圈刪除已儲存的 \(provider.shortName) 金鑰")
             }
@@ -4278,25 +4922,22 @@ The above copyright notice and this permission notice shall be included in all c
     }
 
     private var footerActionButtons: some View {
-        HStack(spacing: 8) {
-            Button("稍後設定，先進入工作台") {
+        HStack(spacing: 10) {
+            Button("稍後設定") {
                 manager.dismissForLater()
             }
-            .controlSize(.regular)
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: false))
             .accessibilityLabel("稍後設定，先進入工作台")
             .help("暫時關閉此設定視窗並進入工作台，所有已設定路徑均會保留")
 
             Button {
                 manager.markFirstRunCompleted()
             } label: {
-                Label(manager.isFirstRunMode ? "完成設定並開始使用" : "完成並返回工作台", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11.5, weight: .semibold))
+                Label(manager.isFirstRunMode ? "完成並開始使用" : "完成", systemImage: "checkmark")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(studioAccent)
-            .controlSize(.regular)
+            .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: false))
             .accessibilityLabel(manager.isFirstRunMode ? "完成首次設定並開始使用" : "完成設定並返回工作台")
-            .help("儲存並完成首次環境設定，返回 Klipora 工作台")
+            .help("儲存並返回 Klipora 工作台")
         }
     }
 
@@ -4318,7 +4959,7 @@ The above copyright notice and this permission notice shall be included in all c
         isHighlighted: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
                     cardHeaderLeft(number: number, icon: icon, title: title, accent: accent)
@@ -4333,33 +4974,29 @@ The above copyright notice and this permission notice shall be included in all c
 
             content()
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background((isHighlighted ? StudioTheme.elevated : surface.opacity(0.72)), in: RoundedRectangle(cornerRadius: 9))
+        .background(
+            (isHighlighted ? StudioTheme.elevated : Color(red: 0.114, green: 0.118, blue: 0.133)),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(
-                    isHighlighted ? StudioTheme.coral.opacity(0.78) : accent.opacity(0.24),
-                    lineWidth: isHighlighted ? 1.6 : 1
+                    isHighlighted ? StudioTheme.coral.opacity(0.70) : Color.white.opacity(0.075),
+                    lineWidth: isHighlighted ? 1.5 : 1
                 )
         )
     }
 
     private func cardHeaderLeft(number: String, icon: String, title: String, accent: Color) -> some View {
-        HStack(spacing: 7) {
-            Text(number)
-                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(canvas)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1.5)
-                .background(accent, in: RoundedRectangle(cornerRadius: 4))
-
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11.5, weight: .semibold))
+                .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(accent)
 
             Text(title)
-                .font(.system(size: 12.5, weight: .bold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
         }
@@ -4392,5 +5029,126 @@ The above copyright notice and this permission notice shall be included in all c
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+    }
+}
+
+// MARK: - 7. Dedicated Local Voice Model Manager Sheet (Symmetrical with LocalModelManagerSheet)
+
+struct LocalVoiceModelManagerSheet: View {
+    @ObservedObject var app: Studio
+    @ObservedObject var manager: PortabilitySetupManager
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("本機語音模型管理")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(StudioTheme.textPrimary)
+                    Text("直接從 HuggingFace 官方倉庫下載或移除 Qwen3-TTS 本機語音模型，完成後即可於配音工作台選用。")
+                        .font(.system(size: 11))
+                        .foregroundStyle(StudioTheme.textMuted)
+                }
+                Spacer()
+                Button("開啟快取目錄") {
+                    let url = URL(fileURLWithPath: manager.voiceboxModelsDirPath, isDirectory: true)
+                    try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(url)
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                Button("關閉") { dismiss() }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+            }
+            .padding(18)
+            .background(panel)
+
+            Divider().overlay(Color.white.opacity(0.08))
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    KliporaGroupedCard(padding: 12) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "externaldrive.fill")
+                                .foregroundStyle(StudioTheme.neutralAccent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("語音模型快取路徑：\(manager.voiceboxModelsDirPath)")
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(StudioTheme.textPrimary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Text("可用磁碟空間：\(manager.voiceboxModelsDirFreeBytes.map(setupFormatBytes) ?? "未知") · 共連結 \(manager.voiceboxProfileCountEstimate) 個聲音角色")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(StudioTheme.textMuted)
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    ForEach(manager.voiceboxModelItems) { item in
+                        let isDownloading = manager.downloadingVoiceModelRepoID == item.repoID
+                        KliporaGroupedCard(padding: 14) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(alignment: .center, spacing: 10) {
+                                    Image(systemName: item.isComplete ? "checkmark.seal.fill" : (isDownloading ? "arrow.down.circle.fill" : "icloud.and.arrow.down"))
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(item.isComplete ? setupEmerald : (isDownloading ? StudioTheme.neutralAccent : setupAmber))
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack(spacing: 6) {
+                                            Text(item.displayName)
+                                                .font(.system(size: 13, weight: .semibold))
+                                                .foregroundStyle(StudioTheme.textPrimary)
+                                            Text(item.engineLabel)
+                                                .font(.system(size: 9.5, weight: .semibold))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 1.5)
+                                                .background(Color.white.opacity(0.08), in: Capsule())
+                                                .foregroundStyle(StudioTheme.textSecondary)
+                                        }
+                                        Text("\(item.repoID) · 預估 \(item.expectedSizeDescription)\(item.diskSizeBytes > 0 ? "（本機已佔用 \(setupFormatBytes(item.diskSizeBytes))）" : "")")
+                                            .font(.system(size: 10.5, design: .monospaced))
+                                            .foregroundStyle(StudioTheme.textMuted)
+                                    }
+                                    Spacer(minLength: 8)
+                                    if isDownloading {
+                                        Text("\(Int(manager.voiceModelDownloadProgress * 100))%")
+                                            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                                            .foregroundStyle(StudioTheme.neutralAccent)
+                                    } else if item.isComplete {
+                                        Button("移除釋放空間") {
+                                            manager.removeVoiceModelCache(item, app: app)
+                                        }
+                                        .buttonStyle(KliporaPillButtonStyle(variant: .destructive, compact: true))
+                                        .disabled(manager.downloadingVoiceModelRepoID != nil)
+                                    } else {
+                                        Button {
+                                            manager.downloadVoiceModel(item, app: app)
+                                        } label: {
+                                            Label("下載模型", systemImage: "arrow.down.circle")
+                                        }
+                                        .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                                        .disabled(manager.downloadingVoiceModelRepoID != nil)
+                                    }
+                                }
+                                if isDownloading {
+                                    ProgressView(value: manager.voiceModelDownloadProgress)
+                                        .tint(StudioTheme.neutralAccent)
+                                    if !manager.voiceModelDownloadStatus.isEmpty {
+                                        Text(manager.voiceModelDownloadStatus)
+                                            .font(.system(size: 10.5))
+                                            .foregroundStyle(StudioTheme.textSecondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(18)
+            }
+            .background(Color(red: 0.082, green: 0.084, blue: 0.094))
+        }
+        .frame(minWidth: 620, idealWidth: 700, minHeight: 460, idealHeight: 540)
+        .background(panel)
+        .preferredColorScheme(.dark)
     }
 }

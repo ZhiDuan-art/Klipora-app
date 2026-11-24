@@ -67,7 +67,7 @@ struct Project: Codable {
     var workflow = ""
     var source = "zimage"
     var kind = "image"
-    var style = "自然紀實"
+    var style = "不套用風格"
     var prompt = ""
     var aspect = "16:9"
     var resolution = "480P"
@@ -173,12 +173,12 @@ struct RecordedGeneration: Decodable {
 }
 
 let styles = [
+    ("不套用風格", ""),
     ("自然紀實", "Observational documentary, natural light, unretouched texture, restrained colors."),
     ("清晨膠片", "Soft dawn sidelight, fine analog film grain, subdued contrast, warm highlights."),
     ("手繪水彩", "Hand-painted watercolor, textured paper, layered washes, soft flowing edges."),
     ("鉛筆故事", "Colored pencil sketchbook, fine paper grain, hand-drawn outlines, gentle color."),
-    ("極簡產品", "Minimal product art direction, controlled studio light, clean silhouette, generous space."),
-    ("不套風格", "")
+    ("極簡產品", "Minimal product art direction, controlled studio light, clean silhouette, generous space.")
 ]
 
 enum Workspace: String {
@@ -1169,7 +1169,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     var localModel: String { project.kind == "video" ? localVideoModel : localImageModel }
     var action: String {
         if source == "colab" { return "colab" }
-        if source == "openai_image" || source == "gemini_image" { return source }
+        if source == "openai_image" || source == "gemini_image" || source == "antigravity_image" { return source }
         if project.kind != "video", localModel.hasPrefix("workflow_") { return "comfy" }
         return localModel
     }
@@ -1177,7 +1177,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         project.videoMethod ?? "reference"
     }
     var supportsMultiImageReference: Bool {
-        source == "colab" || source == "openai_image" || source == "gemini_image"
+        source == "colab" || source == "openai_image" || source == "gemini_image" || source == "antigravity_image"
     }
     var supportsImageReference: Bool { supportsMultiImageReference || localModelSupportsReference }
     var takesReference: Bool {
@@ -2861,6 +2861,59 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         showVLMDraftCard = false
     }
 
+    func pasteClipboardImage() {
+        let pb = NSPasteboard.general
+        var pngData: Data? = pb.data(forType: .png)
+        if pngData == nil, let tiff = pb.data(forType: .tiff),
+           let rep = NSBitmapImageRep(data: tiff) {
+            pngData = rep.representation(using: .png, properties: [:])
+        }
+        if pngData == nil, let img = NSImage(pasteboard: pb),
+           let tiff = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff) {
+            pngData = rep.representation(using: .png, properties: [:])
+        }
+        guard let data = pngData, !data.isEmpty else {
+            status = "剪貼簿中沒有圖片，請先在 ChatGPT / Gemini 複製圖片後再貼上。"
+            return
+        }
+        let dir = datedDirectory(under: defaultOutputDirectory)
+        do {
+            try fs.createDirectory(at: dir, withIntermediateDirectories: true)
+            let stamp = Int(Date().timeIntervalSince1970)
+            let dest = dir.appendingPathComponent("Klipora-Paste-\(stamp).png")
+            try data.write(to: dest)
+            if !project.media.contains(dest.path) {
+                project.media.insert(dest.path, at: 0)
+            }
+            generateSelection = dest.path
+            mediaReloadToken += 1
+            status = "已從剪貼簿匯入圖片：\(dest.lastPathComponent)"
+        } catch {
+            status = "無法儲存剪貼簿圖片：\(error.localizedDescription)"
+        }
+    }
+
+    func installedDesktopAIApps() -> [(name: String, url: URL)] {
+        let fm = FileManager.default
+        let candidates = [
+            ("ChatGPT 桌面版", "ChatGPT.app"),
+            ("Gemini 桌面版", "Gemini.app"),
+            ("Claude 桌面版", "Claude.app"),
+        ]
+        var result: [(String, URL)] = []
+        for (label, bundle) in candidates {
+            let paths = [
+                URL(fileURLWithPath: "/Applications/\(bundle)"),
+                fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications/\(bundle)"),
+            ]
+            if let found = paths.first(where: { fm.fileExists(atPath: $0.path) }) {
+                result.append((label, found))
+            }
+        }
+        return result
+    }
+
     func generate() {
         guard !busy else { return }
         guard !project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -2927,6 +2980,34 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                 request["onlineImageSize"] = onlineProvider.savedGeminiImageSize()
             }
             perform(request, "\(onlineProvider.displayName) 生成中")
+            return
+        }
+        if source == "antigravity_image" {
+            let mgr = MografySkillManager.shared
+            guard let agyBin = mgr.detectedAgents[.antigravity] else {
+                status = "找不到本機 Antigravity (agy) CLI，請確認已安裝 Gemini.app。"
+                return
+            }
+            let refs = referenceImages
+            if refs.contains(where: { !fs.fileExists(atPath: $0) }) {
+                status = "找不到參考圖片，請重新選取檔案。"
+                return
+            }
+            let trimmedRawPrompt = project.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            var request: [String: Any] = [
+                "action": "antigravity_image",
+                "kind": "image",
+                "prompt": referencePrompt,
+                "rawPrompt": trimmedRawPrompt,
+                "aspect": project.aspect,
+                "agentBinary": agyBin,
+                "outputFolder": generationOutputDirectory.path,
+            ]
+            if !refs.isEmpty {
+                request["referenceImages"] = refs
+                request["referenceRoles"] = refs.map { referenceRole(for: $0) }
+            }
+            perform(request, "Antigravity 免 API 生圖中")
             return
         }
         if source != "colab", let notice = removedModelNotice {
@@ -4295,8 +4376,10 @@ struct StudioView: View {
                 Text(app.status).lineLimit(1).truncationMode(.tail).help(app.status)
             }
             Spacer()
-            Button("工作紀錄") { app.showLog.toggle() }.disabled(app.log.isEmpty && !app.busy)
-        }.font(.callout).padding(.horizontal, 14).frame(height: 34).background(panel)
+            Button("工作紀錄") { app.showLog.toggle() }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .disabled(app.log.isEmpty && !app.busy)
+        }.font(.callout).padding(.horizontal, 14).frame(height: 36).background(panel)
     }
 
     private func handleLastAddedClip(_ addedID: UUID?) {
@@ -4496,20 +4579,43 @@ struct StudioView: View {
                 }
             }
             Spacer()
-            Picker("工作區", selection: $app.workspace) {
-                Text(l10n.text("workspace.generate", fallback: "生成")).tag(Workspace.generate)
-                Text(l10n.text("workspace.edit", fallback: "剪輯")).tag(Workspace.edit)
-            }.pickerStyle(.segmented).labelsHidden().frame(width: 160).accessibilityLabel("工作區")
+            HStack(spacing: 3) {
+                ForEach([Workspace.generate, Workspace.edit], id: \.self) { ws in
+                    let isSelected = app.workspace == ws
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.16)) { app.workspace = ws }
+                    } label: {
+                        Text(ws == .generate ? l10n.text("workspace.generate", fallback: "生成") : l10n.text("workspace.edit", fallback: "剪輯"))
+                            .font(.system(size: 12.5, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? .white : StudioTheme.textSecondary)
+                            .frame(width: 74, height: 28)
+                            .background(
+                                isSelected ? StudioTheme.neutralAccent : Color.clear,
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(3)
+            .background(Color.white.opacity(0.06), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+            .accessibilityLabel("工作區")
             Spacer()
             PortabilitySetupToolbarButton(app: app)
-            Button(action: app.open) { Label(l10n.text("toolbar.open", fallback: "開啟專案"), systemImage: "folder") }.disabled(app.busy).keyboardShortcut("o")
-            Button(action: app.save) { Label(l10n.text("toolbar.save", fallback: "儲存專案"), systemImage: "tray.and.arrow.down") }.keyboardShortcut("s")
+            Button(action: app.open) { Label(l10n.text("toolbar.open", fallback: "開啟專案"), systemImage: "folder") }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .disabled(app.busy).keyboardShortcut("o")
+            Button(action: app.save) { Label(l10n.text("toolbar.save", fallback: "儲存專案"), systemImage: "tray.and.arrow.down") }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .keyboardShortcut("s")
             if app.workspace == .edit {
                 Button(l10n.text("toolbar.preview", fallback: "預覽成片"), action: app.previewTimeline)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     .disabled(app.busy || mtLayout.isEmpty || mtLayout.hasInvalidTransitions)
                     .help("依目前多軌疊合、音訊混音、字幕與轉場產生低解析度預覽")
                 Button { app.export() } label: { Label(l10n.text("toolbar.export", fallback: "匯出 MP4"), systemImage: "square.and.arrow.up") }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: true))
                     .disabled(app.busy || mtLayout.isEmpty || mtLayout.hasInvalidTransitions)
             }
         }.padding(.horizontal, 16).frame(height: 66).background(StudioWarmGlowBackground(intensity: 0.9, base: panel))
@@ -4519,8 +4625,8 @@ struct StudioView: View {
         VStack(spacing: 0) {
             previewHeader
             MediaSurface(path: app.selection)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.07)))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.07)))
                 .padding([.horizontal, .bottom], 12)
             if app.workspace == .generate && app.project.kind == "video" {
                 GenerationVideoSequenceDock(app: app)
@@ -4553,10 +4659,11 @@ struct StudioView: View {
                     Button("完成") { app.libraryBatchSelection = nil }.controlSize(.small)
                 } else {
                     Button("多選") { app.libraryBatchSelection = [] }
-                        .controlSize(.small)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         .disabled(app.project.media.isEmpty)
                         .help("勾選多個項目後一起從素材庫移除")
                     Button { app.importMedia() } label: { Image(systemName: "plus") }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         .accessibilityLabel("匯入素材").help("匯入素材")
                 }
             }.padding(14)
@@ -4564,9 +4671,29 @@ struct StudioView: View {
                 Button {
                     app.openOutputDirectory(app.defaultOutputDirectory)
                 } label: {
-                    Label("開啟預設位置", systemImage: "folder")
-                }.help(app.defaultOutputDirectory.path)
+                    Label("預設位置", systemImage: "folder")
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .help(app.defaultOutputDirectory.path)
+
+                Button {
+                    app.pasteClipboardImage()
+                } label: {
+                    Label("貼上圖片", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                .help("從剪貼簿一鍵貼入圖片（適合從 ChatGPT / Gemini 複製圖片後直接入庫）")
+
                 Menu {
+                    let desktopApps = app.installedDesktopAIApps()
+                    if !desktopApps.isEmpty {
+                        Section("開啟本機桌面 AI") {
+                            ForEach(desktopApps, id: \.name) { item in
+                                Button(item.name) { NSWorkspace.shared.open(item.url) }
+                            }
+                        }
+                        Divider()
+                    }
                     Button("開啟今日成品") {
                         app.openOutputDirectory(datedDirectory(under: app.defaultOutputDirectory))
                     }
@@ -4575,19 +4702,20 @@ struct StudioView: View {
                         Button("恢復原始位置", action: app.resetDefaultOutputDirectory)
                     }
                 } label: {
-                    Image(systemName: "gearshape")
-                }.accessibilityLabel("預設儲存位置設定")
-            }.controlSize(.small).padding(.horizontal, 14).padding(.bottom, 8)
+                    Image(systemName: "ellipsis.circle")
+                }.accessibilityLabel("更多素材與桌面 AI 快捷選單")
+            }.padding(.horizontal, 14).padding(.bottom, 8)
             Text((app.defaultOutputDirectory.path as NSString).abbreviatingWithTildeInPath)
                 .font(.caption2).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle).help(app.defaultOutputDirectory.path)
                 .padding(.horizontal, 14).padding(.bottom, 8)
             if app.project.media.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("拖曳影片、圖片或音檔至此，或點下方選擇檔案")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("選擇檔案", action: app.importMedia)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                 }.padding(12)
             }
             GeometryReader { scrollGeo in
@@ -4833,80 +4961,87 @@ struct StudioView: View {
                             LocalModelProfilePanel(app: app)
                         }
                     }
-                    if app.project.kind == "image" {
-                        if app.takesReference {
+                    let canShowGenerationForm = (app.project.kind == "motion") || !onlineGenerationUnavailable
+                    if canShowGenerationForm {
+                        if app.project.kind == "image" {
+                            if app.takesReference {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "photo.stack")
+                                        .foregroundStyle(studioAccent)
+                                    Text(app.supportsMultiImageReference
+                                         ? "多參考素材（角色三視圖／場景／物品，最多 8 張）請於中央下方參考素材板編輯。"
+                                         : "圖片參考素材請於中央下方參考素材板編輯（與專案同步）。")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                                if app.showVLMDraftCard {
+                                    VLMPromptDraftCard(app: app)
+                                }
+                            } else if app.source != "colab" && app.source != "antigravity_image" && !app.isRemovedModelSelected {
+                                kreaUnsupportedOptionsNotice
+                            }
+                        } else if app.project.kind == "video" {
                             HStack(spacing: 6) {
-                                Image(systemName: "photo.stack")
+                                Image(systemName: "rectangle.bottomthird.inset.filled")
                                     .foregroundStyle(studioAccent)
-                                Text(app.supportsMultiImageReference
-                                     ? "多參考素材（角色三視圖／場景／物品，最多 8 張）請於中央下方參考素材板編輯。"
-                                     : "圖片參考素材請於中央下方參考素材板編輯（與專案同步）。")
+                                Text("影片首幀／參考／首尾／多影格請於中央下方序列區編輯（與專案同步）。")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            .padding(8)
+                            .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 7))
+                            .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
                             if app.showVLMDraftCard {
                                 VLMPromptDraftCard(app: app)
                             }
-                        } else if app.source != "colab" && !app.isRemovedModelSelected {
-                            kreaUnsupportedOptionsNotice
                         }
-                    } else if app.project.kind == "video" {
-                        HStack(spacing: 6) {
-                            Image(systemName: "rectangle.bottomthird.inset.filled")
-                                .foregroundStyle(studioAccent)
-                            Text("影片首幀／參考／首尾／多影格請於中央下方序列區編輯（與專案同步）。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        if !app.usesFirstLastFrames {
+                            promptEditor(app.project.kind == "motion" ? "動態圖形需求" : "畫面與動作", placeholder: "請在這裡輸入提示詞")
                         }
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(surface.opacity(0.65), in: RoundedRectangle(cornerRadius: 7))
-                        if app.showVLMDraftCard {
-                            VLMPromptDraftCard(app: app)
+                        if !app.generateSelection.isEmpty {
+                            RecordedGenerationSummaryCard(app: app, assetPath: app.generateSelection)
                         }
-                    }
-                    if !app.usesFirstLastFrames {
-                        promptEditor(app.project.kind == "motion" ? "動態圖形需求" : "畫面與動作", placeholder: "請在這裡輸入提示詞")
-                    }
-                    if !app.generateSelection.isEmpty {
-                        RecordedGenerationSummaryCard(app: app, assetPath: app.generateSelection)
-                    }
-                    if app.project.kind != "motion" {
-                        Divider()
-                        DisclosureGroup("風格、鏡頭與 Seed") {
-                            refinementSettings.padding(.top, 9)
-                        }
-                        DisclosureGroup("動態片頭") {
-                            motionTitles.padding(.top, 9)
+                        if app.project.kind != "motion" {
+                            Divider()
+                            DisclosureGroup("風格、鏡頭與 Seed") {
+                                refinementSettings.padding(.top, 9)
+                            }
+                            DisclosureGroup("動態片頭") {
+                                motionTitles.padding(.top, 9)
+                            }
                         }
                     }
                 }.padding(14)
             }
-            Divider()
-            if app.usesMultiFrames && app.orderedFrames.count >= 3 {
-                Text("\(app.multiTransitions.count) 段 · 目標 \(app.generationSeconds) 秒 · \(app.project.resolution) · \(app.cloudGPU)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 9)
-            }
-            Button { app.generate() } label: {
-                Label(app.busy ? "處理中…" : (app.project.kind == "motion" ? "生成動態圖形" : "生成\(app.project.kind == "video" ? "影片" : "圖片")"),
-                      systemImage: "sparkles")
-                    .fontWeight(.semibold).frame(maxWidth: .infinity)
-            }.buttonStyle(.borderedProminent).controlSize(.large)
-                .tint(StudioTheme.coral).foregroundStyle(StudioTheme.cream)
+            if app.project.kind == "motion" || !onlineGenerationUnavailable {
+                Divider()
+                if app.usesMultiFrames && app.orderedFrames.count >= 3 {
+                    Text("\(app.multiTransitions.count) 段 · 目標 \(app.generationSeconds) 秒 · \(app.project.resolution) · \(app.cloudGPU)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 9)
+                }
+                Button { app.generate() } label: {
+                    Label(app.busy ? "處理中…" : (app.project.kind == "motion" ? "生成動態圖形" : "生成\(app.project.kind == "video" ? "影片" : "圖片")"),
+                          systemImage: "sparkles")
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 3)
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: false, fullWidth: true))
                 .disabled(
                     app.busy
                         || (app.project.kind != "motion" && onlineGenerationUnavailable)
                         || app.project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || (app.project.kind != "motion" && app.source != "colab" && app.isRemovedModelSelected)
+                        || (app.project.kind != "motion" && app.source == "zimage" && app.isRemovedModelSelected)
                         || (app.project.kind == "video" && app.videoMethodUnsupportedReason != nil)
-                        || (app.project.kind != "motion" && app.source != "colab" && app.hasUnsupportedLocalCapabilityIssue != nil)
+                        || (app.project.kind != "motion" && app.source == "zimage" && app.hasUnsupportedLocalCapabilityIssue != nil)
                 )
                 .padding(12)
+            }
         }.background(panel)
     }
 
@@ -4943,24 +5078,55 @@ struct StudioView: View {
     var generationSettings: some View {
         VStack(alignment: .leading, spacing: 10) {
             if app.project.kind != "motion" {
-                Picker("來源", selection: Binding(get: { app.source }, set: app.selectSource)) {
-                    Text("本機 · ComfyUI").tag("zimage")
+                let hasAgy = mografySkill.detectedAgents[.antigravity] != nil
+                let hasOpenAIKey = OnlineImageProvider.openai.hasKeychainCredential()
+                let hasGeminiKey = OnlineImageProvider.gemini.hasKeychainCredential()
+                let hasColab = PortabilitySetupManager.shared.colabTokenFileExists
+                let sourceOptions: [(String, String)] = {
+                    var list: [(String, String)] = [("zimage", "本機 · ComfyUI")]
+                    if app.project.kind == "image" && (hasAgy || app.source == "antigravity_image") {
+                        list.append(("antigravity_image", "桌面 Agent · Antigravity（免 API）"))
+                    }
                     if app.project.localOnly != true {
                         if app.project.kind == "image" {
-                            Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · OpenAI（離線停用）" : "線上 · OpenAI（圖片）").tag("openai_image")
-                            Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Gemini（離線停用）" : "線上 · Gemini（圖片）").tag("gemini_image")
+                            if hasOpenAIKey || app.source == "openai_image" {
+                                list.append(("openai_image", NetworkReachabilityMonitor.shared.isOffline ? "線上 · OpenAI（離線停用）" : "線上 · OpenAI (API)"))
+                            }
+                            if hasGeminiKey || app.source == "gemini_image" {
+                                list.append(("gemini_image", NetworkReachabilityMonitor.shared.isOffline ? "線上 · Gemini（離線停用）" : "線上 · Gemini (API)"))
+                            }
                         }
-                        Text(NetworkReachabilityMonitor.shared.isOffline ? "線上 · Google Colab（離線停用）" : "線上 · Google Colab").tag("colab")
+                        if hasColab || app.source == "colab" {
+                            list.append(("colab", NetworkReachabilityMonitor.shared.isOffline ? "線上 · Google Colab（離線停用）" : "線上 · Google Colab"))
+                        }
                     }
+                    return list
+                }()
+                HStack(spacing: 8) {
+                    Text("來源")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize()
+                    KliporaPillMenuPicker(
+                        options: sourceOptions,
+                        selection: Binding(get: { app.source }, set: app.selectSource),
+                        placeholder: "本機 · ComfyUI",
+                        fullWidth: true
+                    )
                 }
             }
-            Picker("輸出", selection: $app.project.kind) {
-                Text("圖片").tag("image")
-                Text("影片").tag("video")
-                if mografySkill.isUnlocked {
-                    Text("動態圖形").tag("motion")
-                }
-            }.pickerStyle(.segmented)
+            HStack(spacing: 8) {
+                Text("輸出")
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize()
+                KliporaSegmentedControl(
+                    options: mografySkill.isUnlocked
+                        ? [("image", "圖片"), ("video", "影片"), ("motion", "動態圖形")]
+                        : [("image", "圖片"), ("video", "影片")],
+                    selection: $app.project.kind
+                )
+            }
             if app.project.kind == "motion" {
                 mografyMotionSettings
             } else {
@@ -4968,6 +5134,30 @@ struct StudioView: View {
             }
             if app.project.kind == "motion" {
                 EmptyView()
+            } else if app.source == "antigravity_image" {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(StudioTheme.success)
+                            .font(.caption)
+                        Text("Antigravity 桌面 Agent（免 API 金鑰）")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(StudioTheme.textPrimary)
+                        Spacer()
+                        Text("已就緒")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(StudioTheme.success.opacity(0.18), in: Capsule())
+                            .foregroundStyle(StudioTheme.success)
+                    }
+                    Text("直接透過本機 Gemini.app 內建的 agy CLI 呼叫生圖，支援中央參考素材板多圖輸入，完成後自動匯入左側素材庫。")
+                        .font(.caption2)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(11)
+                .background(StudioTheme.well, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
             } else if let onlineProvider = OnlineImageProvider(rawValue: app.source) {
                 OnlineImageControls(provider: onlineProvider)
             } else if app.source == "colab" {
@@ -4977,6 +5167,7 @@ struct StudioView: View {
                         Text("G4").tag("G4")
                     }
                     Button("檢查 Colab") { app.perform(["action": "check_colab"], "檢查 Colab") }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                         .disabled(app.busy || NetworkReachabilityMonitor.shared.isOffline)
                 }
                 if NetworkReachabilityMonitor.shared.isOffline {
@@ -4994,51 +5185,61 @@ struct StudioView: View {
                     }
                 }
             } else {
-                Picker(app.project.kind == "video" ? "本機影片模型" : "本機圖片模型",
-                       selection: Binding(get: { app.localModel }, set: app.selectLocalModel)) {
+                let modelOptions: [(String, String)] = {
+                    var list: [(String, String)] = []
                     if app.project.kind == "video" {
-                        ForEach(ModelProfileStore.shared.videoModels) { profile in
-                            Text(profile.displayName).tag(profile.id)
-                        }
+                        list.append(contentsOf: ModelProfileStore.shared.videoModels.map { ($0.id, $0.displayName) })
                     } else {
                         if let removed = app.removedModelNotice {
-                            Text("\(removed.displayName)（已移除）").tag(removed.id)
+                            list.append((removed.id, "\(removed.displayName)（已移除）"))
                         }
-                        ForEach(ModelProfileStore.shared.imageModels) { profile in
-                            Text(profile.displayName).tag(profile.id)
-                        }
-                        ForEach(CustomWorkflowRegistry.safeLoad()) { wf in
-                            Text("工作流 · \(wf.displayName)").tag(wf.id)
-                        }
+                        list.append(contentsOf: ModelProfileStore.shared.imageModels.map { ($0.id, $0.displayName) })
+                        list.append(contentsOf: CustomWorkflowRegistry.safeLoad().map { ($0.id, "工作流 · \($0.displayName)") })
                     }
-                    Text("自訂 ComfyUI 工作流").tag("comfy")
+                    list.append(("comfy", "自訂 ComfyUI 工作流"))
+                    return list
+                }()
+                HStack(spacing: 8) {
+                    Text(app.project.kind == "video" ? "本機影片模型" : "本機圖片模型")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize()
+                    KliporaPillMenuPicker(
+                        options: modelOptions,
+                        selection: Binding(get: { app.localModel }, set: app.selectLocalModel),
+                        placeholder: "Z-Image Turbo",
+                        fullWidth: true
+                    )
                 }
                 if app.project.kind == "image" {
                     LocalModelManagerControls(app: app)
                     CustomWorkflowControls(app: app)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Picker("ComfyUI 執行模式", selection: $app.comfyConnectionMode) {
-                        Text("Klipora 託管引擎").tag("managed")
-                        Text("外部 ComfyUI Desktop").tag("desktop")
-                    }
-                    .pickerStyle(.segmented)
+                    Text("ComfyUI 執行模式")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(StudioTheme.textSecondary)
+                    KliporaSegmentedControl(
+                        options: [("managed", "Klipora 託管引擎"), ("desktop", "外部 ComfyUI Desktop")],
+                        selection: $app.comfyConnectionMode
+                    )
                     .disabled(app.busy)
 
                     if app.comfyConnectionMode == "managed" {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 6) {
                                 Circle()
                                     .fill(app.engineRunning ? StudioTheme.success : StudioTheme.textMuted.opacity(0.5))
                                     .frame(width: 7, height: 7)
-                                Text(app.engineStarting ? "Klipora 託管引擎啟動中…" : (app.engineRunning ? "執行中 · \(app.endpoint)" : "未啟動（建議使用，自動套用 --fp32-vae 畫質修正）"))
+                                Text(app.engineStarting ? "Klipora 託管引擎啟動中…" : (app.engineRunning ? "執行中 · \(app.endpoint)" : "未啟動（自動套用 --fp32-vae 畫質修正）"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                             }
                             HStack(spacing: 8) {
-                                Button(app.engineRunning ? "停止託管 ComfyUI" : "啟動託管 ComfyUI", action: app.toggleEngine)
+                                Button(app.engineRunning ? "停止託管引擎" : "啟動託管引擎", action: app.toggleEngine)
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                                     .disabled(app.busy)
                                 Button("檢查就緒狀態") {
                                     var checkReq: [String: Any] = [
@@ -5055,23 +5256,27 @@ struct StudioView: View {
                                     }
                                     app.perform(checkReq, "檢查本機 ComfyUI")
                                 }
+                                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                                 .disabled(app.busy || app.engineStarting || !app.engineRunning)
                                 .help("確認 Klipora 託管的 ComfyUI 與所選模型皆已就緒")
                             }
                         }
-                        .padding(8)
-                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(10)
+                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
                     } else {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             if app.engineRunning {
                                 Text("目前 Klipora 託管引擎正在執行；若要改連外部 ComfyUI Desktop，請先停止託管引擎。")
                                     .font(.caption)
                                     .foregroundStyle(StudioTheme.warning)
                             }
                             TextField("外部 ComfyUI 位址", text: $app.project.endpoint)
+                                .textFieldStyle(.roundedBorder)
                                 .disabled(app.engineRunning || app.busy)
                             HStack(spacing: 8) {
                                 Button("開啟 Comfy Desktop", action: app.openComfyDesktop)
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                                     .help("在 Comfy Desktop 啟動實例，再回來檢查連線")
                                 Button("檢查外部連線") {
                                     var checkReq: [String: Any] = [
@@ -5088,12 +5293,14 @@ struct StudioView: View {
                                     }
                                     app.perform(checkReq, "檢查外部 ComfyUI")
                                 }
+                                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                                 .disabled(app.busy || app.engineStarting)
                                 .help("確認外部 ComfyUI 位址已啟動且模型可用")
                             }
                         }
-                        .padding(8)
-                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(10)
+                        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
                     }
                 }
                 if app.action == "comfy" && !app.localModel.hasPrefix("workflow_") {
@@ -5104,6 +5311,7 @@ struct StudioView: View {
                             else { app.project.workflow = url.path }
                         }
                     }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     if !app.selectedWorkflow.isEmpty {
                         Text(filename(app.selectedWorkflow)).font(.caption).foregroundStyle(.secondary)
                     }
@@ -5137,15 +5345,22 @@ struct StudioView: View {
     }
 
     var outputSettings: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Picker("輸出尺寸", selection: Binding(get: { app.outputDimensions != nil }, set: { custom in
-                let defaults = app.project.aspect == "9:16" ? ("720", "1280")
-                    : app.project.aspect == "1:1" ? ("1024", "1024") : ("1280", "720")
-                app.outputDimensions = custom
-                    ? (app.outputDimensions ?? OutputDimensions(width: defaults.0, height: defaults.1)) : nil
-            })) {
-                Text("依比例").tag(false)
-                Text("自訂寬高").tag(true)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("輸出尺寸")
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize()
+                KliporaPillMenuPicker(
+                    options: [(false, "依比例"), (true, "自訂寬高")],
+                    selection: Binding(get: { app.outputDimensions != nil }, set: { custom in
+                        let defaults = app.project.aspect == "9:16" ? ("720", "1280")
+                            : app.project.aspect == "1:1" ? ("1024", "1024") : ("1280", "720")
+                        app.outputDimensions = custom
+                            ? (app.outputDimensions ?? OutputDimensions(width: defaults.0, height: defaults.1)) : nil
+                    })
+                )
+                Spacer(minLength: 0)
             }
             if let dimensions = app.outputDimensions {
                 HStack {
@@ -5163,23 +5378,36 @@ struct StudioView: View {
                      : "模型若無法直接生成此尺寸，會縮放並置中裁切。")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Picker("比例", selection: $app.project.aspect) {
-                    ForEach(["16:9", "9:16", "1:1"], id: \.self) { Text($0) }
+                HStack(spacing: 8) {
+                    Text("比例")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize()
+                    KliporaPillMenuPicker(
+                        options: [("16:9", "16:9"), ("9:16", "9:16"), ("1:1", "1:1")],
+                        selection: $app.project.aspect
+                    )
+                    Spacer(minLength: 0)
                 }
             }
-            HStack {
+            HStack(spacing: 6) {
                 Button { app.openOutputDirectory(datedDirectory(under: app.generationOutputDirectory)) } label: {
                     Label(app.generationOutputDirectory.lastPathComponent, systemImage: "folder")
                         .lineLimit(1)
-                }.help("在 Finder 開啟 \(datedDirectory(under: app.generationOutputDirectory).path)")
-                Spacer()
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .help("在 Finder 開啟 \(datedDirectory(under: app.generationOutputDirectory).path)")
+                Spacer(minLength: 4)
                 Button("選擇資料夾", action: app.chooseOutputFolder)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                    .fixedSize()
                     .accessibilityLabel(app.project.kind == "video" ? "選擇影片儲存資料夾" : "選擇圖片儲存資料夾")
                 if app.outputFolder != nil {
                     Button { app.outputFolder = nil } label: { Image(systemName: "arrow.uturn.backward") }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         .accessibilityLabel("使用工作台預設位置")
                 }
-            }.controlSize(.small).font(.caption)
+            }
         }.disabled(app.busy)
     }
 
@@ -5523,12 +5751,31 @@ struct StudioView: View {
 
     var refinementSettings: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("風格", selection: $app.project.style) { ForEach(styles, id: \.0) { Text($0.0).tag($0.0) } }
-            if app.source != "colab", app.project.kind == "image", app.action != "comfy" {
+            HStack(spacing: 8) {
+                Text("風格")
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize()
+                KliporaPillMenuPicker(
+                    options: styles.map { ($0.0, $0.0) },
+                    selection: $app.project.style,
+                    placeholder: "不套用風格"
+                )
+                Spacer(minLength: 0)
+            }
+            if app.source == "zimage", app.project.kind == "image", app.action != "comfy" {
                 ManualLoRAControls(app: app)
             }
-            Picker("鏡頭", selection: Binding(get: { app.camera }, set: { app.project.camera = $0 })) {
-                ForEach(["依原稿", "固定鏡位", "細節特寫", "緩慢推近", "廣角環境"], id: \.self) { Text($0) }
+            HStack(spacing: 8) {
+                Text("鏡頭")
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.textSecondary)
+                    .fixedSize()
+                KliporaPillMenuPicker(
+                    options: ["依原稿", "固定鏡位", "細節特寫", "緩慢推近", "廣角環境"].map { ($0, $0) },
+                    selection: Binding(get: { app.camera }, set: { app.project.camera = $0 })
+                )
+                Spacer(minLength: 0)
             }
             Toggle("套用提示詞優化", isOn: Binding(
                 get: { app.project.optimize != false },
@@ -5556,14 +5803,18 @@ struct StudioView: View {
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-            }.padding(6).frame(height: 104)
-                .background(canvas, in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(0.09)))
+            }.padding(8).frame(height: 104)
+                .background(canvas, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous).strokeBorder(.white.opacity(0.09)))
             if app.project.kind != "motion" {
-                HStack {
+                HStack(spacing: 8) {
                     Button("預覽／編輯送出提示詞", action: app.previewPrompt)
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         .disabled(app.project.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    if app.editedPrompt != nil { Button("還原") { app.editedPrompt = nil } }
+                    if app.editedPrompt != nil {
+                        Button("還原") { app.editedPrompt = nil }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                    }
                 }
             }
         }
@@ -5572,20 +5823,27 @@ struct StudioView: View {
     var motionTitles: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("輸入片頭文字", text: $app.project.title)
-            Button("製作 2 秒片頭") {
-                let folder = app.videoOutputDirectory
-                app.perform(["action": "title", "title": app.project.title, "aspect": app.project.aspect,
-                             "outputFolder": folder.path],
-                            "渲染動態片頭")
-            }.disabled(app.busy || app.project.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("渲染 HyperFrames 專案") {
-                app.pickAsync(title: "選擇 HyperFrames 專案", directory: true) { urls in
-                    guard let url = urls.first else { return }
+                .textFieldStyle(.roundedBorder)
+            HStack(spacing: 8) {
+                Button("製作 2 秒片頭") {
                     let folder = app.videoOutputDirectory
-                    app.perform(["action": "hyperframes", "workflow": url.path, "outputFolder": folder.path],
-                                "HyperFrames 渲染中")
+                    app.perform(["action": "title", "title": app.project.title, "aspect": app.project.aspect,
+                                 "outputFolder": folder.path],
+                                "渲染動態片頭")
                 }
-            }.disabled(app.busy)
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                .disabled(app.busy || app.project.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("渲染 HyperFrames") {
+                    app.pickAsync(title: "選擇 HyperFrames 專案", directory: true) { urls in
+                        guard let url = urls.first else { return }
+                        let folder = app.videoOutputDirectory
+                        app.perform(["action": "hyperframes", "workflow": url.path, "outputFolder": folder.path],
+                                    "HyperFrames 渲染中")
+                    }
+                }
+                .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                .disabled(app.busy)
+            }
             Text("渲染資料夾中的 index.html，完成後匯入素材庫。").font(.caption).foregroundStyle(.secondary)
         }
     }

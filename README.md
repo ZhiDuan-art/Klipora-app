@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.1.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.1.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **Latest Update — `v1.1.0` (2026-11-23 22:32 UTC+8):** Polished Settings & Online Image UI: aligned the 1–4 status cards onto a single 4-column row, hid local ComfyUI parameters when using online providers, fixed wrapped Quality/Resolution labels, updated multi-reference API hints, and added one-click launch buttons for installed **ChatGPT** / **Gemini** macOS desktop apps. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.0 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.0)**.
+> **Latest Update — `v1.1.1` (2026-11-24 19:36 UTC+8):** Redesigned a 6-tab dual-column Settings UI with unified Capsule controls, added **MediaTek `Breeze-ASR-26`** (Taiwanese Hokkien / Mandarin / English code-switching local subtitles), **Antigravity (`agy`) no-API image generation**, one-click Qwen3-TTS voice model downloading & manager sheet, and defaulted style preset to **None**. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.1 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.1)**.
 
 ## Product Demo Video
 

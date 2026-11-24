@@ -1500,6 +1500,111 @@ def _extract_office_preview(path: Path, max_chars: int = 12000) -> str:
     return ""
 
 
+def run_antigravity_image(request, folder):
+    """Generate an image directly via the user's local Antigravity (`agy`) CLI without requiring an API key."""
+    agent_bin = str(request.get("agentBinary") or "").strip()
+    if not agent_bin or not Path(agent_bin).exists():
+        raise RuntimeError("找不到本機 Antigravity (agy) CLI，請確認已安裝 Gemini.app 或 Antigravity。")
+
+    raw_prompt = str(request.get("prompt") or "").strip()
+    if not raw_prompt:
+        raise RuntimeError("請輸入生圖提示詞。")
+
+    aspect = str(request.get("aspect") or "16:9").strip()
+    ref_images = [str(p) for p in (request.get("referenceImages") or []) if str(p).strip() and Path(str(p)).exists()]
+    ref_roles = [str(r) for r in (request.get("referenceRoles") or [])]
+
+    out_dir = folder / "out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    target_path = out_dir / "antigravity_image.png"
+
+    ref_section = ""
+    if ref_images:
+        lines = []
+        for idx, p in enumerate(ref_images):
+            role = ref_roles[idx] if idx < len(ref_roles) and ref_roles[idx] else "參考"
+            lines.append(f"- @圖片{idx + 1}（{role}）: {p}")
+        ref_section = (
+            "\n\nReference images to incorporate (preserve subject identity/details as described):\n"
+            + "\n".join(lines)
+        )
+
+    instruction = (
+        f"Generate a high-quality image matching this request:\n"
+        f"{raw_prompt}\n\n"
+        f"Target aspect ratio: {aspect}.{ref_section}\n\n"
+        f"Use your built-in image generation tool, then copy or save the final image file directly to:\n"
+        f"{target_path}\n"
+        f"Finally, reply with a single line: SAVED_IMAGE: {target_path}"
+    )
+
+    log("正在透過本機 Antigravity (agy) 呼叫免 API 生圖…")
+    emit_progress(pct=0.15, stage="呼叫 Antigravity 生圖引擎")
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")
+    cmd = [agent_bin, "-p", instruction, "--dangerously-skip-permissions", "--output-format", "stream-json"]
+
+    captured_texts = []
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(out_dir),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        env=env,
+    )
+    assert proc.stdout is not None
+    for raw_line in proc.stdout:
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("{"):
+            try:
+                obj = json.loads(line)
+                ev_type = str(obj.get("type") or "")
+                if ev_type == "assistant":
+                    msg = obj.get("message") or {}
+                    for part in (msg.get("content") or []):
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            txt = str(part.get("text") or "").strip()
+                            if txt:
+                                captured_texts.append(txt)
+                                log(txt[:240])
+                elif ev_type == "result":
+                    res_txt = str(obj.get("result") or "").strip()
+                    if res_txt:
+                        captured_texts.append(res_txt)
+                        log(res_txt[:240])
+                elif ev_type in {"tool_use", "tool_result"}:
+                    emit_progress(pct=0.55, stage="Antigravity 正在繪製圖片…")
+            except Exception:
+                captured_texts.append(line)
+        else:
+            captured_texts.append(line)
+            log(line[:240])
+
+    rc = proc.wait()
+    if target_path.exists() and target_path.stat().st_size > 1024:
+        emit_progress(pct=1.0, stage="圖片生成完成")
+        return [str(target_path)]
+
+    # Fallback: locate any image path mentioned in Antigravity output and copy into out_dir
+    full_text = "\n".join(captured_texts)
+    found_paths = re.findall(r"(/[^\s\"'<>|]+?\.(?:png|jpg|jpeg|webp))", full_text, flags=re.IGNORECASE)
+    for cand in reversed(found_paths):
+        p = Path(cand)
+        if p.exists() and p.is_file() and p.stat().st_size > 1024:
+            dest = out_dir / f"antigravity_image{p.suffix.lower()}"
+            if p.resolve() != dest.resolve():
+                shutil.copy2(p, dest)
+            emit_progress(pct=1.0, stage="圖片生成完成")
+            return [str(dest)]
+
+    raise RuntimeError(f"Antigravity 生圖未產出圖片檔（exit={rc}），請查看「工作紀錄」確認詳情。")
+
+
 def run_mografy_motion(request, folder):
     workspace = Path((request.get("mografyWorkspace") or "").strip()).expanduser()
     if not workspace.is_dir():
@@ -1778,6 +1883,7 @@ def main():
                     "colab": cloud,
                     "openai_image": run_openai_image,
                     "gemini_image": run_gemini_image,
+                    "antigravity_image": run_antigravity_image,
                     "export": export,
                     "hyperframes": hyperframes,
                     "title": hyperframes,

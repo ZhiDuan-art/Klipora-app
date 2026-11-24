@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
-[![Release](https://img.shields.io/badge/ダウンロード-v1.1.0%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/ダウンロード-v1.1.1%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新・デバッグ履歴](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新アップデート — `v1.1.0`（2026-11-23 22:32 UTC+8）**：設定とオンライン画像生成 UI を刷新。1〜4 ステータスカードを 1 行 4 列に統一し、オンラインソース選択時はローカル ComfyUI パラメータを自動非表示に。さらに品質／解像度ラベルの折り返し修正と **ChatGPT / Gemini デスクトップ版** ワンクリック起動ボタンを追加しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.1.0 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.0)**。
+> **最新アップデート — `v1.1.1`（2026-11-24 19:36 UTC+8）**：6 タブ 2 カラム設定画面＆全 UI カプセル角丸統一に加え、MediaTek **`Breeze-ASR-26`**（台湾語・華語・英語混在のローカル自動字幕）、**Antigravity API キー不要画像生成**、Qwen3-TTS ワンクリックダウンロード管理画面を搭載しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.1.1 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.1)**。
 
 ## 実機デモ動画
 

@@ -352,7 +352,7 @@ struct MografySkillSetupCard: View {
                 }
                 Spacer()
                 Button("重新偵測") { mgr.refresh() }
-                    .controlSize(.mini)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             }
 
             HStack(spacing: 8) {
@@ -362,25 +362,23 @@ struct MografySkillSetupCard: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
-                Button("選擇目錄…") { mgr.chooseWorkspaceFolder() }
-                    .controlSize(.mini)
+                Button("選擇目錄") { mgr.chooseWorkspaceFolder() }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             }
 
             HStack(spacing: 8) {
                 Button {
                     mgr.copyInstallPrompt()
                 } label: {
-                    Label("複製安裝指令給 Agent", systemImage: "doc.on.doc")
+                    Label("複製安裝指令", systemImage: "doc.on.doc")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(StudioTheme.coral)
-                .controlSize(.small)
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
 
                 if let url = URL(string: "https://github.com/mografy/mografy") {
                     Link(destination: url) {
                         Label("Mografy GitHub", systemImage: "arrow.up.right.square")
                     }
-                    .controlSize(.small)
+                    .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                 }
                 Spacer()
             }
@@ -391,8 +389,12 @@ struct MografySkillSetupCard: View {
                     .foregroundStyle(StudioTheme.success)
             }
         }
-        .padding(12)
-        .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .padding(14)
+        .background(Color(red: 0.114, green: 0.118, blue: 0.133), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.075), lineWidth: 1)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)

@@ -664,18 +664,20 @@ struct LocalModelManagerControls: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Button("管理本機模型…") { ui.showManagerSheet = true }
+            Button("管理本機模型") { ui.showManagerSheet = true }
+                .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                 .disabled(app.busy)
-            Button("開啟模型儲存位置") {
+            Button("模型資料夾") {
                 try? FileManager.default.createDirectory(
                     at: CentralComfyModelStorage.defaultRoot,
                     withIntermediateDirectories: true
                 )
                 NSWorkspace.shared.activateFileViewerSelecting([CentralComfyModelStorage.defaultRoot])
             }
+            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
             .help("開啟 Klipora 中央圖片模型儲存資料夾（~/Library/Application Support/Klipora/models/comfy）")
+            Spacer(minLength: 0)
         }
-        .font(.caption)
         .sheet(isPresented: $ui.showManagerSheet) {
             LocalModelManagerSheet(app: app)
         }
