@@ -24,7 +24,8 @@
 
 ## 実機デモ動画
 
-*macOS 実機ウィンドウを録画し、Klipora 内蔵のローカル Qwen3-TTS ナレーションとマルチトラック編集エンジンで 1080p 書き出しまで完結させました。*
+*`v1.1.1` 実機画面＋ローカル Qwen3-TTS ナレーション（新カプセル UI・6 タブ設定・Breeze-ASR-26 対応）：*
+**[▶ v1.1.1 英語版 1080p を見る](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ v1.1.1 繁體中文版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
 https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 

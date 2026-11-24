@@ -24,7 +24,8 @@
 
 ## 實機操作宣傳影片
 
-*純視窗實機錄製——旁白由 Klipora 內建本機 Qwen3-TTS 離線合成，並全程使用 Klipora 多軌時間軸剪輯、上字幕與匯出 1080p。*
+*純視窗 `v1.1.1` 實機畫面——旁白由 Klipora 內建本機 Qwen3-TTS 離線合成，展示全新膠囊 UI、6 分頁設定頁與台灣 Breeze-ASR-26 字幕：*
+**[▶ 觀看／下載 v1.1.1 繁體中文配音版（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)** · **[▶ English Version（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)**
 
 https://github.com/user-attachments/assets/be328cd3-de07-4f05-8677-3e6b28be4070
 

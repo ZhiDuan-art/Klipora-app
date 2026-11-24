@@ -24,7 +24,8 @@
 
 ## 실기 데모 영상
 
-*macOS 실기 화면을 녹화하여 Klipora 내장 로컬 Qwen3-TTS 내레이션과 멀티트랙 편집 엔진으로 1080p 내보내기까지 직접 제작했습니다.*
+*`v1.1.1` 실기 화면 + 로컬 Qwen3-TTS 내레이션(신규 캡슐 UI·6탭 설정·Breeze-ASR-26 자막 지원):*
+**[▶ v1.1.1 영문판 1080p 보기](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ v1.1.1 번체중문판 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
 https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 

@@ -24,7 +24,8 @@
 
 ## Product Demo Video
 
-*Recorded from the live macOS app — voiced (offline Qwen3-TTS), edited, subtitled & exported to 1080p entirely inside Klipora.*
+*Recorded from live `v1.1.1` macOS app — voiced with offline Qwen3-TTS, unified Capsule UI, Breeze-ASR-26 & 6-tab Settings:*
+**[▶ Watch / Download v1.1.1 English 1080p Demo](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ Watch / Download v1.1.1 繁體中文配音版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
 https://github.com/user-attachments/assets/87f28a1f-10e6-4c51-a16c-5fea4048673a
 
