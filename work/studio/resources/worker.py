@@ -1878,6 +1878,31 @@ def main():
                 request["aspect"] = min(ASPECT_RATIOS, key=lambda key: abs(math.log(ratio / ASPECT_RATIOS[key])))
             if action in active_presets or action == "comfy":
                 paths, extra_result = comfy(request, folder)
+                if action == "wan22_14b" and paths:
+                    try:
+                        ffmpeg_bin = tool("ffmpeg")
+                        smoothed = []
+                        for p in paths:
+                            src_p = Path(p)
+                            if src_p.suffix.lower() in VIDEO_EXT and src_p.is_file():
+                                out_p = src_p.with_name(src_p.stem + "_24fps.mp4")
+                                log("套用光流補幀（16fps → 24fps，維持原片長）以提升畫面流暢度…")
+                                subprocess.run(
+                                    [
+                                        ffmpeg_bin, "-y", "-v", "error", "-i", str(src_p),
+                                        "-vf", "minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1",
+                                        "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+                                        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                                        str(out_p),
+                                    ],
+                                    check=True,
+                                )
+                                smoothed.append(str(out_p))
+                            else:
+                                smoothed.append(p)
+                        paths = smoothed
+                    except Exception as exc:
+                        log(f"光流補幀略過（保留原 16fps 成品）：{exc}")
             else:
                 handlers = {
                     "colab": cloud,

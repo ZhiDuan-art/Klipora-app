@@ -84,10 +84,52 @@ enum MultitrackInspectorTab: String, CaseIterable, Identifiable {
 @MainActor final class MultitrackEditState: ObservableObject {
     @Published var selection: TimelineSelection? = nil {
         didSet {
+            if !isUpdatingMultiSelection {
+                selectedItems = selection.map { [$0] } ?? []
+            }
             if selection != oldValue {
                 syncInspectorTabForSelection()
             }
         }
+    }
+    @Published var selectedItems: Set<TimelineSelection> = []
+    @Published var marqueeOrigin: CGPoint? = nil
+    @Published var marqueeCurrent: CGPoint? = nil
+    var marqueeBaseSelection: Set<TimelineSelection> = []
+    private var isUpdatingMultiSelection: Bool = false
+
+    var marqueeRect: CGRect? {
+        guard let o = marqueeOrigin, let c = marqueeCurrent else { return nil }
+        return CGRect(
+            x: min(o.x, c.x),
+            y: min(o.y, c.y),
+            width: abs(c.x - o.x),
+            height: abs(c.y - o.y)
+        )
+    }
+
+    func isSelected(_ item: TimelineSelection) -> Bool {
+        selectedItems.contains(item) || selection == item
+    }
+
+    func applySelectionSet(_ items: Set<TimelineSelection>, primary: TimelineSelection? = nil) {
+        isUpdatingMultiSelection = true
+        selectedItems = items
+        if let p = primary, items.contains(p) {
+            selection = p
+        } else if let cur = selection, items.contains(cur) {
+            // keep current primary selection
+        } else {
+            selection = items.first
+        }
+        isUpdatingMultiSelection = false
+    }
+
+    func clearMultiSelection() {
+        isUpdatingMultiSelection = true
+        selectedItems = []
+        selection = nil
+        isUpdatingMultiSelection = false
     }
     @Published var pixelsPerSecond: CGFloat = 56
     @Published var previewMode: MultitrackPreviewMode = .timeline
@@ -287,6 +329,15 @@ enum MultitrackInspectorTab: String, CaseIterable, Identifiable {
     }
 
     func deleteSelected(app: Studio, playback: MultitrackPlaybackController) {
+        if selectedItems.count > 1 {
+            playback.pause()
+            app.deleteMultitrackSelections(selectedItems, ripple: rippleDelete)
+            clearMultiSelection()
+            let updated = app.currentMultitrackLayout()
+            reconcileSelection(with: updated)
+            playback.syncLayout(updated)
+            return
+        }
         guard let current = selection else { return }
         playback.pause()
         let nextSel = app.deleteMultitrackSelection(current, ripple: rippleDelete)
@@ -449,8 +500,10 @@ struct MultitrackLibraryPanel: View {
                                 .fill(mtCyanAccent)
                                 .frame(height: 2)
                                 .padding(.horizontal, 8)
+                                .allowsHitTesting(false)
                         }
                     }
+                    .contentShape(.interaction, RoundedRectangle(cornerRadius: StudioTheme.Radius.control, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -1016,7 +1069,7 @@ struct MultitrackLibraryPanel: View {
                         ForEach([0.3, 0.5, 1.0, 1.5], id: \.self) { sec in
                             let currentDur = targetJ?.transition?.seconds ?? state.transitionDefaultSeconds
                             let isCur = abs(currentDur - sec) < 0.05
-                            Button(String(format: "%.1fs", sec)) {
+                            Button {
                                 state.transitionDefaultSeconds = sec
                                 if let j = targetJ, !j.isCut, let kind = j.transition?.kind {
                                     app.setMultitrackTransition(
@@ -1028,13 +1081,16 @@ struct MultitrackLibraryPanel: View {
                                     )
                                     playback.syncLayout(app.currentMultitrackLayout())
                                 }
+                            } label: {
+                                Text(String(format: "%.1fs", sec))
+                                    .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
+                                    .foregroundStyle(isCur ? .white : .white.opacity(0.85))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(isCur ? mtCyanAccent : surface, in: Capsule())
+                                    .contentShape(.interaction, Capsule())
                             }
                             .buttonStyle(.plain)
-                            .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
-                            .foregroundStyle(isCur ? canvas : .white.opacity(0.85))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(isCur ? mtCyanAccent : surface, in: RoundedRectangle(cornerRadius: 4))
                         }
                         Spacer(minLength: 2)
                     }
@@ -1272,16 +1328,19 @@ struct MultitrackLibraryPanel: View {
                         .foregroundStyle(.secondary)
                     ForEach([0.2, 0.4, 0.8, 1.2], id: \.self) { sec in
                         let isCur = abs(currentDur - sec) < 0.05
-                        Button(String(format: "%.1fs", sec)) {
+                        Button {
                             guard let seg = selectedSeg else { return }
                             app.updateVideoClipProperties(id: seg.id) { $0.animationDuration = sec }
+                        } label: {
+                            Text(String(format: "%.1fs", sec))
+                                .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
+                                .foregroundStyle(isCur ? .white : .white.opacity(0.85))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(isCur ? mtCyanAccent : surface, in: Capsule())
+                                .contentShape(.interaction, Capsule())
                         }
                         .buttonStyle(.plain)
-                        .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
-                        .foregroundStyle(isCur ? canvas : .white.opacity(0.85))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(isCur ? mtCyanAccent : surface, in: RoundedRectangle(cornerRadius: 4))
                         .disabled(selectedSeg == nil || app.busy)
                     }
                     Spacer()
@@ -2413,6 +2472,103 @@ struct MultitrackTimelineDockView: View {
         return max(120, tH + sH + vH + aH)
     }
 
+    private func marqueeHits(in rect: CGRect, pxPerSec: CGFloat) -> Set<TimelineSelection> {
+        var hits: Set<TimelineSelection> = []
+        var y: CGFloat = rulerHeight + 1
+
+        for tt in layout.textTracks.reversed() {
+            if !tt.track.locked {
+                for seg in tt.segments {
+                    let clipRect = CGRect(
+                        x: CGFloat(seg.timelineStart) * pxPerSec,
+                        y: y,
+                        width: max(8, CGFloat(seg.duration) * pxPerSec),
+                        height: textRowHeight
+                    )
+                    if rect.intersects(clipRect) {
+                        hits.insert(.textClip(trackID: tt.id, clipID: seg.id))
+                    }
+                }
+            }
+            y += textRowHeight + 1
+        }
+
+        for st in visibleShapeTracks.reversed() {
+            if !st.track.locked {
+                for seg in st.segments {
+                    let clipRect = CGRect(
+                        x: CGFloat(seg.timelineStart) * pxPerSec,
+                        y: y,
+                        width: max(8, CGFloat(seg.duration) * pxPerSec),
+                        height: textRowHeight
+                    )
+                    if rect.intersects(clipRect) {
+                        hits.insert(.shapeClip(trackID: st.id, clipID: seg.id))
+                    }
+                }
+            }
+            y += textRowHeight + 1
+        }
+
+        for vt in layout.videoTracks.reversed() {
+            if !vt.track.locked {
+                for seg in vt.segments {
+                    let clipRect = CGRect(
+                        x: CGFloat(seg.timelineStart) * pxPerSec,
+                        y: y,
+                        width: max(8, CGFloat(seg.duration) * pxPerSec),
+                        height: videoRowHeight
+                    )
+                    if rect.intersects(clipRect) {
+                        hits.insert(.videoClip(trackID: vt.id, clipID: seg.id))
+                    }
+                }
+            }
+            y += videoRowHeight + 1
+        }
+
+        for at in layout.audioTracks {
+            if !at.track.locked {
+                for seg in at.segments {
+                    let clipRect = CGRect(
+                        x: CGFloat(seg.timelineStart) * pxPerSec,
+                        y: y,
+                        width: max(8, CGFloat(seg.duration) * pxPerSec),
+                        height: audioRowHeight
+                    )
+                    if rect.intersects(clipRect) {
+                        hits.insert(.audioClip(trackID: at.id, clipID: seg.id))
+                    }
+                }
+            }
+            y += audioRowHeight + 1
+        }
+
+        return hits
+    }
+
+    private func marqueeDragGesture(pxPerSec: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named("mtCanvas"))
+            .onChanged { value in
+                guard value.startLocation.y >= rulerHeight + 1 else { return }
+                if state.marqueeOrigin == nil {
+                    state.marqueeOrigin = value.startLocation
+                    let shiftHeld = NSEvent.modifierFlags.contains(.shift)
+                    state.marqueeBaseSelection = shiftHeld ? state.selectedItems : []
+                }
+                state.marqueeCurrent = value.location
+                if let rect = state.marqueeRect {
+                    let hits = marqueeHits(in: rect, pxPerSec: pxPerSec)
+                    state.applySelectionSet(state.marqueeBaseSelection.union(hits))
+                }
+            }
+            .onEnded { _ in
+                state.marqueeOrigin = nil
+                state.marqueeCurrent = nil
+                state.marqueeBaseSelection = []
+            }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             sequenceTabsBar
@@ -2486,6 +2642,19 @@ struct MultitrackTimelineDockView: View {
                                     .allowsHitTesting(false)
                                 }
 
+                                // Marquee selection rectangle overlay (non-interactive)
+                                if let rect = state.marqueeRect, rect.width > 2 || rect.height > 2 {
+                                    Rectangle()
+                                        .fill(mtCyanAccent.opacity(0.16))
+                                        .overlay(
+                                            Rectangle()
+                                                .strokeBorder(mtCyanAccent.opacity(0.85), style: StrokeStyle(lineWidth: 1.2, dash: [4, 2]))
+                                        )
+                                        .frame(width: rect.width, height: rect.height)
+                                        .offset(x: rect.minX, y: rect.minY)
+                                        .allowsHitTesting(false)
+                                }
+
                                 // Playhead needle spanning ruler + all lanes
                                 MultitrackPlayheadNeedle(
                                     x: CGFloat(playback.playhead) * pxPerSec,
@@ -2493,6 +2662,8 @@ struct MultitrackTimelineDockView: View {
                                 )
                             }
                             .frame(width: contentWidth, height: rulerHeight + 1 + totalLanesHeight, alignment: .topLeading)
+                            .contentShape(Rectangle())
+                            .gesture(marqueeDragGesture(pxPerSec: pxPerSec))
                             .coordinateSpace(name: "mtCanvas")
                         }
                         .background(mtDarkWell)
@@ -3379,7 +3550,7 @@ struct MultitrackTimelineDockView: View {
         ZStack(alignment: .leading) {
             laneGridBackground(pxPerSec: pxPerSec)
             ForEach(trackLayout.segments) { seg in
-                let isSelected = state.selection == .shapeClip(trackID: trackLayout.id, clipID: seg.id)
+                let isSelected = state.isSelected(.shapeClip(trackID: trackLayout.id, clipID: seg.id))
                 let x = CGFloat(seg.timelineStart) * pxPerSec
                 let w = max(24, CGFloat(seg.duration) * pxPerSec)
                 let kindObj = ShapeKind.resolved(seg.clip.kind)
@@ -3612,7 +3783,7 @@ private struct MultitrackVideoClipBlock: View {
     @StateObject private var dragState = MultitrackClipGestureState()
 
     private var isSelected: Bool {
-        state.selection == .videoClip(trackID: segment.trackID, clipID: segment.id)
+        state.isSelected(.videoClip(trackID: segment.trackID, clipID: segment.id))
     }
 
     private var clip: VideoClip { segment.clip }
@@ -3927,7 +4098,7 @@ private struct MultitrackAudioClipBlock: View {
     @StateObject private var dragState = MultitrackClipGestureState()
 
     private var isSelected: Bool {
-        state.selection == .audioClip(trackID: segment.trackID, clipID: segment.id)
+        state.isSelected(.audioClip(trackID: segment.trackID, clipID: segment.id))
     }
 
     var body: some View {
@@ -4200,7 +4371,7 @@ private struct MultitrackTextClipBlock: View {
     @StateObject private var dragState = MultitrackClipGestureState()
 
     private var isSelected: Bool {
-        state.selection == .textClip(trackID: segment.trackID, clipID: segment.id)
+        state.isSelected(.textClip(trackID: segment.trackID, clipID: segment.id))
     }
 
     var body: some View {
@@ -4411,9 +4582,10 @@ struct MultitrackInspectorView: View {
                             .background(isSelected ? mtCyanAccent.opacity(0.24) : .clear, in: Capsule())
                             .overlay {
                                 if isSelected {
-                                    Capsule().strokeBorder(mtCyanAccent.opacity(0.6), lineWidth: 1)
+                                    Capsule().strokeBorder(mtCyanAccent.opacity(0.6), lineWidth: 1).allowsHitTesting(false)
                                 }
                             }
+                            .contentShape(.interaction, Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -4629,15 +4801,18 @@ struct MultitrackInspectorView: View {
                     HStack(spacing: 4) {
                         ForEach([0.5, 1.0, 1.5, 2.0], id: \.self) { spd in
                             let isCur = abs(clip.speed - spd) < 0.03
-                            Button(String(format: "%gx", spd)) {
+                            Button {
                                 app.updateVideoClipProperties(id: seg.id) { $0.speed = spd }
+                            } label: {
+                                Text(String(format: "%gx", spd))
+                                    .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
+                                    .foregroundStyle(isCur ? .white : .white.opacity(0.85))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(isCur ? mtCyanAccent : mtDarkWell, in: Capsule())
+                                    .contentShape(.interaction, Capsule())
                             }
                             .buttonStyle(.plain)
-                            .font(.system(size: 9.5, weight: isCur ? .semibold : .regular, design: .monospaced))
-                            .foregroundStyle(isCur ? canvas : .white.opacity(0.85))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(isCur ? mtCyanAccent : mtDarkWell, in: RoundedRectangle(cornerRadius: 4))
                             .disabled(app.busy || locked || clip.freezeFrame)
                         }
                         Spacer()
@@ -5503,17 +5678,20 @@ struct MultitrackInspectorView: View {
                                 || (p.aspect == "9:16" && app.timelineOutput.aspect == "9:16")
                                 || (p.aspect == "1:1" && app.timelineOutput.aspect == "1:1")
                         }()
-                        Button(p.label) {
+                        Button {
                             app.timelineOutput.aspect = p.aspect
                             app.timelineOutput.dimensions = OutputDimensions(width: p.w, height: p.h)
+                        } label: {
+                            Text(p.label)
+                                .font(.system(size: 10.5, weight: isCur ? .semibold : .regular))
+                                .foregroundStyle(isCur ? .white : .white.opacity(0.86))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(isCur ? mtCyanAccent : mtDarkWell, in: Capsule())
+                                .overlay(Capsule().strokeBorder(isCur ? mtCyanAccent.opacity(0.75) : .white.opacity(0.08), lineWidth: 0.8).allowsHitTesting(false))
+                                .contentShape(.interaction, Capsule())
                         }
                         .buttonStyle(.plain)
-                        .font(.system(size: 10.5, weight: isCur ? .semibold : .regular))
-                        .foregroundStyle(isCur ? .white : .white.opacity(0.86))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(isCur ? mtCyanAccent : mtDarkWell, in: Capsule())
-                        .overlay(Capsule().strokeBorder(isCur ? mtCyanAccent.opacity(0.75) : .white.opacity(0.08), lineWidth: 0.8))
                     }
                 }
 

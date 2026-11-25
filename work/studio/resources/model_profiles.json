@@ -10,8 +10,7 @@
     "krea2",
     "sdxl1",
     "wan22",
-    "wan22_14b",
-    "ltxv13b"
+    "wan22_14b"
   ],
   "models": {
     "zimage": {
@@ -692,7 +691,7 @@
       "alignment": 32,
       "maxPixels": 901120,
       "defaults": {
-        "steps": 20,
+        "steps": 25,
         "cfg": 5.0,
         "sampler": "euler",
         "scheduler": "simple",
@@ -707,7 +706,7 @@
       "ranges": {
         "steps": [
           12,
-          30
+          35
         ],
         "cfg": [
           3.0,

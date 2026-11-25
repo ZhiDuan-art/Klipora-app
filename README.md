@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.1.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.1.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **Latest Update — `v1.1.2` (2026-11-25 02:14 UTC+8):** Added **MediaTek `BreezyVoice`** (Taiwanese Mandarin zero-shot TTS sharing all 68 voice profiles with 1-click install), completed **unified Capsule UI & continuous rounded cards across Edit Mode**, and switched the header project title to **click-to-edit** so Edit Mode keyboard focus never gets stuck. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.2 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.2)**.
+> **Latest Update — `v1.1.5` (2026-11-25 13:53 UTC+8):** Set **MediaTek `BreezyVoice`** as default with a curated 3-engine voice menu, added **multitrack timeline marquee multi-selection** & batch ripple delete, fixed **full-capsule hit-testing** across all buttons, added **Auto-Match Source Aspect Ratio**, and shipped a **zero-venv-modification Apple Silicon MPS FP8→FP16 engine hook + optical-flow 24fps smoothing** so **Wan 2.2 14B MoE + 4-step LoRA** runs smoothly on 48 GB Mac. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.5 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.5)**.
 
 ## Product Demo Video
 
@@ -89,7 +89,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.1.2-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.1.5-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

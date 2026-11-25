@@ -2409,15 +2409,18 @@ struct ProVisualEffectsLibraryTab: View {
                             HStack(spacing: 4) {
                                 ForEach(catalog.visualCategories, id: \.self) { cat in
                                     let active = local.selectedCategory == cat
-                                    Button(cat) {
+                                    Button {
                                         local.selectedCategory = cat
+                                    } label: {
+                                        Text(cat)
+                                        .font(.system(size: 9.5, weight: active ? .semibold : .regular))
+                                        .foregroundStyle(active ? canvas : .white.opacity(0.85))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(active ? proViolet : surface, in: Capsule())
+                                            .contentShape(.interaction, Capsule())
                                     }
                                     .buttonStyle(.plain)
-                                    .font(.system(size: 9.5, weight: active ? .semibold : .regular))
-                                    .foregroundStyle(active ? canvas : .white.opacity(0.85))
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 3)
-                                    .background(active ? proViolet : surface, in: Capsule())
                                 }
                             }
                         }
@@ -2482,15 +2485,18 @@ struct ProVisualEffectsLibraryTab: View {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 4) {
                             ForEach(VideoBlendMode.allCases) { mode in
                                 let active = seg.map { VideoBlendMode.resolved($0.clip.blendMode) == mode } ?? false
-                                Button(mode.displayName) {
+                                Button {
                                     mutateSelectedVideo({ $0.blendMode = mode.rawValue }, status: "已設定混合模式 · \(mode.displayName)")
+                                } label: {
+                                    Text(mode.displayName)
+                                    .font(.system(size: 9.5, weight: active ? .semibold : .regular))
+                                    .foregroundStyle(active ? canvas : .white.opacity(0.88))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 5)
+                                    .background(active ? proCyan : surface.opacity(0.7), in: Capsule())
+                                        .contentShape(.interaction, Capsule())
                                 }
                                 .buttonStyle(.plain)
-                                .font(.system(size: 9.5, weight: active ? .semibold : .regular))
-                                .foregroundStyle(active ? canvas : .white.opacity(0.88))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 5)
-                                .background(active ? proCyan : surface.opacity(0.7), in: Capsule())
                                 .disabled(seg == nil || app.busy)
                             }
                         }
@@ -2956,15 +2962,18 @@ struct AudioAndVoiceoverLibraryTab: View {
                                 HStack(spacing: 4) {
                                     ForEach(catalog.audioCategories, id: \.self) { cat in
                                         let active = local.selectedCategory == cat
-                                        Button(cat) {
+                                        Button {
                                             local.selectedCategory = cat
+                                        } label: {
+                                            Text(cat)
+                                            .font(.system(size: 9.5, weight: active ? .semibold : .regular))
+                                            .foregroundStyle(active ? canvas : .white.opacity(0.85))
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 3)
+                                            .background(active ? proEmerald : surface, in: Capsule())
+                                                .contentShape(.interaction, Capsule())
                                         }
                                         .buttonStyle(.plain)
-                                        .font(.system(size: 9.5, weight: active ? .semibold : .regular))
-                                        .foregroundStyle(active ? canvas : .white.opacity(0.85))
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 3)
-                                        .background(active ? proEmerald : surface, in: Capsule())
                                     }
                                 }
                             }
@@ -4251,16 +4260,19 @@ struct KeyframeAndSpeedRampInspectorSection: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 4)], spacing: 4) {
                     ForEach(videoProperties) { prop in
                         let active = local.selectedProperty == prop
-                        Button(prop.displayName) {
+                        Button {
                             local.selectedProperty = prop
+                        } label: {
+                            Text(prop.displayName)
+                            .font(.system(size: 9.5, weight: active ? .semibold : .regular))
+                            .foregroundStyle(active ? canvas : .white.opacity(0.88))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 4)
+                            .background(active ? proAmber : surface, in: Capsule())
+                                .contentShape(.interaction, Capsule())
                         }
                         .buttonStyle(.plain)
-                        .font(.system(size: 9.5, weight: active ? .semibold : .regular))
-                        .foregroundStyle(active ? canvas : .white.opacity(0.88))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 4)
-                        .background(active ? proAmber : surface, in: RoundedRectangle(cornerRadius: 4))
                     }
                 }
 
@@ -4271,15 +4283,18 @@ struct KeyframeAndSpeedRampInspectorSection: View {
                         .foregroundStyle(.secondary)
                     ForEach(KeyframeEasing.allCases) { ease in
                         let active = local.selectedEasing == ease
-                        Button(ease.displayName) {
+                        Button {
                             local.selectedEasing = ease
+                        } label: {
+                            Text(ease.displayName)
+                            .font(.system(size: 9, weight: active ? .semibold : .regular))
+                            .foregroundStyle(active ? canvas : .white.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(active ? proCyan : surface, in: Capsule())
+                                .contentShape(.interaction, Capsule())
                         }
                         .buttonStyle(.plain)
-                        .font(.system(size: 9, weight: active ? .semibold : .regular))
-                        .foregroundStyle(active ? canvas : .white.opacity(0.85))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(active ? proCyan : surface, in: RoundedRectangle(cornerRadius: 4))
                     }
                     Spacer()
                 }

@@ -1,5 +1,21 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.5 — 2026-11-25 13:53 (UTC+8)
+### BreezyVoice Default + Curated 3-Engine Voice Menu, Timeline Marquee Multi-Select, Full-Capsule Hit Testing, Auto-Match Source Aspect & Apple Silicon MPS FP8 Fix for Wan 2.2 14B MoE / BreezyVoice 設為預設、軌道滑鼠拖曳框選、整顆膠囊點擊、自適應原圖比例與 Wan 2.2 14B MoE Apple Silicon MPS 完整支援
+- **語音模型精簡 + `MediaTek BreezyVoice` 設為預設**：
+  - 修復 `cloningEngineNames` 相容性判斷並將 68 聲線主選單精簡為 3 個核心引擎：**`MediaTek BreezyVoice（台灣國語 · 68 聲線）`**（設為預設）、**`Qwen3-TTS 1.7B Base（多語／中文）`**、**`Chatterbox Turbo（英文快速）`**，點擊未下載模型皆支援一鍵下載，並強化 4 檔核心權重完整度驗證。
+- **多軌時間軸支援滑鼠拖曳框選多個素材（Marquee Multi-Selection）**：
+  - 於空白軌道區拖曳超過 `4px` 即可拉出青色選取框，跨軌同時框選影片／音訊／文字／形狀片段（支援 `Shift` 疊加框選），並新增單一 Undo 批次刪除（Ripple 模式採各軌時間區間聯集計算，不重複扣除重疊區段）。
+- **全站按鈕改為整顆膠囊可點擊**：
+  - 於 `StudioTheme.swift`（`KliporaPillButtonStyle`、`KliporaSegmentedControl`、`KliporaPillMenuPicker`）及剪輯／生成工作台全部 `.buttonStyle(.plain)` 膠囊按鈕加上 `.contentShape(.interaction, Capsule())`，並將原本寫在 `Button` 外層的尺寸與背景收進 `label:` 內，消除僅文字區可點的死角。
+- **本機影片生成重大升級與 Apple Silicon MPS 完整相容**：
+  - 新增「**自適應原圖比例**」輸出尺寸模式：自動讀取首幀／參考圖解析度，等比對齊至 16 倍數安全像素尺寸（不拉扯、不硬裁切）。
+  - 本機影片模型選單改為**僅顯示本機已下載模型**（移出 `LTX-Video 13B Distilled`）；`Wan 2.2 TI2V-5B` 預設步數提升至 `25 steps`（上限 `35`）；`Wan 2.2 14B MoE + 4-step` 輸出後自動套用 **16fps → 24fps 光流補幀**消除 24fps 時間軸卡頓感。
+  - 於 `engine.py` 加入 **Apple Silicon MPS 低記憶體逐層 FP8 → FP16 反量化 Hook**（攔截 `TensorCoreFP8Layout`、`comfy.quant_ops` 與 `stochastic_rounding`，搭配 `--fp16-unet --lowvram`），在不改動使用者 ComfyUI venv 的前提下徹底解決 `Float8_e4m3fn` MPS 報錯與 48 GB 統一記憶體爆量問題，實測雙 14B 專家 + 4-step LoRA 端對端 100% 通過。
+- **Affected Files**：`work/studio/Info.plist`, `work/studio/src/StudioTheme.swift`, `work/studio/src/Studio.swift`, `work/studio/src/MultitrackModels.swift`, `work/studio/src/MultitrackViews.swift`, `work/studio/src/ProStudioPanels.swift`, `work/studio/src/VoiceboxIntegration.swift`, `work/studio/src/PortabilitySetupViews.swift`, `work/studio/resources/engine.py`, `work/studio/resources/worker.py`, `work/studio/resources/model_profiles.json`, `work/studio/resources/wan22_14b.json`
+
+---
+
 ## v1.1.2 — 2026-11-25 02:14 (UTC+8)
 ### MediaTek BreezyVoice (Taiwanese Mandarin · 68 Shared Voices), Edit Mode Capsule UI & Focus Fix / 聯發創新基地 BreezyVoice（台灣國語 · 68 聲線共用）、剪輯模式全站膠囊 R 角統一與專案命名焦點修復
 - **接入 MediaTek `BreezyVoice`（台灣國語 Zero-Shot TTS · 共用 68 聲線）**：

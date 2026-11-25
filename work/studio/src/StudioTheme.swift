@@ -124,7 +124,8 @@ struct KliporaPillButtonStyle: ButtonStyle {
             .padding(.vertical, compact ? 5 : 7)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background(bg, in: Capsule())
-            .overlay(Capsule().strokeBorder(border, lineWidth: 1))
+            .overlay(Capsule().strokeBorder(border, lineWidth: 1).allowsHitTesting(false))
+            .contentShape(.interaction, Capsule())
             .opacity(isEnabled ? (configuration.isPressed ? 0.86 : 1.0) : 0.45)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -176,13 +177,14 @@ struct KliporaSegmentedControl<SelectionValue: Hashable>: View {
                             isSelected ? activeColor : Color.clear,
                             in: Capsule()
                         )
+                        .contentShape(.interaction, Capsule())
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(3)
         .background(Color.white.opacity(0.07), in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.09), lineWidth: 1))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.09), lineWidth: 1).allowsHitTesting(false))
     }
 }
 
@@ -228,7 +230,8 @@ struct KliporaPillMenuPicker<SelectionValue: Hashable>: View {
             .padding(.vertical, 5.5)
             .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
             .background(Color.white.opacity(0.08), in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1).allowsHitTesting(false))
+            .contentShape(.interaction, Capsule())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

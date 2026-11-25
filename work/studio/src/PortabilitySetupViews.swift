@@ -5166,7 +5166,7 @@ struct LocalVoiceModelManagerSheet: View {
                                     Text("MediaTek-Research/BreezyVoice · 預估 ~2.8 GB\(voicebox.breezyVoiceDiskBytes > 0 ? "（本機已佔用 \(setupFormatBytes(voicebox.breezyVoiceDiskBytes))）" : "")")
                                         .font(.system(size: 10.5, design: .monospaced))
                                         .foregroundStyle(StudioTheme.textMuted)
-                                    Text("專攻道地台灣國語並支援注音標註，直接沿用現有 68 個聲音角色。BreezyVoice-26 台語權重待聯發創新基地公開後將無縫接入。")
+                                    Text("預設台灣國語語音引擎，支援注音多音字標註（如 [:ㄏㄠ3]），直接共用現有 68 個聲音角色。")
                                         .font(.system(size: 10.5))
                                         .foregroundStyle(StudioTheme.textSecondary)
                                 }

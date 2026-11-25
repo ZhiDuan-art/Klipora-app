@@ -1134,6 +1134,38 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var showLog = false
     @Published var showPrompt = false
     @Published var isEditingProjectTitle = false
+    @Published var matchSourceAspect = false
+
+    func matchedSourcePixelSize() -> (raw: [Int], aligned: [Int])? {
+        let candidatePath: String = {
+            if !referenceImage.isEmpty { return referenceImage }
+            if let first = orderedFrames.first, !first.isEmpty { return first }
+            return ""
+        }()
+        guard !candidatePath.isEmpty,
+              let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: candidatePath) as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int,
+              let h = props[kCGImagePropertyPixelHeight] as? Int,
+              w > 0, h > 0 else {
+            return nil
+        }
+        let targetArea: Double = (project.kind == "video") ? (832.0 * 480.0) : (1024.0 * 1024.0)
+        let maxEdge: Double = (project.kind == "video") ? 1280.0 : 1536.0
+        let scale = sqrt(targetArea / Double(w * h))
+        var aw = Double(w) * scale
+        var ah = Double(h) * scale
+        let longest = max(aw, ah)
+        if longest > maxEdge {
+            let down = maxEdge / longest
+            aw *= down
+            ah *= down
+        }
+        let align = 16.0
+        let outW = max(256, Int((aw / align).rounded()) * Int(align))
+        let outH = max(256, Int((ah / align).rounded()) * Int(align))
+        return ([w, h], [outW, outH])
+    }
     @Published var promptDraft = ""
     @Published var editedPrompt: String?
     @Published var vlmDraftPrompt = ""
@@ -1480,7 +1512,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
                                  "--disable-all-custom-nodes",
                                  "--whitelist-custom-nodes", "ComfyUI-llama-cpp_vlm",
                                  "--disable-api-nodes", "--disable-auto-launch",
-                                 "--fp32-vae"]
+                                 "--fp32-vae", "--fp16-unet", "--lowvram"]
             if fs.fileExists(atPath: front.path) {
                 process.arguments?.append(contentsOf: ["--front-end-root", front.path])
             }
@@ -3107,7 +3139,11 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
             request["modelParams"] = currentModelParamsPayload()
         }
         if source == "colab", !images.isEmpty { request["referenceImages"] = images }
-        if let size { request["pixelSize"] = size }
+        if let size {
+            request["pixelSize"] = size
+        } else if matchSourceAspect, let matched = matchedSourcePixelSize() {
+            request["pixelSize"] = ["width": matched.aligned[0], "height": matched.aligned[1]]
+        }
         request["outputFolder"] = generationOutputDirectory.path
         if method == "multi" {
             request["segments"] = multiTransitions.map { ["seconds": $0.seconds, "prompt": $0.prompt] }
@@ -4141,6 +4177,38 @@ struct StudioView: View {
     @StateObject private var libraryInteraction = LibraryInteractionState()
     @FocusState private var projectTitleFocused: Bool
 
+    private static func isLocalVideoModelInstalled(_ modelID: String) -> Bool {
+        let fm = FileManager.default
+        var roots: [URL] = []
+        if let saved = UserDefaults.standard.string(forKey: "MotionDesk.comfyui.modelsRoot"), !saved.isEmpty {
+            let u = URL(fileURLWithPath: saved, isDirectory: true)
+            roots.append(u.appendingPathComponent("models", isDirectory: true))
+            roots.append(u)
+        }
+        let home = fm.homeDirectoryForCurrentUser
+        roots.append(home.appendingPathComponent("Documents/ComfyUI/models", isDirectory: true))
+        roots.append(home.appendingPathComponent("ComfyUI-Installs/ComfyUI-MPS/ComfyUI/models", isDirectory: true))
+        roots.append(home.appendingPathComponent("Library/Application Support/Klipora/models/comfy", isDirectory: true))
+
+        func hasFile(_ relPath: String) -> Bool {
+            for r in roots {
+                let p = r.appendingPathComponent(relPath).path
+                if fm.fileExists(atPath: p) { return true }
+            }
+            return false
+        }
+
+        switch modelID {
+        case "wan22":
+            return hasFile("diffusion_models/wan2.2_ti2v_5B_fp16.safetensors")
+        case "wan22_14b":
+            return hasFile("diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors")
+                && hasFile("diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors")
+        default:
+            return false
+        }
+    }
+
     private var editLayout: MultitrackLayout {
         app.currentMultitrackLayout()
     }
@@ -4640,6 +4708,7 @@ struct StudioView: View {
                                 isSelected ? StudioTheme.neutralAccent : Color.clear,
                                 in: Capsule()
                             )
+                            .contentShape(.interaction, Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -5235,7 +5304,14 @@ struct StudioView: View {
                 let modelOptions: [(String, String)] = {
                     var list: [(String, String)] = []
                     if app.project.kind == "video" {
-                        list.append(contentsOf: ModelProfileStore.shared.videoModels.map { ($0.id, $0.displayName) })
+                        let installedVideoModels = ModelProfileStore.shared.videoModels.filter { model in
+                            model.id == app.localModel || Self.isLocalVideoModelInstalled(model.id)
+                        }
+                        if installedVideoModels.isEmpty {
+                            list.append(contentsOf: ModelProfileStore.shared.videoModels.prefix(1).map { ($0.id, $0.displayName) })
+                        } else {
+                            list.append(contentsOf: installedVideoModels.map { ($0.id, $0.displayName) })
+                        }
                     } else {
                         if let removed = app.removedModelNotice {
                             list.append((removed.id, "\(removed.displayName)（已移除）"))
@@ -5393,19 +5469,34 @@ struct StudioView: View {
 
     var outputSettings: some View {
         VStack(alignment: .leading, spacing: 8) {
+            let sizeModeBinding = Binding<String>(
+                get: {
+                    if app.outputDimensions != nil { return "custom" }
+                    return app.matchSourceAspect ? "match_source" : "aspect"
+                },
+                set: { mode in
+                    if mode == "custom" {
+                        app.matchSourceAspect = false
+                        let defaults = app.project.aspect == "9:16" ? ("720", "1280")
+                            : app.project.aspect == "1:1" ? ("1024", "1024") : ("1280", "720")
+                        app.outputDimensions = app.outputDimensions ?? OutputDimensions(width: defaults.0, height: defaults.1)
+                    } else if mode == "match_source" {
+                        app.outputDimensions = nil
+                        app.matchSourceAspect = true
+                    } else {
+                        app.outputDimensions = nil
+                        app.matchSourceAspect = false
+                    }
+                }
+            )
             HStack(spacing: 8) {
                 Text("輸出尺寸")
                     .font(.callout)
                     .foregroundStyle(StudioTheme.textSecondary)
                     .fixedSize()
                 KliporaPillMenuPicker(
-                    options: [(false, "依比例"), (true, "自訂寬高")],
-                    selection: Binding(get: { app.outputDimensions != nil }, set: { custom in
-                        let defaults = app.project.aspect == "9:16" ? ("720", "1280")
-                            : app.project.aspect == "1:1" ? ("1024", "1024") : ("1280", "720")
-                        app.outputDimensions = custom
-                            ? (app.outputDimensions ?? OutputDimensions(width: defaults.0, height: defaults.1)) : nil
-                    })
+                    options: [("aspect", "依比例"), ("match_source", "自適應原圖比例"), ("custom", "自訂寬高")],
+                    selection: sizeModeBinding
                 )
                 Spacer(minLength: 0)
             }
@@ -5424,6 +5515,16 @@ struct StudioView: View {
                      : app.project.kind == "video" ? "生成檔寬高須為偶數。"
                      : "模型若無法直接生成此尺寸，會縮放並置中裁切。")
                     .font(.caption).foregroundStyle(.secondary)
+            } else if app.matchSourceAspect {
+                if let matched = app.matchedSourcePixelSize() {
+                    Text("自動對齊原圖：\(matched.aligned[0]) × \(matched.aligned[1]) px（原圖 \(matched.raw[0]) × \(matched.raw[1])）")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(StudioTheme.neutralAccent)
+                } else {
+                    Text("尚未加入首幀／參考圖，將暫以 \(app.project.aspect) 比例輸出。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 HStack(spacing: 8) {
                     Text("比例")

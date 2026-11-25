@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#推奨動作環境)
 [![Languages](https://img.shields.io/badge/対応言語-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5ヶ国語ローカライズ)
-[![Release](https://img.shields.io/badge/ダウンロード-v1.1.2%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/ダウンロード-v1.1.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新・デバッグ履歴](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新アップデート — `v1.1.2`（2026-11-25 02:14 UTC+8）**：MediaTek **`BreezyVoice`**（台湾華語ゼロショット TTS・既存 68 ボイス共用／ワンクリック導入）を追加し、**編集モード全 UI のカプセル角丸統一**およびプロジェクト名入力フォーカス固定バグを修正しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.1.2 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.2)**。
+> **最新アップデート — `v1.1.5`（2026-11-25 13:53 UTC+8）**：**MediaTek `BreezyVoice`** をデフォルト化＋3大厳選音声エンジンへ整理、**タイムラインのドラッグ範囲選択（マーキー複数選択）**、**カプセルボタン全面クリック対応**、**元画像比率への自動適応**、さらに **Apple Silicon MPS 向け低メモリ FP8→FP16 フック＆16→24fps 補間**により **`Wan 2.2 14B MoE + 4-step`** のローカル動作を実現しました。詳細は **[更新・デバッグ履歴（CHANGELOG.md）](../CHANGELOG.md)** · **[v1.1.5 DMG をダウンロード](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.5)**。
 
 ## 実機デモ動画
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 ## インストール方法
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.1.2-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) から **`Klipora-1.1.5-arm64.dmg`** をダウンロードし、**Klipora.app** を **Applications** へドラッグします。
 2. 初回起動時に警告が表示された場合は、**Klipora.app を右クリック → 開く → 開く** で起動してください。
 3. Codex や各種 AI エージェントに `https://github.com/ZhiDuan-art/Klipora-app` を渡し、**[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** に従って自動セットアップすることも可能です。
 

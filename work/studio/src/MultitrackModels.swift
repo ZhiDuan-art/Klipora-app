@@ -4943,6 +4943,126 @@ extension Studio {
     }
 
     @discardableResult
+    /// Batch delete multiple timeline selections in a single Undo step, with per-track union-interval ripple.
+    func deleteMultitrackSelections(_ selections: Set<TimelineSelection>, ripple: Bool) {
+        guard !busy, !selections.isEmpty else { return }
+        let layout = currentMultitrackLayout()
+        var deletedCount = 0
+
+        func mergeIntervals(_ raw: [(Double, Double)]) -> [(Double, Double)] {
+            let sorted = raw.filter { $0.1 > $0.0 + 1e-4 }.sorted { $0.0 < $1.0 }
+            var merged: [(Double, Double)] = []
+            for iv in sorted {
+                if let last = merged.last, iv.0 <= last.1 + 1e-4 {
+                    merged[merged.count - 1].1 = max(last.1, iv.1)
+                } else {
+                    merged.append(iv)
+                }
+            }
+            return merged
+        }
+
+        func rippleShift(for start: Double, removed: [(Double, Double)]) -> Double {
+            var total = 0.0
+            for (rStart, rEnd) in removed {
+                if start >= rStart - 1e-4 {
+                    total += max(0, rEnd - rStart)
+                }
+            }
+            return total
+        }
+
+        mutateMultitrack { mt in
+            // 1. Video tracks
+            for tIdx in mt.videoTracks.indices where !mt.videoTracks[tIdx].locked {
+                let tid = mt.videoTracks[tIdx].id
+                let targetIDs = Set(selections.compactMap { sel -> UUID? in
+                    if case .videoClip(let t, let c) = sel, t == tid { return c }
+                    return nil
+                })
+                guard !targetIDs.isEmpty else { continue }
+                let removedIntervals: [(Double, Double)] = targetIDs.compactMap { cid in
+                    guard let seg = layout.videoSegment(trackID: tid, clipID: cid) else { return nil }
+                    return (seg.timelineStart, seg.timelineStart + seg.duration)
+                }
+                let merged = mergeIntervals(removedIntervals)
+                let beforeCount = mt.videoTracks[tIdx].clips.count
+                mt.videoTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
+                mt.videoTracks[tIdx].transitions.removeAll { targetIDs.contains($0.after) || targetIDs.contains($0.before) }
+                deletedCount += (beforeCount - mt.videoTracks[tIdx].clips.count)
+                if ripple && !merged.isEmpty {
+                    for i in mt.videoTracks[tIdx].clips.indices {
+                        let s = mt.videoTracks[tIdx].clips[i].timelineStart
+                        let shift = rippleShift(for: s, removed: merged)
+                        if shift > 1e-4 {
+                            mt.videoTracks[tIdx].clips[i].timelineStart = MultitrackLayout.roundTime(max(0, s - shift))
+                        }
+                    }
+                }
+                pruneOrphanedTransitions(on: &mt.videoTracks[tIdx])
+            }
+
+            // 2. Audio tracks
+            for tIdx in mt.audioTracks.indices where !mt.audioTracks[tIdx].locked {
+                let tid = mt.audioTracks[tIdx].id
+                let targetIDs = Set(selections.compactMap { sel -> UUID? in
+                    if case .audioClip(let t, let c) = sel, t == tid { return c }
+                    return nil
+                })
+                guard !targetIDs.isEmpty else { continue }
+                let removedIntervals: [(Double, Double)] = targetIDs.compactMap { cid in
+                    guard let seg = layout.audioSegment(trackID: tid, clipID: cid) else { return nil }
+                    return (seg.timelineStart, seg.timelineStart + seg.duration)
+                }
+                let merged = mergeIntervals(removedIntervals)
+                let beforeCount = mt.audioTracks[tIdx].clips.count
+                mt.audioTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
+                deletedCount += (beforeCount - mt.audioTracks[tIdx].clips.count)
+                if ripple && !merged.isEmpty {
+                    for i in mt.audioTracks[tIdx].clips.indices {
+                        let s = mt.audioTracks[tIdx].clips[i].timelineStart
+                        let shift = rippleShift(for: s, removed: merged)
+                        if shift > 1e-4 {
+                            mt.audioTracks[tIdx].clips[i].timelineStart = MultitrackLayout.roundTime(max(0, s - shift))
+                        }
+                    }
+                }
+            }
+
+            // 3. Text tracks
+            for tIdx in mt.textTracks.indices where !mt.textTracks[tIdx].locked {
+                let tid = mt.textTracks[tIdx].id
+                let targetIDs = Set(selections.compactMap { sel -> UUID? in
+                    if case .textClip(let t, let c) = sel, t == tid { return c }
+                    return nil
+                })
+                guard !targetIDs.isEmpty else { continue }
+                let beforeCount = mt.textTracks[tIdx].clips.count
+                mt.textTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
+                deletedCount += (beforeCount - mt.textTracks[tIdx].clips.count)
+            }
+
+            // 4. Shape tracks
+            for tIdx in mt.shapeTracks.indices where !mt.shapeTracks[tIdx].locked {
+                let tid = mt.shapeTracks[tIdx].id
+                let targetIDs = Set(selections.compactMap { sel -> UUID? in
+                    if case .shapeClip(let t, let c) = sel, t == tid { return c }
+                    return nil
+                })
+                guard !targetIDs.isEmpty else { continue }
+                let beforeCount = mt.shapeTracks[tIdx].clips.count
+                mt.shapeTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
+                deletedCount += (beforeCount - mt.shapeTracks[tIdx].clips.count)
+            }
+        }
+
+        if deletedCount > 0 {
+            status = ripple
+                ? "已批次移除 \(deletedCount) 個片段並自動接合。"
+                : "已批次移除 \(deletedCount) 個片段。"
+        }
+    }
+
     func deleteMultitrackSelection(_ selection: TimelineSelection, ripple: Bool) -> TimelineSelection? {
         guard !busy else { return nil }
         let layout = currentMultitrackLayout()

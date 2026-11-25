@@ -217,20 +217,6 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
 
     static let allOptions: [VoiceboxEngineOption] = [
         VoiceboxEngineOption(
-            engine: "qwen",
-            model_size: "1.7B",
-            model_name: "qwen-tts-1.7B",
-            display_name: "Qwen3-TTS 1.7B Base（推薦中文聲音參考）",
-            supportsClonedVoices: true,
-            supportsPresetVoices: false,
-            presetEngineMatch: nil,
-            languages: ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"],
-            isRecommendedChinese: true,
-            englishOnly: false,
-            supportsInstruct: true,
-            caveat: nil
-        ),
-        VoiceboxEngineOption(
             engine: "breezyvoice",
             model_size: nil,
             model_name: "breezyvoice-tw",
@@ -242,7 +228,21 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
             isRecommendedChinese: true,
             englishOnly: false,
             supportsInstruct: false,
-            caveat: "專攻道地台灣國語並支援注音多音字標註（如 [:ㄏㄠ3]），直接沿用現有 68 個聲音角色參考音檔。BreezyVoice-26 台語權重待聯發創新基地公開後將無縫接入。"
+            caveat: "預設台灣國語引擎，支援注音多音字標註（如 [:ㄏㄠ3]），直接共用 68 個聲音角色；尚未下載時可一鍵安裝或先切換至 Qwen3 1.7B。"
+        ),
+        VoiceboxEngineOption(
+            engine: "qwen",
+            model_size: "1.7B",
+            model_name: "qwen-tts-1.7B",
+            display_name: "Qwen3-TTS 1.7B Base（多語／中文 · 68 聲線）",
+            supportsClonedVoices: true,
+            supportsPresetVoices: false,
+            presetEngineMatch: nil,
+            languages: ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"],
+            isRecommendedChinese: true,
+            englishOnly: false,
+            supportsInstruct: true,
+            caveat: nil
         ),
         VoiceboxEngineOption(
             engine: "qwen",
@@ -359,7 +359,13 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
     ]
 
     static let cloningEngineNames: Set<String> = [
-        "qwen", "chatterbox", "luxtts", "chatterbox_turbo", "tada"
+        "breezyvoice", "qwen", "chatterbox_turbo", "chatterbox", "luxtts", "tada"
+    ]
+
+    /// Curated primary menu models for 68-voice cloned profiles (v1.1.5):
+    /// BreezyVoice (default TW Mandarin), Qwen3 1.7B Base (multilingual), Chatterbox Turbo (fast EN).
+    static let curatedClonedMenuModelNames: Set<String> = [
+        "breezyvoice-tw", "qwen-tts-1.7B", "chatterbox-turbo"
     ]
 
     static func compatibleOptions(for profile: VoiceboxProfile) -> [VoiceboxEngineOption] {
@@ -369,12 +375,16 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
             } ?? "qwen_custom_voice"
             return allOptions.filter { $0.engine == targetEngine }
         } else {
-            return allOptions.filter { cloningEngineNames.contains($0.engine) }
+            return allOptions.filter { $0.supportsClonedVoices && curatedClonedMenuModelNames.contains($0.model_name) }
         }
     }
 
     static func preferredDefault(for profile: VoiceboxProfile) -> VoiceboxEngineOption {
         let compatible = compatibleOptions(for: profile)
+        if profile.voiceType != "preset",
+           let breezy = compatible.first(where: { $0.model_name == "breezyvoice-tw" }) {
+            return breezy
+        }
         if let defEngine = profile.default_engine,
            let matched = compatible.first(where: { $0.engine == defEngine && ($0.model_size == "1.7B" || $0.model_size == nil) }) {
             return matched
@@ -1967,8 +1977,10 @@ final class VoiceboxServiceController: ObservableObject {
         let fm = FileManager.default
         let venvPy = appSupport.appendingPathComponent("breezyvoice-venv/bin/python3").path
         let repoScript = appSupport.appendingPathComponent("breezyvoice-repo/single_inference.py").path
-        let llmPt = appSupport.appendingPathComponent("breezyvoice-models/BreezyVoice/llm.pt").path
-        return fm.fileExists(atPath: venvPy) && fm.fileExists(atPath: repoScript) && fm.fileExists(atPath: llmPt)
+        let modelDir = appSupport.appendingPathComponent("breezyvoice-models/BreezyVoice", isDirectory: true)
+        let requiredWeights = ["llm.pt", "flow.pt", "hift.pt", "cosyvoice.yaml"]
+        let weightsOK = requiredWeights.allSatisfy { fm.fileExists(atPath: modelDir.appendingPathComponent($0).path) }
+        return fm.fileExists(atPath: venvPy) && fm.fileExists(atPath: repoScript) && weightsOK
     }
 
     var breezyVoiceDiskBytes: Int64 {
@@ -2500,8 +2512,11 @@ final class NativeVoiceWorkspaceStore: ObservableObject {
         } else {
             self.mode = .local
         }
-        let savedEngine = defaults.string(forKey: Self.engineModelKey) ?? "qwen-tts-1.7B"
-        self.selectedEngineModelName = savedEngine.isEmpty ? "qwen-tts-1.7B" : savedEngine
+        let savedEngine = defaults.string(forKey: Self.engineModelKey) ?? "breezyvoice-tw"
+        let effectiveDefault = savedEngine.isEmpty ? "breezyvoice-tw" : savedEngine
+        self.selectedEngineModelName = VoiceboxEngineOption.curatedClonedMenuModelNames.contains(effectiveDefault)
+            ? effectiveDefault
+            : "breezyvoice-tw"
         self.selectedSampleID = defaults.string(forKey: Self.sampleIDKey) ?? ""
         if let savedScript = defaults.object(forKey: Self.scriptTextKey) as? String {
             self.scriptText = savedScript
