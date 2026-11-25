@@ -38,7 +38,18 @@ IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".heic", ".bmp"}
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".webm", ".mkv"}
 AUDIO_EXT = {".wav", ".mp3", ".flac", ".m4a", ".aac"}
 MEDIA_EXT = IMAGE_EXT | VIDEO_EXT | AUDIO_EXT
-ASPECT_RATIOS = {"16:9": 16 / 9, "9:16": 9 / 16, "1:1": 1}
+ASPECT_RATIOS = {
+    "16:9": 16 / 9,
+    "9:16": 9 / 16,
+    "1:1": 1.0,
+    "3:4": 3 / 4,
+    "4:3": 4 / 3,
+    "2:3": 2 / 3,
+    "3:2": 3 / 2,
+    "4:5": 4 / 5,
+    "5:4": 5 / 4,
+}
+CLOUD_ASPECT_RATIOS = {"16:9": 16 / 9, "9:16": 9 / 16, "1:1": 1.0, "3:4": 3 / 4, "4:3": 4 / 3}
 MAX_CLOUD_REFERENCE_IMAGES = 8
 MAX_CLOUD_KEYFRAMES = 32
 TIMELINE_EFFECTS = timeline_render.TIMELINE_EFFECTS
@@ -348,8 +359,9 @@ def pixel_size(request):
     if not isinstance(value, dict):
         raise ValueError("請填寫輸出寬度與高度。")
     size = (value.get("width"), value.get("height"))
-    if any(type(n) is not int or not 64 <= n <= 4096 for n in size):
-        raise ValueError("寬高請填 64–4096 之間的整數。")
+    max_dim = 8192 if request.get("kind") == "image" else 4096
+    if any(type(n) is not int or not 64 <= n <= max_dim for n in size):
+        raise ValueError(f"寬高請填 64–{max_dim} 之間的整數。")
     if (request["action"] == "export" or request.get("kind") == "video") and any(n % 2 for n in size):
         raise ValueError("影片寬高須為偶數。")
     return size
@@ -659,8 +671,8 @@ def export_workflow_action(request, folder):
     if preset in removed_model_ids():
         comfy_workflows.get_profile(preset, RESOURCE)
     dest_dir = Path(request.get("destinationDir") or str(folder))
-    base_name = (request.get("baseName") or f"MotionDesk-{preset or 'comfy'}").strip()
-    base_name = re.sub(r"[^A-Za-z0-9._-]+", "_", base_name) or "MotionDesk-workflow"
+    base_name = (request.get("baseName") or f"Klipora-{preset or 'comfy'}").strip()
+    base_name = re.sub(r"[^A-Za-z0-9._-]+", "_", base_name) or "Klipora-workflow"
 
     obj_info = None
     endpoint = request.get("endpoint")
@@ -727,8 +739,8 @@ def cloud(request, folder):
     if request.get("localOnly"):
         raise ValueError("僅本機已啟用，工作未送往 Colab。")
     gpu = request.get("gpu", "L4")
-    if gpu not in {"L4", "G4"}:
-        raise ValueError("GPU 選項須為 L4 或 G4。")
+    if gpu not in {"L4", "G4", "A100"}:
+        raise ValueError("GPU 選項須為 L4、G4 或 A100。")
     tool("colab")
     kind = request["kind"]
     method = request.get("videoMethod")
@@ -756,8 +768,14 @@ def cloud(request, folder):
         if ref_video:
             tags.append("@影片1")
         prompt += "\n\n參考素材：" + "、".join(tags) + "。"
+    raw_aspect = request["aspect"]
+    if raw_aspect in CLOUD_ASPECT_RATIOS:
+        cloud_aspect = raw_aspect
+    else:
+        target_ratio = ASPECT_RATIOS.get(raw_aspect, 16 / 9)
+        cloud_aspect = min(CLOUD_ASPECT_RATIOS, key=lambda key: abs(math.log(target_ratio / CLOUD_ASPECT_RATIOS[key])))
     job = {"id": "generated", "type": kind, "prompt": prompt,
-           "seed": request["seed"], "aspect": request["aspect"]}
+           "seed": request["seed"], "aspect": cloud_aspect}
     inputs = []
     for value, extensions, stem in files:
         source = Path(value)
@@ -769,11 +787,46 @@ def cloud(request, folder):
     if inputs:
         job["inputs"] = inputs
     if kind == "video":
-        job.update(seconds=request["seconds"], resolution=request["resolution"],
-                   video_model=request["model"], mode="ref" if inputs else "text", intensity="off")
+        total_seconds = int(request["seconds"])
+        if total_seconds <= 15:
+            job.update(seconds=total_seconds, resolution=request["resolution"],
+                       video_model=request["model"], mode="ref" if inputs else "text", intensity="off")
+            jobs = [job]
+        else:
+            seg_count = math.ceil(total_seconds / 15)
+            base_sec, rem = divmod(total_seconds, seg_count)
+            seg_lengths = [base_sec + (1 if idx < rem else 0) for idx in range(seg_count)]
+            jobs = []
+            prev_id = None
+            base_seed = request["seed"]
+            for idx, seg_sec in enumerate(seg_lengths, 1):
+                is_last = idx == seg_count
+                seg_id = "generated" if is_last else f"generated-seg-{idx:02d}"
+                seg_job = {
+                    "id": seg_id,
+                    "type": "video",
+                    "prompt": prompt,
+                    "seed": (int(base_seed) + idx - 1) if isinstance(base_seed, int) else base_seed,
+                    "aspect": cloud_aspect,
+                    "seconds": seg_sec,
+                    "resolution": request["resolution"],
+                    "video_model": request["model"],
+                    "intensity": "off",
+                }
+                if inputs:
+                    seg_job["inputs"] = list(inputs)
+                if prev_id is None:
+                    seg_job["mode"] = "ref" if inputs else "text"
+                else:
+                    seg_job["mode"] = "ref"
+                    seg_job["extend"] = prev_id
+                jobs.append(seg_job)
+                prev_id = seg_id
+        run_cloud_jobs(jobs, request, folder, gpu)
     else:
-        job["size"] = "1.6K"
-    run_cloud_jobs([job], request, folder, gpu)
+        tier = str(request.get("imageResolution") or "1K").upper()
+        job["size"] = {"1K": "1K", "2K": "2K", "4K": "2.7K", "8K": "2.7K"}.get(tier, "1.6K")
+        run_cloud_jobs([job], request, folder, gpu)
     paths = [str(x) for x in sorted((folder / "out").glob("generated.*")) if x.suffix.lower() in MEDIA_EXT]
     if not paths:
         raise ValueError("Colab 沒有回傳成品，請查看工作紀錄。")
@@ -783,8 +836,13 @@ def cloud(request, folder):
 def run_cloud_jobs(jobs, request, folder, gpu):
     manifest = folder / "manifest.json"
     manifest.write_text(json.dumps({"jobs": jobs}, ensure_ascii=False), encoding="utf-8")
-    cmd = [sys.executable, "-u", H3 / "h3run.py", "run", manifest,
-           "--gpu", gpu, "--stop-after", "--max-minutes", "55" if request.get("resolution") == "1080P" else "35"]
+    keep_warm = bool(request.get("keepColabWarm"))
+    cmd = [sys.executable, "-u", H3 / "h3run.py", "run", manifest, "--gpu", gpu]
+    if keep_warm:
+        cmd.extend(["--idle-minutes", "15", "--reuse"])
+    else:
+        cmd.append("--stop-after")
+    cmd.extend(["--max-minutes", "55" if request.get("resolution") == "1080P" else "35"])
     if request["kind"] == "image":
         cmd.append("--with-pictures")
     if len(jobs) > 1:
@@ -903,13 +961,15 @@ def save_outputs(paths, destination, identifier, kind):
         raise ValueError("找不到選取的儲存資料夾。")
     published = []
     try:
+        stamp = time.strftime("%H%M%S")
         for index, source in enumerate(map(Path, paths), 1):
             label = "Video" if kind == "video" else "Image"
-            final = location / f"MotionDesk-{label}-{index:02d}-{identifier}{source.suffix.lower()}"
+            seq = f"-{index:02d}" if len(paths) > 1 else ""
+            final = location / f"Klipora-{label}-{stamp}{seq}-{identifier}{source.suffix.lower()}"
             with final.open("xb"):
                 pass
             published.append(final)
-            with tempfile.NamedTemporaryFile(dir=location, prefix=".motiondesk-", delete=False) as temporary:
+            with tempfile.NamedTemporaryFile(dir=location, prefix=".klipora-", delete=False) as temporary:
                 pending = Path(temporary.name)
             try:
                 with pending.open("wb") as temporary, source.open("rb") as incoming:
@@ -1868,6 +1928,9 @@ def main():
             paths, extra_result = interrogate_image(request, folder)
         elif action == "check_colab":
             run([sys.executable, "-u", H3 / "h3run.py", "check"])
+            paths = []
+        elif action == "stop_colab":
+            run([sys.executable, "-u", H3 / "h3run.py", "stop", "--all"])
             paths = []
         else:
             size = pixel_size(request) if generation else None

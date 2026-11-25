@@ -57,6 +57,15 @@ UPD5_MODEL = (
     "PRISM_DMAD_PDMD_int8.safetensors",
     "diffusion_models",
 )
+EROS_MAX_MODEL = (
+    "TenStrip/10Eros-Max",
+    "10Eros_Max_8stepTurbo_v1.0_hybrid-int8_HQ.safetensors",
+    "diffusion_models",
+)
+CUSTOM_VIDEO_MODELS = {
+    "upd5": UPD5_MODEL,
+    "eros_max": EROS_MAX_MODEL,
+}
 PICTURE_MODELS = [  # P-H3-Image (PrunaAI): a LoRA on the same H3 model + its own encoder and image VAE (~10 GB)
     ("PrunaAI/P-H3-Image-Comfy", "loras/p-h3-image_lora_bf16.safetensors", "loras"),
     ("PrunaAI/P-H3-Image-Comfy", "text_encoders/p-h3-image_text_encoder_int8_convrot.safetensors", "text_encoders"),
@@ -152,8 +161,9 @@ def wait_http(url, name, logfile, tries=180):
     raise RuntimeError(f"{name} did not start:\n" + Path(logfile).read_text(errors="ignore")[-2000:])
 
 
-def apply_upd5(toybox, graph):
-    """Apply the model author's UPD5 sampling recipe to a Toybox video graph."""
+def apply_custom_video_model(toybox, graph, model_key):
+    """Apply an 8-step baked-turbo H3 model (UPD5 or 10Eros-Max INT8 HQ) to a Toybox video graph."""
+    spec = CUSTOM_VIDEO_MODELS[model_key]
     loader = next((node for node in graph.values()
                    if node["class_type"] == "UNETLoader"
                    and node["inputs"]["unet_name"] == BASE_MODELS[0][1]), None)
@@ -166,9 +176,9 @@ def apply_upd5(toybox, graph):
     if (loader is None or not turbo or scheduler["class_type"] != "BasicScheduler"
             or sampler_choice["class_type"] != "KSamplerSelect"
             or graph[toybox.N_SHIFT]["class_type"] != "MiniMaxH3SigmaShift"):
-        raise RuntimeError("Toybox 影片工作流已改版，無法安全套用 UPD5 取樣設定。")
+        raise RuntimeError(f"Toybox 影片工作流已改版，無法安全套用 {model_key.upper()} 取樣設定。")
 
-    loader["inputs"]["unet_name"] = UPD5_MODEL[1]
+    loader["inputs"]["unet_name"] = spec[1]
     for node_id in turbo:
         toybox.bypass(graph, node_id)
     graph[toybox.N_SCHED] = {"class_type": "BetaSamplingScheduler", "inputs": {
@@ -180,7 +190,7 @@ def apply_upd5(toybox, graph):
 
 
 def serve_upd5_toybox():
-    """Add per-video UPD5 selection to the same Toybox server used by regular jobs."""
+    """Add per-video UPD5 / 10Eros-Max selection to the same Toybox server used by regular jobs."""
     sys.path.insert(0, str(APP))
     import server as toybox
 
@@ -188,8 +198,9 @@ def serve_upd5_toybox():
 
     def build_video(cfg, final_text, chosen, task, req, size, src_job=None):
         graph, seed = build_generate(cfg, final_text, chosen, task, req, size, src_job)
-        if req.get("video_model") == "upd5":
-            apply_upd5(toybox, graph)
+        vm = req.get("video_model")
+        if vm in CUSTOM_VIDEO_MODELS:
+            apply_custom_video_model(toybox, graph, vm)
         return graph, seed
 
     toybox.build_generate = build_video
@@ -320,10 +331,10 @@ def run_video(j):
             "prompt": j["prompt"], "seconds": j.get("seconds", 10), "aspect": j.get("aspect", "auto"),
             "resolution": j.get("resolution", "480P"), "intensity": j.get("intensity", "off"),
             "fast": j.get("fast", True), "skill": j.get("skill", ""), "seed": j.get("seed")}
-    if j.get("video_model") == "upd5":
+    if j.get("video_model") in CUSTOM_VIDEO_MODELS:
         if LOCAL_TEST:
-            raise ValueError("UPD5 影片模式目前支援 Colab。")
-        body.update(video_model="upd5", fast=True)
+            raise ValueError(f"{j['video_model'].upper()} 影片模式目前僅支援 Colab。")
+        body.update(video_model=j["video_model"], fast=True)
     if body["mode"] == "ref":
         body["tray"] = [{"id": library_id(r)} for r in j.get("inputs", [])]
         if j.get("extend"):
@@ -392,11 +403,12 @@ def main():
         install()
         pictures = any(j["type"] == "image" for j in jobs) or manifest.get("install_pictures", False)
         log("models: downloading what is missing", "models")
-        upd5 = any(j["type"] == "video" and j.get("video_model") == "upd5" for j in jobs)
-        original_needed = pictures or any(j.get("video_model") != "upd5" for j in jobs)
+        used_custom = {j.get("video_model") for j in jobs if j["type"] == "video" and j.get("video_model") in CUSTOM_VIDEO_MODELS}
+        original_needed = pictures or any(j.get("video_model") not in CUSTOM_VIDEO_MODELS for j in jobs)
         models = BASE_MODELS if original_needed else BASE_MODELS[1:]
-        download(models + ([UPD5_MODEL] if upd5 else []) + (PICTURE_MODELS if pictures else []))
-        start_servers(pictures, upd5)
+        extra_models = [CUSTOM_VIDEO_MODELS[k] for k in sorted(used_custom)]
+        download(models + extra_models + (PICTURE_MODELS if pictures else []))
+        start_servers(pictures, bool(used_custom))
     STATE["stage"] = "generating"
     for j in jobs:
         st = STATE["jobs"][j["id"]]

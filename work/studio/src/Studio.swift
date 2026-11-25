@@ -130,7 +130,10 @@ struct RecordedGeneration: Decodable {
             ? containingFolder.deletingLastPathComponent() : containingFolder
         let stem = media.deletingPathExtension().lastPathComponent
         let identifier = String(stem.suffix(36))
-        let isPublished = (stem.hasPrefix("MotionDesk-Image-") || stem.hasPrefix("MotionDesk-Video-"))
+        let isPublished = (
+            stem.hasPrefix("Klipora-Image-") || stem.hasPrefix("Klipora-Video-")
+            || stem.hasPrefix("MotionDesk-Image-") || stem.hasPrefix("MotionDesk-Video-")
+        )
             && UUID(uuidString: identifier) != nil
         let day = containingFolder.lastPathComponent
         let isDateFolder = day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
@@ -968,6 +971,10 @@ struct TimelineLayout: Equatable {
 final class PassThroughAVPlayerView: AVPlayerView {
     var desiredZPosition: CGFloat = 0
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         // Timeline monitor video views are display-only; never steal clicks/drags
         // from canvas subtitles, PiP transform boxes, or corner resize handles.
@@ -1004,10 +1011,18 @@ struct TimelinePlayerLayerView: NSViewRepresentable {
         view.controlsStyle = .none
         view.videoGravity = .resizeAspect
         view.updatesNowPlayingInfoCenter = false
+        view.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        view.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        view.setContentHuggingPriority(.init(1), for: .horizontal)
+        view.setContentHuggingPriority(.init(1), for: .vertical)
         view.desiredZPosition = zOrder
         view.player = player
         view.applyZOrder()
         return view
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PassThroughAVPlayerView, context: Context) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 320, height: 180))
     }
 
     func updateNSView(_ view: PassThroughAVPlayerView, context: Context) {
@@ -1135,6 +1150,71 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
     @Published var showPrompt = false
     @Published var isEditingProjectTitle = false
     @Published var matchSourceAspect = false
+    @Published var keepColabWarm: Bool = UserDefaults.standard.bool(forKey: "MotionDesk.colab.keepWarm") {
+        didSet {
+            UserDefaults.standard.set(keepColabWarm, forKey: "MotionDesk.colab.keepWarm")
+        }
+    }
+    @Published var imageResolutionTier: String = UserDefaults.standard.string(forKey: "MotionDesk.image.resolutionTier") ?? "1K" {
+        didSet {
+            UserDefaults.standard.set(imageResolutionTier, forKey: "MotionDesk.image.resolutionTier")
+        }
+    }
+
+    static let commonAspectOptions: [(String, String)] = [
+        ("16:9", "16:9"), ("9:16", "9:16"), ("1:1", "1:1"),
+        ("3:4", "3:4"), ("4:3", "4:3"),
+        ("2:3", "2:3"), ("3:2", "3:2"),
+        ("4:5", "4:5"), ("5:4", "5:4")
+    ]
+
+    static let imageResolutionOptions: [(String, String)] = [
+        ("1K", "1K"), ("2K", "2K"), ("4K", "4K"), ("8K", "8K")
+    ]
+
+    func resolvedAspectPixelSize(aspect: String? = nil, isVideo: Bool? = nil, tier: String? = nil) -> [Int] {
+        let ratioKey = aspect ?? project.aspect
+        let videoMode = isVideo ?? (project.kind == "video")
+        let resTier = (tier ?? imageResolutionTier).uppercased()
+        let ratios: [String: (Double, Double)] = [
+            "16:9": (16, 9), "9:16": (9, 16), "1:1": (1, 1),
+            "3:4": (3, 4), "4:3": (4, 3),
+            "2:3": (2, 3), "3:2": (3, 2),
+            "4:5": (4, 5), "5:4": (5, 4)
+        ]
+        let (rw, rh) = ratios[ratioKey] ?? (16, 9)
+        let align = videoMode ? 16.0 : 16.0
+        let longEdge: Double
+        if videoMode {
+            switch project.resolution {
+            case "480P": longEdge = 832
+            case "1080P": longEdge = 1280
+            default: longEdge = 960
+            }
+        } else {
+            switch resTier {
+            case "2K": longEdge = 2048
+            case "4K": longEdge = 3840
+            case "8K": longEdge = 7680
+            default:
+                if ratioKey == "1:1" { longEdge = 1024 }
+                else if ratioKey == "16:9" || ratioKey == "9:16" { longEdge = 1280 }
+                else { longEdge = 1152 }
+            }
+        }
+        let rawW: Double
+        let rawH: Double
+        if rw >= rh {
+            rawW = longEdge
+            rawH = longEdge * (rh / rw)
+        } else {
+            rawH = longEdge
+            rawW = longEdge * (rw / rh)
+        }
+        let w = max(Int(align), Int((rawW / align).rounded()) * Int(align))
+        let h = max(Int(align), Int((rawH / align).rounded()) * Int(align))
+        return [w, h]
+    }
 
     func matchedSourcePixelSize() -> (raw: [Int], aligned: [Int])? {
         let candidatePath: String = {
@@ -1356,7 +1436,10 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         }
     }
     var secondsRange: ClosedRange<Int> {
-        2...15
+        if source == "colab" && project.kind == "video" && (videoMethod == "text" || videoMethod == "reference") {
+            return 2...60
+        }
+        return 2...15
     }
     var usesFirstLastFrames: Bool { action == "colab" && project.kind == "video" && videoMethod == "frames" }
     var usesMultiFrames: Bool { action == "colab" && project.kind == "video" && videoMethod == "multi" }
@@ -1409,7 +1492,7 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         }
         return project.workflow
     }
-    var cloudGPU: String { project.cloudGPU ?? "L4" }
+    var cloudGPU: String { project.cloudGPU ?? PortabilitySetupManager.shared.colabPreferredVideoGPU }
     var camera: String { project.camera ?? "依原稿" }
 
     @Published var projectURL: URL?
@@ -3138,11 +3221,21 @@ struct MonitorOverlayHostView<Content: View>: NSViewRepresentable {
         if source != "colab" && source != "comfy" {
             request["modelParams"] = currentModelParamsPayload()
         }
-        if source == "colab", !images.isEmpty { request["referenceImages"] = images }
+        if source == "colab" {
+            if !images.isEmpty { request["referenceImages"] = images }
+            request["keepColabWarm"] = keepColabWarm
+        }
         if let size {
             request["pixelSize"] = size
         } else if matchSourceAspect, let matched = matchedSourcePixelSize() {
             request["pixelSize"] = ["width": matched.aligned[0], "height": matched.aligned[1]]
+        } else if project.kind == "image" {
+            let resolved = resolvedAspectPixelSize(aspect: project.aspect, isVideo: false, tier: imageResolutionTier)
+            request["pixelSize"] = ["width": resolved[0], "height": resolved[1]]
+            request["imageResolution"] = imageResolutionTier
+        } else if project.kind == "video" && !["16:9", "9:16", "1:1"].contains(project.aspect) {
+            let resolved = resolvedAspectPixelSize(aspect: project.aspect, isVideo: true)
+            request["pixelSize"] = ["width": resolved[0], "height": resolved[1]]
         }
         request["outputFolder"] = generationOutputDirectory.path
         if method == "multi" {
@@ -3586,6 +3679,10 @@ final class PosterBackedVideoContainerView: NSView {
 
     var onStartPlayback: (() -> Void)?
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupHierarchy()
@@ -3598,7 +3695,12 @@ final class PosterBackedVideoContainerView: NSView {
 
     private func setupHierarchy() {
         wantsLayer = true
+        layer?.masksToBounds = true
         layer?.backgroundColor = NSColor(calibratedRed: 0.047, green: 0.051, blue: 0.063, alpha: 1.0).cgColor
+        setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        setContentCompressionResistancePriority(.init(1), for: .vertical)
+        setContentHuggingPriority(.init(1), for: .horizontal)
+        setContentHuggingPriority(.init(1), for: .vertical)
 
         // 1. Live AVPlayerView (hidden until playback starts so it never draws a black frame at t=0)
         playerView.translatesAutoresizingMaskIntoConstraints = false
@@ -3606,6 +3708,10 @@ final class PosterBackedVideoContainerView: NSView {
         playerView.videoGravity = .resizeAspect
         playerView.updatesNowPlayingInfoCenter = false
         playerView.isHidden = true
+        playerView.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        playerView.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        playerView.setContentHuggingPriority(.init(1), for: .horizontal)
+        playerView.setContentHuggingPriority(.init(1), for: .vertical)
         addSubview(playerView)
         NSLayoutConstraint.activate([
             playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -3617,8 +3723,13 @@ final class PosterBackedVideoContainerView: NSView {
         // 2. Full-bounds first-frame poster stage (always non-zero bounds)
         posterStage.translatesAutoresizingMaskIntoConstraints = false
         posterStage.wantsLayer = true
+        posterStage.layer?.masksToBounds = true
         posterStage.layer?.backgroundColor = NSColor(calibratedRed: 0.047, green: 0.051, blue: 0.063, alpha: 1.0).cgColor
         posterStage.isHidden = true
+        posterStage.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        posterStage.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        posterStage.setContentHuggingPriority(.init(1), for: .horizontal)
+        posterStage.setContentHuggingPriority(.init(1), for: .vertical)
         let stageClick = NSClickGestureRecognizer(target: self, action: #selector(handlePlayTrigger))
         posterStage.addGestureRecognizer(stageClick)
         addSubview(posterStage)
@@ -3632,6 +3743,10 @@ final class PosterBackedVideoContainerView: NSView {
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
         posterImageView.imageScaling = .scaleProportionallyUpOrDown
         posterImageView.imageAlignment = .alignCenter
+        posterImageView.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        posterImageView.setContentCompressionResistancePriority(.init(1), for: .vertical)
+        posterImageView.setContentHuggingPriority(.init(1), for: .horizontal)
+        posterImageView.setContentHuggingPriority(.init(1), for: .vertical)
         posterImageView.setAccessibilityRole(.image)
         posterStage.addSubview(posterImageView)
         NSLayoutConstraint.activate([
@@ -3900,6 +4015,10 @@ private struct NativeAVPlayerHost: NSViewRepresentable {
         )
     }
 
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: PosterBackedVideoContainerView, context: Context) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: CGSize(width: 320, height: 180))
+    }
+
     static func dismantleNSView(_ view: PosterBackedVideoContainerView, coordinator: ()) {
         view.playerView.player?.pause()
         view.playerView.player = nil
@@ -3947,7 +4066,10 @@ struct MediaSurface: View {
                 ContentUnavailableView("找不到素材", systemImage: "folder.badge.questionmark", description: Text(filename(path)))
             } else if imageTypes.contains(ext) {
                 if let image = NSImage(contentsOfFile: path) {
-                    Image(nsImage: image).resizable().scaledToFit()
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 } else {
                     ContentUnavailableView("無法預覽圖片", systemImage: "photo", description: Text(filename(path)))
                 }
@@ -3955,7 +4077,8 @@ struct MediaSurface: View {
                 NativePlayer(path: path)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .clipped()
         .background(Color(red: 0.047, green: 0.051, blue: 0.063))
     }
 }
@@ -4170,6 +4293,7 @@ struct StudioView: View {
     @ObservedObject private var l10n = LocalizationManager.shared
     @ObservedObject private var startup = KliporaStartupController.shared
     @ObservedObject private var mografySkill = MografySkillManager.shared
+    @ObservedObject private var portability = PortabilitySetupManager.shared
     @AppStorage("MotionDesk.onlineImage.openai_image.billingAcknowledged") private var openAIBillingAccepted = false
     @AppStorage("MotionDesk.onlineImage.gemini_image.billingAcknowledged") private var geminiBillingAccepted = false
     @StateObject private var multitrackState = MultitrackEditState()
@@ -4257,6 +4381,14 @@ struct StudioView: View {
                 multitrackPlayback.syncLayout(layout)
                 installEditKeyMonitor()
                 startup.runStartupSelfCheck()
+                portability.refreshAllLocalStates(app: app, userInitiated: false)
+                Task { @MainActor in
+                    // Auto-reconnect previously configured Colab OAuth & quota in the background on launch
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    if portability.colabTokenFileExists && !NetworkReachabilityMonitor.shared.isOffline {
+                        await portability.checkColabLoginStatus()
+                    }
+                }
             }
             .onDisappear {
                 removeEditKeyMonitor()
@@ -4329,6 +4461,8 @@ struct StudioView: View {
             Divider()
             statusFooter
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .clipped()
     }
 
     private var generateWorkspaceView: some View {
@@ -4336,7 +4470,9 @@ struct StudioView: View {
             library.frame(minWidth: 188, idealWidth: 218, maxWidth: 280)
             preview
             inspector.frame(minWidth: 300, idealWidth: 344, maxWidth: 420)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .clipped()
     }
 
     private var editWorkspaceView: some View {
@@ -4741,9 +4877,11 @@ struct StudioView: View {
         VStack(spacing: 0) {
             previewHeader
             MediaSurface(path: app.selection)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.07)))
                 .padding([.horizontal, .bottom], 12)
+                .layoutPriority(1)
             if app.workspace == .generate && app.project.kind == "video" {
                 GenerationVideoSequenceDock(app: app)
                     .padding([.horizontal, .bottom], 12)
@@ -4751,7 +4889,9 @@ struct StudioView: View {
                 GenerationImageReferenceDock(app: app)
                     .padding([.horizontal, .bottom], 12)
             }
-        }.frame(minWidth: 415, maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(minWidth: 415, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .clipped()
     }
 
     var previewHeader: some View {
@@ -5197,7 +5337,7 @@ struct StudioView: View {
                 let hasAgy = mografySkill.detectedAgents[.antigravity] != nil
                 let hasOpenAIKey = OnlineImageProvider.openai.hasKeychainCredential()
                 let hasGeminiKey = OnlineImageProvider.gemini.hasKeychainCredential()
-                let hasColab = PortabilitySetupManager.shared.colabTokenFileExists
+                let hasColab = portability.colabTokenFileExists
                 let sourceOptions: [(String, String)] = {
                     var list: [(String, String)] = [("zimage", "本機 · ComfyUI")]
                     if app.project.kind == "image" && (hasAgy || app.source == "antigravity_image") {
@@ -5277,21 +5417,51 @@ struct StudioView: View {
             } else if let onlineProvider = OnlineImageProvider(rawValue: app.source) {
                 OnlineImageControls(provider: onlineProvider)
             } else if app.source == "colab" {
-                HStack {
-                    Picker("GPU", selection: Binding(get: { app.cloudGPU }, set: { app.project.cloudGPU = $0 })) {
-                        Text("L4").tag("L4")
-                        Text("G4").tag("G4")
-                    }
+                HStack(spacing: 8) {
+                    Text("GPU")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.textSecondary)
+                        .fixedSize()
+                    KliporaPillMenuPicker(
+                        options: [("L4", "L4"), ("G4", "G4"), ("A100", "A100")],
+                        selection: Binding(get: { app.cloudGPU }, set: {
+                            app.project.cloudGPU = $0
+                            portability.setPreferredVideoColabGPU($0, app: app)
+                        })
+                    )
                     Button("檢查 Colab") { app.perform(["action": "check_colab"], "檢查 Colab") }
                         .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                         .disabled(app.busy || NetworkReachabilityMonitor.shared.isOffline)
+                }
+                HStack(spacing: 8) {
+                    Toggle("跑完保留機器（沿用熱機）", isOn: $app.keepColabWarm)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .font(.caption)
+                        .help("開啟後，任務完成會保留 Colab GPU 15 分鐘供下次直接沿用（免重開機與重載模型），閒置到期自動關機。")
+                    Spacer()
+                    if app.keepColabWarm {
+                        Button("釋放熱機") { app.perform(["action": "stop_colab"], "釋放 Colab 熱機") }
+                            .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                            .disabled(app.busy || NetworkReachabilityMonitor.shared.isOffline)
+                            .help("立即關閉目前保留中的 Colab 熱機以停止計費")
+                    }
+                }
+                if app.keepColabWarm {
+                    Text("跑完後保留 15 分鐘自動沿用同台 GPU，閒置到期自動關機。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 if NetworkReachabilityMonitor.shared.isOffline {
                     Text("目前處於離線狀態，Google Colab 雲端功能已停用；可切換回「本機 · ComfyUI」繼續離線創作。")
                         .font(.caption).foregroundStyle(StudioTheme.warning)
                 }
                 if app.project.kind == "video" {
-                    Picker("影片模型", selection: $app.project.model) { Text("UPD5").tag("upd5"); Text("PRISM").tag("prism") }
+                    Picker("影片模型", selection: $app.project.model) {
+                        Text("UPD5").tag("upd5")
+                        Text("10Eros-Max 8-step").tag("eros_max")
+                        Text("PRISM").tag("prism")
+                    }
                     Picker("生成解析度", selection: $app.project.resolution) {
                         ForEach(["480P", "720P", "1080P"], id: \.self) { Text($0) }
                     }
@@ -5462,6 +5632,12 @@ struct StudioView: View {
                         get: { app.generationSeconds },
                         set: { app.project.seconds = $0 }
                     ), in: app.secondsRange)
+                    if app.source == "colab" && app.generationSeconds > 15 {
+                        let segCount = Int(ceil(Double(app.generationSeconds) / 15.0))
+                        Text("超過 15 秒將在同一台 Colab 自動分 \(segCount) 段無縫續接生成")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -5532,10 +5708,33 @@ struct StudioView: View {
                         .foregroundStyle(StudioTheme.textSecondary)
                         .fixedSize()
                     KliporaPillMenuPicker(
-                        options: [("16:9", "16:9"), ("9:16", "9:16"), ("1:1", "1:1")],
+                        options: Studio.commonAspectOptions,
                         selection: $app.project.aspect
                     )
                     Spacer(minLength: 0)
+                }
+                if app.project.kind == "image" {
+                    let resolved = app.resolvedAspectPixelSize(aspect: app.project.aspect, isVideo: false, tier: app.imageResolutionTier)
+                    HStack(spacing: 8) {
+                        Text("解析度")
+                            .font(.callout)
+                            .foregroundStyle(StudioTheme.textSecondary)
+                            .fixedSize()
+                        KliporaPillMenuPicker(
+                            options: Studio.imageResolutionOptions,
+                            selection: $app.imageResolutionTier
+                        )
+                        Text("\(resolved[0]) × \(resolved[1]) px")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
+                    }
+                    if app.imageResolutionTier == "4K" || app.imageResolutionTier == "8K" {
+                        Text("將先以模型安全原生解析度依 \(app.project.aspect) 生成，再高畫質放大至 \(resolved[0]) × \(resolved[1]) px。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             HStack(spacing: 6) {

@@ -71,7 +71,7 @@ func allocateUniqueDatedOutputURL(
     let cleanStem = stem
         .replacingOccurrences(of: #"[/\\:*?"<>|]"#, with: "_", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
-    let baseStem = cleanStem.isEmpty ? "MotionDesk-Audio" : cleanStem
+    let baseStem = cleanStem.isEmpty ? "Klipora-Audio" : cleanStem
     let cleanExt = ext.hasPrefix(".") ? String(ext.dropFirst()) : ext
     let first = dayDir.appendingPathComponent("\(baseStem).\(cleanExt)")
     if !FileManager.default.fileExists(atPath: first.path) {
@@ -3990,8 +3990,8 @@ struct AIToolsStudioTab: View {
         guard app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) else { return }
         let inputStem = URL(fileURLWithPath: inputPath).deletingPathExtension().lastPathComponent
         let cleanStem = inputStem.isEmpty ? "Audio" : inputStem
-        let vocalsURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-Vocals-\(cleanStem)", ext: "wav", on: now)
-        let accompURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-Accompaniment-\(cleanStem)", ext: "wav", on: now)
+        let vocalsURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-Vocals-\(cleanStem)", ext: "wav", on: now)
+        let accompURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-Accompaniment-\(cleanStem)", ext: "wav", on: now)
         let scratchDir = allocateHiddenDatedScratchDirectory(under: rootDir, prefix: "vocalsep", on: now)
 
         Task { @MainActor in
@@ -4047,7 +4047,7 @@ struct AIToolsStudioTab: View {
         guard app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) else { return }
         let inputStem = URL(fileURLWithPath: inputPath).deletingPathExtension().lastPathComponent
         let cleanStem = inputStem.isEmpty ? "Subtitles" : inputStem
-        let srtURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-ASR-\(cleanStem)", ext: "srt", on: now)
+        let srtURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-ASR-\(cleanStem)", ext: "srt", on: now)
         let scratchDir = allocateHiddenDatedScratchDirectory(under: rootDir, prefix: "asr", on: now)
         let lang = local.asrLanguage
         let promptHint = local.asrPrompt
@@ -4086,7 +4086,7 @@ struct AIToolsStudioTab: View {
             let now = Date()
             let rootDir = app.audioOutputDirectory
             if app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) {
-                let fallbackSRT = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-ASR-Subtitles", ext: "srt", on: now)
+                let fallbackSRT = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-ASR-Subtitles", ext: "srt", on: now)
                 try? AudioAIManager.writeSRT(segments: cleaned, to: fallbackSRT.path)
                 local.lastSRTPath = fallbackSRT.path
             }
@@ -4110,7 +4110,7 @@ struct AIToolsStudioTab: View {
         let now = Date()
         let rootDir = app.audioOutputDirectory
         guard app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) else { return }
-        let outURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-TTS", ext: "wav", on: now)
+        let outURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-TTS", ext: "wav", on: now)
         let speaker = local.ttsSpeakerID
         let speed = local.ttsSpeed
         let at = playback.playhead
@@ -4142,7 +4142,7 @@ struct AIToolsStudioTab: View {
         let now = Date()
         let rootDir = app.audioOutputDirectory
         guard app.prepareOutputDirectory(datedDirectory(under: rootDir, on: now)) else { return }
-        let outURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "MotionDesk-VoiceClone", ext: "wav", on: now)
+        let outURL = allocateUniqueDatedOutputURL(under: rootDir, stem: "Klipora-VoiceClone", ext: "wav", on: now)
         let refText = local.cloneRefText
         let speed = local.cloneSpeed
         let at = playback.playhead

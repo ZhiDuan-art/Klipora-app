@@ -1872,7 +1872,10 @@ struct RecordedGenerationDetail: Equatable, Sendable {
             ? containingFolder.deletingLastPathComponent() : containingFolder
         let stem = media.deletingPathExtension().lastPathComponent
         let identifier = String(stem.suffix(36))
-        let isPublished = (stem.hasPrefix("MotionDesk-Image-") || stem.hasPrefix("MotionDesk-Video-"))
+        let isPublished = (
+            stem.hasPrefix("Klipora-Image-") || stem.hasPrefix("Klipora-Video-")
+            || stem.hasPrefix("MotionDesk-Image-") || stem.hasPrefix("MotionDesk-Video-")
+        )
             && UUID(uuidString: identifier) != nil
         let day = containingFolder.lastPathComponent
         let isDateFolder = day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
@@ -2634,6 +2637,12 @@ struct LocalModelProfilePanel: View {
                 activeUnsupportedBanner(for: profile)
             }
 
+            // Always-visible Img2Img Denoise control with live effect explanation when a reference image is attached
+            if profile.supportsImg2Img, profile.kind == "image",
+               !app.referenceImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                denoiseControlCard(for: profile, overrides: currentOverrides)
+            }
+
             // Expanded Model Details & Controls
             if ui.isExpanded {
                 Divider().opacity(0.5)
@@ -2705,6 +2714,59 @@ struct LocalModelProfilePanel: View {
         .padding(8)
         .background(Color.orange.opacity(0.11), in: RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.orange.opacity(0.4)))
+    }
+
+    private func denoiseEffectDescription(for value: Double) -> String {
+        switch value {
+        case ..<0.46:
+            return "極低重繪：幾乎完全鎖定原圖姿勢、臉部與服裝，僅微調質感與光影。"
+        case ..<0.61:
+            return "輕度重繪：保留原圖臉部與動作，適合小幅修飾（大改動作／換裝反應較弱）。"
+        case ..<0.76:
+            return "中度重繪：能明顯更換服裝與背景，同時盡量維持原本構圖與人物輪廓。"
+        default:
+            return "大幅重繪：可大幅改變動作、穿搭與場景，但數值越高越容易改變原圖臉部特徵。"
+        }
+    }
+
+    private func denoiseControlCard(for profile: LocalModelProfile, overrides: LocalModelOverrides) -> some View {
+        let denoiseRange = profile.ranges.denoise ?? DoubleRangeSpec(min: 0.2, max: 0.95, step: 0.05)
+        let effectiveDenoise = denoiseRange.clamped(overrides.denoise ?? profile.defaults.effectiveImg2ImgDenoise)
+        let binding = Binding<Double>(
+            get: { effectiveDenoise },
+            set: { newVal in
+                let snapped = (newVal / denoiseRange.step).rounded() * denoiseRange.step
+                app.updateOverride(for: profile.id) { $0.denoise = denoiseRange.clamped(snapped) }
+            }
+        )
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                Text("參考圖重繪強度 (Denoise)")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(String(format: "%.2f", effectiveDenoise))
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(studioAccent)
+                    .frame(minWidth: 36, alignment: .trailing)
+                Stepper("", value: binding, in: denoiseRange.min...denoiseRange.max, step: denoiseRange.step)
+                    .labelsHidden()
+                    .controlSize(.mini)
+            }
+            Slider(value: binding, in: denoiseRange.min...denoiseRange.max, step: denoiseRange.step)
+                .controlSize(.mini)
+                .tint(studioAccent)
+            Text(denoiseEffectDescription(for: effectiveDenoise))
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.84))
+                .fixedSize(horizontal: false, vertical: true)
+            Text("數值越低越貼近原圖；數值越高改動越大（換裝建議 0.65–0.75）。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(8)
+        .background(canvas.opacity(0.55), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.08)))
     }
 
     @ViewBuilder
@@ -2898,33 +2960,6 @@ struct LocalModelProfilePanel: View {
                         ),
                         in: guidanceRange.min...guidanceRange.max,
                         step: guidanceRange.step
-                    )
-                    .labelsHidden()
-                    .controlSize(.small)
-                }
-            }
-
-            // Denoise (only when model supports img2img and an image reference is attached)
-            if profile.supportsImg2Img, profile.kind == "image",
-               !app.referenceImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let denoiseRange = profile.ranges.denoise ?? DoubleRangeSpec(min: 0.2, max: 0.95, step: 0.05)
-                let effectiveDenoise = denoiseRange.clamped(overrides.denoise ?? profile.defaults.effectiveImg2ImgDenoise)
-                HStack {
-                    Text("參考圖重繪強度 (Denoise)").font(.caption)
-                    Spacer()
-                    Text(String(format: "%.2f", effectiveDenoise))
-                        .font(.caption.monospacedDigit().weight(.medium))
-                        .frame(minWidth: 36, alignment: .trailing)
-                    Stepper(
-                        "",
-                        value: Binding(
-                            get: { effectiveDenoise },
-                            set: { newVal in
-                                app.updateOverride(for: profile.id) { $0.denoise = newVal }
-                            }
-                        ),
-                        in: denoiseRange.min...denoiseRange.max,
-                        step: denoiseRange.step
                     )
                     .labelsHidden()
                     .controlSize(.small)

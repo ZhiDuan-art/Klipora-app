@@ -5,10 +5,8 @@
   "modelOrder": [
     "zimage",
     "redcraft",
-    "iniverse_flux",
     "moss",
     "krea2",
-    "sdxl1",
     "wan22",
     "wan22_14b"
   ],
@@ -226,115 +224,6 @@
         "https://docs.comfy.org/tutorials/image/z-image/z-image-turbo"
       ]
     },
-    "iniverse_flux": {
-      "id": "iniverse_flux",
-      "displayName": "Iniverse FLUX (FP8)",
-      "shortLabel": "Iniverse FLUX",
-      "kind": "image",
-      "architecture": "FLUX.1-dev Merged Checkpoint (MMDiT FP8 + Dual CLIP/T5-XXL)",
-      "template": "flux.json",
-      "filenamePrefix": "MotionDesk/IniverseFlux",
-      "requiredModels": {
-        "checkpoints": [
-          "iniverseMixSFWNSFW_flux1DNsfwFp8V10.safetensors"
-        ],
-        "text_encoders": [
-          "clip_l.safetensors",
-          "t5xxl_fp8_e4m3fn.safetensors"
-        ]
-      },
-      "requiredComfyChecks": {},
-      "nativeSizes": {
-        "16:9": [
-          1280,
-          720
-        ],
-        "9:16": [
-          720,
-          1280
-        ],
-        "1:1": [
-          1024,
-          1024
-        ]
-      },
-      "alignment": 16,
-      "maxPixels": 2097152,
-      "defaults": {
-        "steps": 22,
-        "cfg": 1.0,
-        "sampler": "euler",
-        "scheduler": "simple",
-        "shift": null,
-        "guidance": 3.5,
-        "denoise": 1.0,
-        "img2imgDenoise": 0.55,
-        "negativePrompt": "",
-        "fps": null,
-        "seconds": null
-      },
-      "ranges": {
-        "steps": [
-          15,
-          30
-        ],
-        "cfg": [
-          1.0,
-          2.0
-        ],
-        "shift": null,
-        "guidance": [
-          1.5,
-          5.0
-        ],
-        "denoise": [
-          0.2,
-          0.95
-        ],
-        "seconds": null,
-        "samplers": [
-          "euler",
-          "dpmpp_2m"
-        ],
-        "schedulers": [
-          "simple",
-          "sgm_uniform",
-          "beta"
-        ]
-      },
-      "capabilities": {
-        "supportsImg2Img": true,
-        "supportsVideoFirstFrame": false,
-        "supportsLoRA": true,
-        "supportsNegativePrompt": false,
-        "supportsGuidance": true,
-        "supportsShift": false,
-        "supportsSkipLayer": false
-      },
-      "nodes": {
-        "latent": "6",
-        "sampler": "8",
-        "positive": "4",
-        "negative": "5",
-        "shift": null,
-        "guidance": "7",
-        "modelSamplingFlux": "12",
-        "loraUpstream": "1",
-        "loraDownstream": "12",
-        "vaeDecode": "9",
-        "save": "10"
-      },
-      "recommendationNote": "FLUX.1-dev FP8 融合權重，已補齊 ModelSamplingFlux（width/height 與輸出解析度連動）。Guidance 預設 3.5，若欲減少人像磨皮與平滑塑膠感可調降至 2.5–3.0。",
-      "unsupportedNotes": [
-        "採用 FluxGuidance 與 ConditioningZeroOut，不支援文字負向提示詞與手動 shift。",
-        "支援手動登錄同基底模型的 model-only LoRA；匯入格式檢查不代表生成相容性已驗證。"
-      ],
-      "notes": "FLUX.1-dev FP8 融合權重，已補齊 ModelSamplingFlux（width/height 與輸出解析度連動）。Guidance 預設 3.5，調降至 2.5–3.0 可減少人像磨皮感；目前無相容本機 FLUX LoRA。",
-      "officialSources": [
-        "https://huggingface.co/black-forest-labs/FLUX.1-dev",
-        "https://comfyanonymous.github.io/ComfyUI_examples/flux/"
-      ]
-    },
     "moss": {
       "id": "moss",
       "displayName": "MOSS-Image (BF16)",
@@ -547,109 +436,6 @@
       "officialSources": [
         "https://huggingface.co/Comfy-Org/Krea-2",
         "https://docs.comfy.org/tutorials/image/krea/krea-2"
-      ]
-    },
-    "sdxl1": {
-      "id": "sdxl1",
-      "displayName": "SDXL 1.0 Base",
-      "shortLabel": "SDXL 1.0",
-      "kind": "image",
-      "architecture": "SDXL 1.0 Base (CheckpointLoaderSimple, built-in CLIP + VAE)",
-      "template": "sdxl.json",
-      "filenamePrefix": "MotionDesk/SDXL1",
-      "requiredModels": {
-        "checkpoints": [
-          "sd_xl_base_1.0.safetensors"
-        ]
-      },
-      "requiredComfyChecks": {},
-      "nativeSizes": {
-        "16:9": [
-          1344,
-          768
-        ],
-        "9:16": [
-          768,
-          1344
-        ],
-        "1:1": [
-          1024,
-          1024
-        ]
-      },
-      "alignment": 8,
-      "maxPixels": 2097152,
-      "defaults": {
-        "steps": 30,
-        "cfg": 7.0,
-        "sampler": "dpmpp_2m",
-        "scheduler": "karras",
-        "shift": null,
-        "guidance": null,
-        "denoise": 1.0,
-        "img2imgDenoise": 0.55,
-        "negativePrompt": "",
-        "fps": null,
-        "seconds": null
-      },
-      "ranges": {
-        "steps": [
-          15,
-          60
-        ],
-        "cfg": [
-          3.0,
-          12.0
-        ],
-        "shift": null,
-        "guidance": null,
-        "denoise": [
-          0.2,
-          0.95
-        ],
-        "seconds": null,
-        "samplers": [
-          "dpmpp_2m",
-          "dpmpp_2m_sde",
-          "euler",
-          "euler_ancestral"
-        ],
-        "schedulers": [
-          "karras",
-          "normal",
-          "sgm_uniform",
-          "simple"
-        ]
-      },
-      "capabilities": {
-        "supportsImg2Img": true,
-        "supportsVideoFirstFrame": false,
-        "supportsLoRA": true,
-        "supportsNegativePrompt": true,
-        "supportsGuidance": false,
-        "supportsShift": false,
-        "supportsSkipLayer": false
-      },
-      "nodes": {
-        "latent": "4",
-        "sampler": "5",
-        "positive": "2",
-        "negative": "3",
-        "shift": null,
-        "guidance": null,
-        "modelSamplingFlux": null,
-        "loraUpstream": "1",
-        "loraDownstream": "5",
-        "vaeDecode": "6",
-        "save": "7"
-      },
-      "recommendationNote": "官方 SDXL 1.0 Base 單一 Checkpoint（內含 CLIP 與 VAE）：預設 30 步、CFG 7.0、dpmpp_2m / karras，1024 級比例（對齊 8），支援正負向提示詞、一般圖生圖與 SDXL 同基底 LoRA。",
-      "unsupportedNotes": [
-        "LoRA 僅透過 LoraLoaderModelOnly 套用於 UNet 模型權重（不修改 CLIP），請僅匯入 SDXL 1.0 同基底 LoRA。"
-      ],
-      "notes": "官方 Stability AI SDXL 1.0 Base Checkpoint（sd_xl_base_1.0.safetensors，內含雙文字編碼器與 VAE）：30 步、CFG 7.0、dpmpp_2m / karras，支援 1024 級對齊 8 尺寸、文字生圖、一般圖生圖與 SDXL 同基底 model-only LoRA。",
-      "officialSources": [
-        "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
       ]
     },
     "wan22": {
@@ -1029,6 +815,22 @@
       "removedAt": "2026-11-20",
       "reason": "依使用者選擇移除 RealXL（權重已移至垃圾桶）；舊專案或歷史紀錄需改選其他保留之本機模型。",
       "message": "RealXL 模型已移除，請改選其他本機模型（例如 RedCraft、Z-Image Turbo、Krea-2 Turbo 或 MOSS-Image）。",
+      "recommendedReplacement": "redcraft"
+    },
+    "sdxl1": {
+      "id": "sdxl1",
+      "displayName": "SDXL 1.0 Base",
+      "removedAt": "2026-11-26",
+      "reason": "依使用者選擇移除 SDXL 1.0 Base；舊專案或歷史紀錄需改選其他保留之本機模型。",
+      "message": "SDXL 1.0 Base 模型已移除，請改選其他本機模型（例如 RedCraft、Z-Image Turbo、MOSS-Image 或 Krea-2 Turbo）。",
+      "recommendedReplacement": "redcraft"
+    },
+    "iniverse_flux": {
+      "id": "iniverse_flux",
+      "displayName": "Iniverse FLUX (FP8)",
+      "removedAt": "2026-11-26",
+      "reason": "依使用者選擇移除 Iniverse FLUX (FP8)；舊專案或歷史紀錄需改選其他保留之本機模型。",
+      "message": "Iniverse FLUX (FP8) 模型已移除，請改選其他本機模型（例如 RedCraft、Z-Image Turbo、MOSS-Image 或 Krea-2 Turbo）。",
       "recommendedReplacement": "redcraft"
     }
   }

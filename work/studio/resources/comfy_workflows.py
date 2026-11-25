@@ -714,13 +714,22 @@ def _default_native_size(
     width, height = value.get("width"), value.get("height")
     if type(width) is not int or type(height) is not int:
         return default
-    if not (64 <= width <= 4096 and 64 <= height <= 4096):
+    max_dim = 8192 if profile.get("kind") == "image" else 4096
+    if not (64 <= width <= max_dim and 64 <= height <= max_dim):
         return default
     alignment = int(profile.get("alignment", 16))
     max_pixels = int(profile.get("maxPixels", 2 * 1024 * 1024))
     if width % alignment == 0 and height % alignment == 0 and width * height <= max_pixels:
         return (width, height)
-    return default
+    scale = math.sqrt(max_pixels / max(1, width * height)) if width * height > max_pixels else 1.0
+    sw = max(alignment, int((width * scale) // alignment) * alignment)
+    sh = max(alignment, int((height * scale) // alignment) * alignment)
+    while sw * sh > max_pixels and max(sw, sh) > alignment:
+        if sw >= sh:
+            sw -= alignment
+        else:
+            sh -= alignment
+    return (sw, sh)
 
 
 def _substitute_placeholders(value: Any, replacements: dict[str, Any]) -> Any:

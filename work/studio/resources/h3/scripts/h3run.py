@@ -173,10 +173,10 @@ def load_manifest(path):
             if not (base / f).is_file():
                 problems.append(f"{jid}：找不到輸入檔 {f}（路徑相對於 manifest 所在資料夾）")
         if "video_model" in j:
-            if j.get("type") != "video" or j["video_model"] not in ("prism", "upd5"):
-                problems.append(f"{jid}：video_model 只適用於影片，接受 prism 或 upd5")
-            if j["video_model"] == "upd5" and j.get("fast") is False:
-                problems.append(f"{jid}：UPD5 固定使用 8 步，請省略 fast 或使用 true")
+            if j.get("type") != "video" or j["video_model"] not in ("prism", "upd5", "eros_max"):
+                problems.append(f"{jid}：video_model 只適用於影片，接受 prism、upd5 或 eros_max")
+            if j["video_model"] in ("upd5", "eros_max") and j.get("fast") is False:
+                problems.append(f"{jid}：{j['video_model'].upper()} 固定使用 8 步，請省略 fast 或使用 true")
         if j.get("type") == "video" and j.get("extend") and j.get("mode", "ref") != "ref":
             problems.append(f"{jid}：延伸只能用 ref 模式")
         if j.get("type") == "image" and len(j.get("inputs", [])) > 8:
@@ -306,6 +306,55 @@ def spec_summary(m, gpu):
             f"比例 {'/'.join(shapes) or '-'}）、配音 {kinds['tts']}，GPU {gpu}{est}")
 
 
+def colab_new_with_retry(session, gpu, max_attempts=4):
+    """Create a Colab GPU runtime with automatic backoff retry on transient 503/502/504 capacity errors."""
+    waits = (15, 25, 35)
+    transient_markers = (
+        "service unavailable",
+        "503",
+        "502",
+        "bad gateway",
+        "504",
+        "gateway timeout",
+        "too many requests",
+        "429",
+        "temporarily unavailable",
+        "connection reset",
+    )
+    last_err = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            colab("new", "-s", session, "--gpu", gpu, timeout=900)
+            return
+        except RuntimeError as exc:
+            last_err = exc
+            msg = str(exc)
+            low = msg.lower()
+            if "toomanyassignmentserror" in low or " 412" in low or "precondition failed" in low:
+                raise RuntimeError(
+                    f"Google Colab 帳號上已開啟過多執行中的 GPU 機器（HTTP 412），無法再開新的 {gpu}。"
+                    "請先等待其他 Colab 任務結束，或關閉未使用的工作階段後再試。"
+                ) from exc
+            is_transient = any(marker in low for marker in transient_markers)
+            if not is_transient:
+                raise
+            if attempt < max_attempts:
+                wait_sec = waits[min(attempt - 1, len(waits) - 1)]
+                print(
+                    f"⏳ Google Colab 目前沒有空閒的 {gpu}（Service Unavailable），"
+                    f"{wait_sec} 秒後自動重試（第 {attempt + 1}/{max_attempts} 次）…",
+                    flush=True,
+                )
+                time.sleep(wait_sec)
+            else:
+                raise RuntimeError(
+                    f"Google Colab 目前暫時沒有可用的 {gpu} 機器（已自動重試 {max_attempts} 次，皆回傳 Service Unavailable）。\n"
+                    f"建議改選其他 GPU（L4 / G4 / A100）、確認帳號沒有其他閒置 Colab 機器佔用額度，或幾分鐘後再試。"
+                ) from exc
+    if last_err:
+        raise last_err
+
+
 def run(args):
     m, base = load_manifest(args.manifest)
     m = skip_finished(m, base, args.force)
@@ -330,11 +379,24 @@ def run(args):
     out_dir = base / "out"
     out_dir.mkdir(exist_ok=True)
     session, created = args.session, False
-    alive, _ = sessions()
+    alive, raw_sessions = sessions()
+    if not session and getattr(args, "reuse", False) and alive:
+        matched = None
+        for cand in alive:
+            for line in raw_sessions.splitlines():
+                if cand in line and f"Hardware: {gpu}" in line:
+                    matched = cand
+                    break
+            if matched:
+                break
+        if matched is None and "Hardware:" not in raw_sessions:
+            matched = alive[0]
+        if matched:
+            session = matched
     if not session or session not in alive:
         session = session or f"{PREFIX}{time.strftime('%m%d-%H%M%S')}"
         print(f"🚀 開一台 {gpu}：{session}", flush=True)
-        colab("new", "-s", session, "--gpu", gpu, timeout=900)
+        colab_new_with_retry(session, gpu)
         created = True
     else:
         print(f"♻️ 沿用還開著的 {session}（模型已經在上面，可以省下安裝和下載）", flush=True)
@@ -457,6 +519,7 @@ def main():
     r.add_argument("--idle-minutes", type=float, default=15,
                    help="做完先留著 GPU 等下一批，幾分鐘沒有新工作就自動關（預設 15；0＝做完馬上關）")
     r.add_argument("--stop-after", action="store_true", help="做完馬上釋放 GPU")
+    r.add_argument("--reuse", action="store_true", help="若已有同款 GPU 的保留熱機，直接沿用")
     r.add_argument("--max-minutes", type=float, default=120)
     r.add_argument("--force", action="store_true", help="out/ 裡已經有的也重做")
     r.add_argument("--with-pictures", action="store_true", help="這次開機也下載生圖模型（約多 10 GB）")
@@ -496,6 +559,9 @@ def main():
         watchdog(a.session)
     elif a.cmd == "stop":
         names = sessions()[0] if a.all else [a.session]
+        if a.all and not names:
+            print("目前沒有執行中的 Klipora Colab 熱機。")
+            return
         if not names or names == [None]:
             sys.exit("要指定 --session NAME 或 --all")
         for n in names:

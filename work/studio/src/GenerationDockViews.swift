@@ -42,7 +42,13 @@ extension Studio {
 
     var videoCapabilitySummary: String {
         if action == "colab" {
-            let modelName = project.model.uppercased()
+            let modelName: String = {
+                switch project.model {
+                case "eros_max": return "10Eros-Max 8-step"
+                case "prism": return "PRISM"
+                default: return "UPD5"
+                }
+            }()
             switch rawVideoMethod {
             case "multi":
                 let maxFrames = Self.maxKeyframes
@@ -51,9 +57,9 @@ extension Studio {
             case "frames":
                 return "線上 Colab（\(modelName)）· 首尾 2 張影格 · 2–15 秒"
             case "text":
-                return "線上 Colab（\(modelName)）· 文字生成 · 2–15 秒"
+                return "線上 Colab（\(modelName)）· 文字生成 · 2–60 秒（>15 秒自動分段續接）"
             default:
-                return "線上 Colab（\(modelName)）· 參考圖最多 \(Self.maxCloudReferenceImages) 張 + 1 支影片 · 2–15 秒"
+                return "線上 Colab（\(modelName)）· 參考圖最多 \(Self.maxCloudReferenceImages) 張 + 1 支影片 · 2–60 秒（>15 秒自動分段續接）"
             }
         }
         if action == "wan22" {

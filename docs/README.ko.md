@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#권장-사양)
 [![Languages](https://img.shields.io/badge/지원언어-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5개국어-현지화)
-[![Release](https://img.shields.io/badge/다운로드-v1.1.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/다운로드-v1.1.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![변경 및 디버그 로그](https://img.shields.io/badge/Changelog-Debug%20Log-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **최신 업데이트 — `v1.1.5` (2026-11-25 13:53 UTC+8)**: **MediaTek `BreezyVoice`** 기본 설정 및 3대 핵심 음성 엔진 정리, **멀티트랙 타임라인 드래그 다중 선택(Marquee)**, **전체 캡슐 버튼 클릭 영역 확대**, **원본 이미지 비율 자동 맞춤**, 그리고 **Apple Silicon MPS 저메모리 FP8→FP16 훅 및 16→24fps 광류 보간**으로 **`Wan 2.2 14B MoE + 4-step`** 로컬 실행을 완벽 지원합니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.1.5 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.5)**.
+> **최신 업데이트 — `v1.1.6` (2026-11-26 00:55 UTC+8)**: Google Colab 클라우드 스튜디오 대폭 업그레이드(**`A100` GPU**, **`10Eros-Max 8-step`** 영상 모델, **최대 60초 자동 연속 연장**, **15분 웜 GPU 유지 토글**, **실행 시 자동 재연결**, **`503` 자동 재시도**); **9가지 주요 비율**(`3:4`, `4:3`, `2:3`, `3:2`, `4:5`, `5:4`), **`1K / 2K / 4K / 8K` 이미지 해상도**, 상시 표시 **Denoise 슬라이더 및 효과 안내**, **`Klipora-*` 타임스탬프 파일명 통일** 및 macOS 영상 미리보기 창 넘침 버그를 수정했습니다. 자세한 내용은 **[변경 및 디버그 로그 (CHANGELOG.md)](../CHANGELOG.md)** · **[v1.1.6 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.6)**.
 
 ## 실기 데모 영상
 
@@ -52,10 +52,10 @@ https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 ## 주요 기능
 
-- **로컬 우선 AI 이미지 생성**: ComfyUI 네이티브 연동(`SDXL 1.0`, `Z-Image Turbo`, `RedCraft`, `Iniverse FLUX`, `MOSS`, `Krea-2` 기본 프리셋), 사용자 정의 `.safetensors` 모델 관리, 중앙 중복 제거 저장소, 호환 LoRA 필터 및 ComfyUI API 워크플로우 지원.
-- **네이티브 멀티트랙 영상 편집**: SwiftUI + CoreText 자막/타이틀 렌더링 + FFmpeg + HyperFrames 기반 비디오·오디오·자막 트랙 편집, 전환, 필터, MP4 내보내기.
-- **로컬 뉴럴 보이스 스튜디오**: 내장 MLX / Qwen3-TTS 음성 합성, 보이스 프로필 관리 및 오프라인 AI 오디오 도구.
-- **선택적 클라우드 및 공식 API**: Google Colab OAuth(Wan 2.2 / H3) 및 명시적 동의 기반 OpenAI / Gemini 공식 이미지 API(API 키는 macOS 키체인에만 안전 보관).
+- **로컬 우선 AI 이미지·영상 생성**: ComfyUI 네이티브 연동(엄선된 4대 이미지 모델 `Z-Image Turbo`, `RedCraft 1.5 AIO`, `MOSS-Image BF16`, `Krea-2 Turbo BF16` + 로컬 `Wan 2.2 14B MoE 4-step` 영상 지원), **9가지 주요 비율 + 원본 비율 자동 맞춤 + `1K / 2K / 4K / 8K` 해상도**, 상시 표시 **Denoise 슬라이더 안내**, 사용자 정의 `.safetensors` / LoRA 관리 지원.
+- **네이티브 멀티트랙 영상 편집**: SwiftUI + CoreText 자막/타이틀 렌더링 + FFmpeg + HyperFrames 기반 **마키 드래그 다중 선택**, 일괄 리플 삭제, 비디오·오디오·자막 트랙 편집, 전환, 필터, MP4 내보내기.
+- **로컬 뉴럴 보이스 스튜디오**: 내장 **`MediaTek BreezyVoice`**(68개 보이스 공유), **`Qwen3-TTS 1.7B`**, **`Chatterbox Turbo`** 및 오프라인 **`Breeze-ASR-26`** 자동 자막·보컬 분리.
+- **업그레이드된 Google Colab 및 공식 API**: 실행 시 자동 재연결, **L4 / G4 / A100** GPU, **`UPD5` / `10Eros-Max 8-step` / `PRISM`** 영상 모델, **60초 자동 연속 생성**, **15분 웜 GPU 유지**, `503` 자동 재시도 및 선택적 OpenAI / Gemini 공식 이미지 API(API 키는 macOS 키체인에만 보관).
 - **시작 자체 점검 및 4단계 초기 설정**: 앱 실행 시 핵심 엔진 자동 점검, 첫 실행 시 하드웨어 호환성 확인·ComfyUI 연동·용량 표시 모델 선택 다운로드·선택 로그인 안내 제공.
 
 ---
@@ -70,15 +70,15 @@ https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
 | 등급 | Mac 하드웨어 | 통합 메모리 | 여유 공간 | 권장 워크플로우 |
 | :--- | :--- | :--- | :--- | :--- |
-| **표준** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | SDXL 1.0 Base + Qwen3-TTS + 멀티트랙 편집 |
-| **프로 / 플래그십** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image Turbo / FLUX / Krea-2 / MOSS + 다중 LoRA |
-| **클라우드 하이브리드** | 모든 Apple Silicon Mac | 16 GB | 10 GB+ | 로컬 편집 + Google Colab / 공식 웹·API |
+| **표준** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + BreezyVoice / Qwen3-TTS + 멀티트랙 편집 |
+| **프로 / 플래그십** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image / RedCraft / MOSS / Krea-2 + Wan 2.2 14B MoE + 다중 LoRA |
+| **클라우드 하이브리드** | 모든 Apple Silicon Mac | 16 GB | 10 GB+ | 로컬 편집 + Google Colab (L4/G4/A100) / 공식 웹·API |
 
 ---
 
 ## 설치 방법
 
-1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.1.5-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
+1. [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases)에서 **`Klipora-1.1.6-arm64.dmg`**를 다운로드하고 **Klipora.app**을 **Applications** 폴더로 드래그합니다.
 2. 첫 실행 시 개발자 확인 경고가 표시되면 **Klipora.app 우클릭 → 열기 → 열기**로 실행하세요.
 3. Codex 등 AI 코딩 에이전트에 `https://github.com/ZhiDuan-art/Klipora-app`을 전달하고 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)**에 따라 자동 배포할 수도 있습니다.
 

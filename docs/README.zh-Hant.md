@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬體需求建議)
 [![Languages](https://img.shields.io/badge/支援語言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-國語言在地化)
-[![Release](https://img.shields.io/badge/下載-v1.1.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下載-v1.1.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![贊助支持](https://img.shields.io/badge/%E8%B4%8A%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新與除錯紀錄](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E8%88%87%E9%99%A4%E9%8C%AF%E7%B4%80%E9%8C%84-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **最新更新 — `v1.1.5`（2026-11-25 13:53 UTC+8）**：將 **MediaTek `BreezyVoice`** 設為預設並精簡為 3 大核心語音引擎、新增**時間軸滑鼠拖曳框選多素材**與批次接合刪除、修正**全站整顆膠囊皆可點擊**、新增**自適應原圖比例**，並推出 **Apple Silicon MPS 逐層 FP8→FP16 低記憶體 Hook 與 16→24fps 光流補幀**，讓 **`Wan 2.2 14B MoE + 4-step`** 於本機 Mac 順暢完跑。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.5 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.5)**。
+> **最新更新 — `v1.1.6`（2026-11-26 00:55 UTC+8）**：Google Colab 雲端全面升級（新增 **`A100` GPU**、**`10Eros-Max 8-step`** 影片模型、**60 秒自動分段無縫續接**、**跑完保留機器 15 分鐘沿用熱機開關**、**啟動自動連線**與 **`503` 自動重試防呆**）；生圖新增 **9 組常見比例**（`3:4`、`4:3`、`2:3`、`3:2`、`4:5`、`5:4`）、**`1K / 2K / 4K / 8K` 解析度**、外顯 **Denoise 重繪強度滑桿與動態說明**、統一 **`Klipora-*` 時間戳檔名**並修復視窗跑版問題。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.6 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.6)**。
 
 ## 實機操作宣傳影片
 
@@ -52,10 +52,10 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 ## 核心特色
 
-- **本機優先 AI 圖片生成**：原生整合 ComfyUI，內建 `SDXL 1.0`、`Z-Image Turbo`、`RedCraft`、`Iniverse FLUX`、`MOSS`、`Krea-2` 設定檔，支援自訂 `.safetensors` 模型管理、中央去重儲存、相容 LoRA 篩選與自訂 ComfyUI API 工作流。
-- **原生多軌影音剪輯**：結合 SwiftUI、CoreText 字幕標題渲染、FFmpeg 與 HyperFrames，支援視訊／音訊／字幕多軌剪輯、轉場、濾鏡與 MP4 匯出。
-- **本機神經語音工作室**：內建 MLX / Qwen3-TTS 語音合成、聲音角色庫管理與離線音訊 AI 工具。
-- **選用雲端與官方 API**：整合 Google Colab OAuth（Wan 2.2 / H3 雲端影音）及明確授權才啟用的 OpenAI / Gemini 官方圖片 API（金鑰僅存於 macOS Keychain，離線時自動保留本機完整可用）。
+- **本機優先 AI 圖片與影片生成**：原生整合 ComfyUI，內建精選 4 大生圖設定檔（`Z-Image Turbo`、`RedCraft 1.5 AIO`、`MOSS-Image BF16`、`Krea-2 Turbo BF16`）與本機 `Wan 2.2 14B MoE 4-step` / `Wan 2.2 5B` 影片（含 Apple Silicon MPS FP8→FP16 Hook），支援 **9 組常見比例＋自適應原圖比例＋`1K / 2K / 4K / 8K` 解析度**、外顯 **Denoise 滑桿與動態說明**、自訂 `.safetensors` / LoRA 管理與自訂工作流。
+- **原生多軌影音剪輯**：結合 SwiftUI、CoreText 字幕標題渲染、FFmpeg 與 HyperFrames，支援**滑鼠拖曳框選多素材**、批次接合刪除、視訊／音訊／字幕多軌剪輯、轉場、濾鏡與 MP4 匯出。
+- **本機神經語音工作室**：內建 **`MediaTek BreezyVoice`**（預設台灣國語 · 68 聲線共用）、**`Qwen3-TTS 1.7B`**、**`Chatterbox Turbo`** 與離線 **`Breeze-ASR-26`** 台灣國語自動字幕與人聲分離。
+- **升級版 Google Colab 雲端與選用 API**：支援**啟動自動連線**、**L4 / G4 / A100** GPU、**`UPD5` / `10Eros-Max 8-step` / `PRISM`** H3 影片模型、**60 秒自動分段無縫續接**（及 3–32 張多影格）、**15 分鐘保留熱機開關**與 `503` 自動重試，並可選用 OpenAI / Gemini 官方圖片 API（金鑰僅存於 macOS Keychain，離線時本機完整可用）。
 - **啟動自檢與 4 步驟首次引導**：每次開啟自動檢查核心引擎與儲存路徑；首次使用提供硬體相容檢測、ComfyUI 安裝與預設路徑寫入、多模型容量標示與勾選下載、以及選用登入引導。
 
 ---
@@ -70,16 +70,16 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 | 等級 | Mac 硬體 | 統一記憶體 | 可用磁碟 | 建議使用方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **標準** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | SDXL 1.0 Base + Qwen3-TTS + 多軌剪輯 |
-| **旗艦** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image Turbo / FLUX / Krea-2 / MOSS + 多組 LoRA |
-| **雲端混合** | 任一 Apple Silicon Mac | 16 GB | 10 GB+ | 本機剪輯 + Google Colab / 官方網頁或選用 API |
+| **標準** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + BreezyVoice / Qwen3-TTS + 多軌剪輯 |
+| **旗艦** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image / RedCraft / MOSS / Krea-2 + Wan 2.2 14B MoE + 多組 LoRA |
+| **雲端混合** | 任一 Apple Silicon Mac | 16 GB | 10 GB+ | 本機剪輯 + Google Colab (L4/G4/A100) / 官方網頁或選用 API |
 
 ---
 
 ## 安裝方式
 
 ### 方式一：直接下載 `.dmg` 安裝檔（推薦）
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.1.5-arm64.dmg`**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下載 **`Klipora-1.1.6-arm64.dmg`**。
 2. 將 **Klipora.app** 拖曳至 **Applications** 資料夾。
 3. 首次開啟時若 macOS 提示無法驗證開發者（內測簽章版），請對 `Klipora.app` **按右鍵 → 打開 → 打開**。
 4. 跟著內建 4 步驟安裝引導即可完成硬體檢測、ComfyUI 連線與模型下載。

@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.1.5%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.1.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,7 +20,7 @@
 
 ---
 
-> **Latest Update — `v1.1.5` (2026-11-25 13:53 UTC+8):** Set **MediaTek `BreezyVoice`** as default with a curated 3-engine voice menu, added **multitrack timeline marquee multi-selection** & batch ripple delete, fixed **full-capsule hit-testing** across all buttons, added **Auto-Match Source Aspect Ratio**, and shipped a **zero-venv-modification Apple Silicon MPS FP8→FP16 engine hook + optical-flow 24fps smoothing** so **Wan 2.2 14B MoE + 4-step LoRA** runs smoothly on 48 GB Mac. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.5 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.5)**.
+> **Latest Update — `v1.1.6` (2026-11-26 00:55 UTC+8):** Upgraded Google Colab Cloud Studio with **A100 GPU**, **`10Eros-Max 8-step` (`hybrid-int8_HQ`)**, **60s seamless multi-segment auto-extend**, **15-min Keep-Warm GPU reuse toggle**, **auto-reconnect on launch** & **`503` backoff retry**; added **9 common aspect ratios** (`3:4`, `4:3`, `2:3`, `3:2`, `4:5`, `5:4` + `16:9`/`9:16`/`1:1`), **`1K / 2K / 4K / 8K` image resolution**, an always-visible **Img2Img Denoise slider with live guide**, unified **`Klipora-*` timestamped filenames**, and fixed macOS video preview window overflow. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.6 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.6)**.
 
 ## Product Demo Video
 
@@ -56,10 +56,10 @@ Most AI creators bounce between 5 disconnected tools: one web tab for generating
 
 **Klipora unifies the entire creative pipeline into a single native macOS darkroom workstation:**
 
-- **Local-First AI Image Generation**: Native ComfyUI bridge with built-in profiles (`SDXL 1.0`, `Z-Image Turbo`, `RedCraft`, `Iniverse FLUX`, `MOSS`, `Krea-2`), custom `.safetensors` model manager, central deduplicated storage, compatible LoRA manager, and custom ComfyUI API workflow support.
-- **Multitrack Pro Video Editor**: Native SwiftUI + CoreText + FFmpeg + HyperFrames timeline with video/audio/subtitle/title tracks, transitions, color filters, and MP4 export.
-- **Local Neural Voice Studio**: Bundled MLX / Qwen3-TTS voice synthesis with custom voice profiles, reference voice cloning, and offline AI audio tools.
-- **Optional Cloud & Official APIs**: Seamless Google Colab OAuth bridge for Wan 2.2 / H3 cloud video & audio, plus opt-in OpenAI (`gpt-image-2.5-flare`) and Gemini (`gemini-nano-banana-2.1`) image APIs with Keychain-only credential storage and strict offline fallback.
+- **Local-First AI Image & Video Generation**: Native ComfyUI bridge with curated built-in profiles (`Z-Image Turbo`, `RedCraft 1.5 AIO`, `MOSS-Image BF16`, `Krea-2 Turbo BF16`, plus local `Wan 2.2 14B MoE 4-step` & `Wan 2.2 5B` video with Apple Silicon MPS FP8→FP16 hook), **9 common aspect ratios + Auto-Match Source Aspect + `1K / 2K / 4K / 8K` image output**, top-level **Img2Img Denoise slider with live effect guide**, custom `.safetensors` / LoRA manager, and custom ComfyUI API workflow support.
+- **Multitrack Pro Video Editor**: Native SwiftUI + CoreText + FFmpeg + HyperFrames timeline with **marquee drag multi-selection**, batch ripple delete, video/audio/subtitle/title tracks, transitions, color filters, and MP4 export.
+- **Local Neural Voice Studio**: Bundled **`MediaTek BreezyVoice`** (default Taiwanese Mandarin · 68 shared voices), **`Qwen3-TTS 1.7B`**, **`Chatterbox Turbo`**, and offline **`Breeze-ASR-26`** automatic subtitles & vocal separation.
+- **Upgraded Google Colab Cloud Studio & Optional APIs**: Auto-reconnecting Google Colab OAuth bridge with **L4 / G4 / A100** GPUs, **`UPD5` / `10Eros-Max 8-step` / `PRISM`** H3 video models, **60s seamless multi-segment auto-extend** (plus 3–32 keyframe multi-shot), **15-min Keep-Warm GPU toggle**, and automatic `503` capacity retry — alongside opt-in OpenAI and Gemini image APIs (Keychain-only storage, full offline fallback).
 - **Startup Self-Check & 4-Step Onboarding**: Adobe-style launch self-check verifies every engine before you start; first-run wizard checks hardware, guides ComfyUI setup, lets you pick starter models with clear disk-space budgets, and configures optional accounts.
 
 ---
@@ -80,16 +80,16 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 
 | Tier | Mac Hardware | Unified Memory | Free Disk | Recommended Workflow |
 | :--- | :--- | :--- | :--- | :--- |
-| **Standard** | Apple Silicon (M1/M2/M3/M4/M5) | 16 GB | 25 GB+ | SDXL 1.0 Base + Qwen3-TTS 0.6B/1.7B + Multitrack Edit |
-| **Pro / Flagship** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image Turbo / FLUX / Krea-2 / MOSS + Multiple LoRAs |
-| **Cloud Hybrid** | Any Apple Silicon Mac | 16 GB | 10 GB+ | Local Editing + Google Colab / Official Web or Opt-in APIs |
+| **Standard** | Apple Silicon (M1/M2/M3/M4/M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + BreezyVoice / Qwen3-TTS + Multitrack Edit |
+| **Pro / Flagship** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image / RedCraft / MOSS / Krea-2 + Wan 2.2 14B MoE + Multiple LoRAs |
+| **Cloud Hybrid** | Any Apple Silicon Mac | 16 GB | 10 GB+ | Local Editing + Google Colab (L4/G4/A100) / Official Web or Opt-in APIs |
 
 ---
 
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.1.5-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.1.6-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

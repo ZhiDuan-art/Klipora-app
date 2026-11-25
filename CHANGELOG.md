@@ -1,5 +1,24 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.6 — 2026-11-26 00:55 (UTC+8)
+### Upgraded Colab Cloud Studio (A100, 10Eros-Max 8-step, 60s Seamless Auto-Extend, Keep-Warm GPU & 503 Retry), 9 Aspect Ratios + 1K–8K Image Output, Top-Level Denoise Guide & Window Overflow Fix / Colab 雲端全面升級（A100、10Eros-Max 8-step、60 秒自動無縫續接、保留熱機與 503 自動重試）、9 組比例＋1K–8K 解析度、外顯 Denoise 說明與視窗跑版修復
+- **Google Colab 雲端生成全面升級**：
+  - **啟動自動連線**：程式開啟時若已設定過 Colab OAuth，自動於背景檢查連線與點數餘額，無須手動點進設定頁重連。
+  - **新增 `A100` GPU 與 `10Eros-Max 8-step`（`hybrid-int8_HQ`）影片模型**：與 `L4 / G4` 及 `UPD5 / PRISM` 並列，支援 8 步 Baked Turbo 參數並略過多餘權重下載以節省開機時間與點數。
+  - **突破 15 秒上限（最長 60 秒自動分段無縫續接）**：Colab 文字／參考影片模式支援 2–60 秒；超過 15 秒自動於同一台 Colab 拆成均衡段落以 `extend` 無縫接續並回傳完整拼接成片。
+  - **跑完保留機器（沿用熱機）開關＋一鍵「釋放熱機」**：開啟後任務結束保留 GPU 15 分鐘（背景 watchdog 到期自動關機防空燒），下一次任務自動沿用同台熱機免重載 20 GB 模型。
+  - **`503 Service Unavailable` 自動重試防呆**：於 `h3run.py` 加入退避重試（15s → 25s → 35s，最多 4 次）與清楚的中文錯誤提示（含 `HTTP 412` 過多執行個體即時提醒）。
+- **本機生圖體驗與輸出規格升級**：
+  - **9 組常見比例＋`1K / 2K / 4K / 8K` 圖片解析度**：新增 `3:4`、`4:3`、`2:3`、`3:2`、`4:5`、`5:4`；圖片模式支援 `1K / 2K / 4K / 8K`（4K/8K 自動先依精準比例於安全原生上限生成再高畫質放大，防爆記憶體、不裁切）。
+  - **外顯「參考圖重繪強度 (Denoise)」滑桿與動態中文效果說明**：放入參考圖時直接於右側面板外層顯示，即時說明不同數值對原圖姿勢、服裝與臉部的影響。
+  - **精簡本機生圖模型陣容**：移出 `SDXL 1.0 Base` 與 `Iniverse FLUX (FP8)`，聚焦 `Z-Image Turbo`、`RedCraft 1.5 AIO`、`MOSS-Image (BF16)`、`Krea-2 Turbo (BF16)`。
+- **品牌檔名統一與視窗防跑版修復**：
+  - 輸出檔名由舊版 `MotionDesk-Image-01-...` 全面統一為 **`Klipora-Image-HHMMSS-...`** / **`Klipora-Video-HHMMSS-...`**（含配音、字幕、人聲分離與工作流匯出，並向下相容舊檔生成紀錄）。
+  - 修復 macOS SwiftUI `NSViewRepresentable`（`PosterBackedVideoContainerView`、`PassThroughAVPlayerView`）載入高解析度影片時撐破視窗上下邊界的跑版問題。
+- **Affected Files**：`work/studio/Info.plist`, `work/studio/src/Studio.swift`, `work/studio/src/ModelProfileViews.swift`, `work/studio/src/GenerationDockViews.swift`, `work/studio/src/ProStudioPanels.swift`, `work/studio/resources/worker.py`, `work/studio/resources/comfy_workflows.py`, `work/studio/resources/model_profiles.json`, `work/studio/resources/h3/scripts/h3run.py`, `work/studio/resources/h3/remote/remote_job.py`
+
+---
+
 ## v1.1.5 — 2026-11-25 13:53 (UTC+8)
 ### BreezyVoice Default + Curated 3-Engine Voice Menu, Timeline Marquee Multi-Select, Full-Capsule Hit Testing, Auto-Match Source Aspect & Apple Silicon MPS FP8 Fix for Wan 2.2 14B MoE / BreezyVoice 設為預設、軌道滑鼠拖曳框選、整顆膠囊點擊、自適應原圖比例與 Wan 2.2 14B MoE Apple Silicon MPS 完整支援
 - **語音模型精簡 + `MediaTek BreezyVoice` 設為預設**：
