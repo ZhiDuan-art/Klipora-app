@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/banners/klipora-banner-en.png" alt="Klipora Hero Banner" width="100%" />
+<img src="docs/banners/klipora-banner-en.png" alt="Klipora v1.1.7 Hero Banner" width="100%" />
 
 # Klipora
 
-**All-in-One Local AI Image, Voice & Multitrack Video Studio for Apple Silicon**
+**All-in-One Local AI Image, Neural Voice & Multitrack Video Studio for Apple Silicon**
 
 *Clip (`Klip`) × Luminous Spatial Aura (`-ora`) — Create, Voice, Cut & Export Offline on macOS.*
 
@@ -12,7 +12,7 @@
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#hardware-requirements)
 [![Languages](https://img.shields.io/badge/Languages-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-language-localization)
-[![Release](https://img.shields.io/badge/Release-v1.1.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/Release-v1.1.7%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4%20Support%20Klipora-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![Changelog](https://img.shields.io/badge/Changelog-%F0%9F%93%9D%20Debug%20Log-2B2B30?style=flat-square)](CHANGELOG.md)
 
@@ -20,31 +20,26 @@
 
 ---
 
-> **Latest Update — `v1.1.6` (2026-11-26 00:55 UTC+8):** Upgraded Google Colab Cloud Studio with **A100 GPU**, **`10Eros-Max 8-step` (`hybrid-int8_HQ`)**, **60s seamless multi-segment auto-extend**, **15-min Keep-Warm GPU reuse toggle**, **auto-reconnect on launch** & **`503` backoff retry**; added **9 common aspect ratios** (`3:4`, `4:3`, `2:3`, `3:2`, `4:5`, `5:4` + `16:9`/`9:16`/`1:1`), **`1K / 2K / 4K / 8K` image resolution**, an always-visible **Img2Img Denoise slider with live guide**, unified **`Klipora-*` timestamped filenames**, and fixed macOS video preview window overflow. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.6 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.6)**.
+> **Latest Release — `v1.1.7` (2026-11-27):** Added **`Qwen3-TTS 1.7B VoiceDesign` (Apple Silicon MLX 8-bit)** to invent brand-new voices from text descriptions and save them straight into your 68-voice library; rebuilt the **4-Step Background Onboarding Wizard**; hardened **stutter-free per-clip timeline audio playback** & preview-to-export coordinate parity; upgraded **Colab A100 + `10Eros-Max 8-step` + 60s seamless extend + Keep-Warm GPU**; and unlocked **9 aspect ratios + `1K–8K` local image output**. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.7 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)**.
 
-## Product Demo Video
+## Product Demo Video (`v1.1.7`)
 
-*Recorded from live `v1.1.1` macOS app — voiced with offline Qwen3-TTS, unified Capsule UI, Breeze-ASR-26 & 6-tab Settings:*
-**[▶ Watch / Download v1.1.1 English 1080p Demo](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ Watch / Download v1.1.1 繁體中文配音版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
+*Fresh `v1.1.7` live showcase — covering Qwen3-TTS VoiceDesign, MediaTek BreezyVoice 68 Voices, 9 Ratios / 1K–8K Local ComfyUI, Colab A100 60s Extend, Pro Multitrack Timeline & 4-Step Onboarding:*
 
-https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
+- **[▶ Watch / Download v1.1.7 English Demo (1080p · 62s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)**
+- **[▶ Watch / Download v1.1.7 繁體中文配音版 (1080p · 73s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)**
 
-<details>
-<summary>▶ Watch Traditional Chinese Voiceover Version (繁體中文配音版 · 60s)</summary>
-
-https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
-
-</details>
+[![Watch Klipora v1.1.7 Promo Video](docs/screenshots/01-startup-selfcheck.png)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)
 
 ---
 
-## Interface Showcase
+## Interface Showcase (`v1.1.7` Live Captures)
 
-| Local Neural Voice Studio | AI Image Generation Workspace |
+| Local Neural Voice Studio (VoiceDesign & BreezyVoice 68 Voices) | AI Image & Video Generation Workspace (9 Ratios · 1K–8K) |
 | :---: | :---: |
 | ![Local Neural Voice Studio](docs/screenshots/01-startup-selfcheck.png) | ![Generate Workspace](docs/screenshots/02-generate-workspace.png) |
 
-| Multitrack Video Editor | Setup, Languages & Connections |
+| Multitrack Video Editor (Stutter-Free Audio · 10-bit HEVC) | Setup, 4-Step Onboarding & 5-Language Connections |
 | :---: | :---: |
 | ![Edit Workspace](docs/screenshots/03-edit-workspace.png) | ![Setup & Connections](docs/screenshots/04-settings-connections.png) |
 
@@ -56,11 +51,13 @@ Most AI creators bounce between 5 disconnected tools: one web tab for generating
 
 **Klipora unifies the entire creative pipeline into a single native macOS darkroom workstation:**
 
-- **Local-First AI Image & Video Generation**: Native ComfyUI bridge with curated built-in profiles (`Z-Image Turbo`, `RedCraft 1.5 AIO`, `MOSS-Image BF16`, `Krea-2 Turbo BF16`, plus local `Wan 2.2 14B MoE 4-step` & `Wan 2.2 5B` video with Apple Silicon MPS FP8→FP16 hook), **9 common aspect ratios + Auto-Match Source Aspect + `1K / 2K / 4K / 8K` image output**, top-level **Img2Img Denoise slider with live effect guide**, custom `.safetensors` / LoRA manager, and custom ComfyUI API workflow support.
-- **Multitrack Pro Video Editor**: Native SwiftUI + CoreText + FFmpeg + HyperFrames timeline with **marquee drag multi-selection**, batch ripple delete, video/audio/subtitle/title tracks, transitions, color filters, and MP4 export.
-- **Local Neural Voice Studio**: Bundled **`MediaTek BreezyVoice`** (default Taiwanese Mandarin · 68 shared voices), **`Qwen3-TTS 1.7B`**, **`Chatterbox Turbo`**, and offline **`Breeze-ASR-26`** automatic subtitles & vocal separation.
-- **Upgraded Google Colab Cloud Studio & Optional APIs**: Auto-reconnecting Google Colab OAuth bridge with **L4 / G4 / A100** GPUs, **`UPD5` / `10Eros-Max 8-step` / `PRISM`** H3 video models, **60s seamless multi-segment auto-extend** (plus 3–32 keyframe multi-shot), **15-min Keep-Warm GPU toggle**, and automatic `503` capacity retry — alongside opt-in OpenAI and Gemini image APIs (Keychain-only storage, full offline fallback).
-- **Startup Self-Check & 4-Step Onboarding**: Adobe-style launch self-check verifies every engine before you start; first-run wizard checks hardware, guides ComfyUI setup, lets you pick starter models with clear disk-space budgets, and configures optional accounts.
+- **Local Neural Voice Studio (`VoiceDesign` + `BreezyVoice` + `Qwen3-TTS`)**:
+  - **`Qwen3-TTS 1.7B VoiceDesign` (MLX 8-bit)**: Invent completely new voices from natural-language persona descriptions (age, gender, accent, emotion) with 4 quick presets and one-click **"Save as Profile"** into your 68-voice library.
+  - **`MediaTek BreezyVoice` (Default Taiwanese Mandarin)**, **`Qwen3-TTS 1.7B Base`**, **`Chatterbox Turbo`**, plus offline **`Breeze-ASR-26`** automatic subtitles & vocal separation.
+- **Local-First AI Image & Video Generation**: Native ComfyUI bridge with curated profiles (`Z-Image Turbo`, `RedCraft 1.5 AIO`, `MOSS-Image BF16`, `Krea-2 Turbo BF16`, plus local `Wan 2.2 14B MoE 4-step`, `Wan 2.2 5B`, and `LTX-Video 13B` with Apple Silicon MPS FP8→FP16 hook), **9 common aspect ratios + Auto-Match Source Aspect + `1K / 2K / 4K / 8K` image output**, top-level **Img2Img Denoise slider with live guide**, and custom `.safetensors` / LoRA management.
+- **Pro Multitrack Video Editor**: Native SwiftUI + CoreText + FFmpeg + HyperFrames timeline with **marquee drag multi-selection**, batch ripple delete across video/audio/text/shape tracks, **per-clip stutter-free audio playback**, 14 transitions, color filters, and 10-bit HEVC / H.264 MP4 export.
+- **Upgraded Google Colab Cloud Studio & Optional APIs**: Auto-reconnecting Google Colab OAuth bridge with **L4 / G4 / A100** GPUs, **`UPD5` / `10Eros-Max 8-step` / `PRISM`** H3 video models, **60s seamless multi-segment auto-extend** (plus 3–32 keyframe multi-shot), **15-min Keep-Warm GPU toggle** with hardened watchdog shutdown, and `503` backoff retry — alongside opt-in OpenAI and Gemini image APIs (Keychain-only storage).
+- **Rebuilt 4-Step Onboarding Wizard**: Background engine setup & starter model downloads that continue even if you close the wizard, with direct step-jump buttons right at the top of Settings.
 
 ---
 
@@ -80,7 +77,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 
 | Tier | Mac Hardware | Unified Memory | Free Disk | Recommended Workflow |
 | :--- | :--- | :--- | :--- | :--- |
-| **Standard** | Apple Silicon (M1/M2/M3/M4/M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + BreezyVoice / Qwen3-TTS + Multitrack Edit |
+| **Standard** | Apple Silicon (M1/M2/M3/M4/M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + VoiceDesign / BreezyVoice + Multitrack Edit |
 | **Pro / Flagship** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image / RedCraft / MOSS / Krea-2 + Wan 2.2 14B MoE + Multiple LoRAs |
 | **Cloud Hybrid** | Any Apple Silicon Mac | 16 GB | 10 GB+ | Local Editing + Google Colab (L4/G4/A100) / Official Web or Opt-in APIs |
 
@@ -89,7 +86,7 @@ Switch languages anytime inside **Setup & Connections** or the **Onboarding Wiza
 ## Installation
 
 ### Option 1 — Download `.dmg` (Recommended)
-1. Download **`Klipora-1.1.6-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases).
+1. Download **`Klipora-1.1.7-arm64.dmg`** from [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7).
 2. Drag **Klipora.app** into **Applications**.
 3. On first launch (developer/beta ad-hoc signed build), right-click **Klipora.app** → **Open** → **Open**.
 4. Follow the built-in 4-step Onboarding Wizard to check hardware, connect ComfyUI, and select starter models.

@@ -1,18 +1,18 @@
 <div align="center">
 
-<img src="banners/klipora-banner-zh-Hans.png" alt="Klipora 横幅 Banner" width="100%" />
+<img src="banners/klipora-banner-zh-Hans.png" alt="Klipora v1.1.7 横幅 Banner" width="100%" />
 
 # Klipora
 
-**专为 Apple Silicon 打造的本地 AI 图像生成、语音配音与多轨剪辑工作站**
+**专为 Apple Silicon 打造的本地 AI 图像生成、神经语音与多轨影音剪辑工作站**
 
-*取自 Clip（`Klip`）× 光晕与空间感（`-ora`）——在 macOS 上离线完成生图、配音、剪辑与导出。*
+*取自 Clip（`Klip`）× 光晕与空间感（`-ora`）——在 macOS 上离线完成生图、自创声线配音、剪辑与导出。*
 
 [English](../README.md) · [繁體中文](README.zh-Hant.md) · **简体中文** · [日本語](README.ja.md) · [한국어](README.ko.md)
 
 [![Platform](https://img.shields.io/badge/macOS-14.0%2B%20Apple%20Silicon-111113?style=flat-square)](#硬件需求建议)
 [![Languages](https://img.shields.io/badge/支持语言-繁中%20%7C%20简中%20%7C%20EN%20%7C%20日本語%20%7C%20한국어-4F8BFF?style=flat-square)](#5-国语言本地化)
-[![Release](https://img.shields.io/badge/下载-v1.1.6%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases)
+[![Release](https://img.shields.io/badge/下载-v1.1.7%20DMG-F46B53?style=flat-square)](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)
 [![赞助支持](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81-%E2%9D%A4%20Portaly-EA4AAA?style=flat-square)](https://portaly.cc/chihtuan)
 [![更新与除错记录](https://img.shields.io/badge/%E6%9B%B4%E6%96%B0%E4%B8%8E%E9%99%A4%E9%94%99%E8%AE%B0%E5%BD%95-CHANGELOG-2B2B30?style=flat-square)](../CHANGELOG.md)
 
@@ -20,31 +20,26 @@
 
 ---
 
-> **最新更新 — `v1.1.6`（2026-11-26 00:55 UTC+8）**：Google Colab 云端全面升级（新增 **`A100` GPU**、**`10Eros-Max 8-step`** 视频模型、**60 秒自动分段无缝续接**、**跑完保留机器 15 分钟沿用热机开关**、**启动自动连接**与 **`503` 自动重试**）；生图新增 **9 组常见比例**（`3:4`、`4:3`、`2:3`、`3:2`、`4:5`、`5:4`）、**`1K / 2K / 4K / 8K` 分辨率**、外显 **Denoise 重绘强度滑块与动态说明**、统一 **`Klipora-*` 时间戳文件名**并修复窗口跑版。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.1.6 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.6)**。
+> **最新发布 — `v1.1.7`（2026-11-27）**：新增 **`Qwen3-TTS 1.7B VoiceDesign`（MLX 8-bit 文字自创声线）**，免参考音频即可用文字捏出全新角色声音并一键存进 68 声线角色库；重制**四步后台首次安装引导**；修复时间轴音频卡顿与预览／导出坐标一致；全面整合 **Colab A100 + `10Eros-Max 8-step` + 60 秒无缝续生 + 保留热机**，以及 **9 种比例 + `1K–8K` 本地生图**。查看完整 **[更新与除错记录（CHANGELOG.md）](../CHANGELOG.md)** · **[下载 v1.1.7 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)**。
 
-## 实机操作宣传视频
+## 实机操作宣传视频（`v1.1.7`）
 
-*纯窗口 `v1.1.1` 实机画面——旁白由 Klipora 内置本地 Qwen3-TTS 离线合成，展示全新胶囊 UI、6 分页设置页与 Breeze-ASR-26 字幕：*
-**[▶ 观看／下载 v1.1.1 中文配音版（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)** · **[▶ English Version（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)**
+*全新 `v1.1.7` 实机展示——涵盖 Qwen3-TTS VoiceDesign 文字自创声线、MediaTek BreezyVoice 68 声线、9 种比例／1K–8K 生图、Colab A100 60 秒续生、零卡顿多轨剪辑与四步引导：*
 
-https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
+- **[▶ 观看／下载 v1.1.7 中文配音版（1080p · 73s）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)**
+- **[▶ Watch / Download v1.1.7 English Version（1080p · 62s）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)**
 
-<details>
-<summary>▶ Watch English Voiceover Version (英文配音版 · 62s)</summary>
-
-https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
-
-</details>
+[![观看 Klipora v1.1.7 宣传视频](screenshots/01-startup-selfcheck.png)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)
 
 ---
 
-## 界面展示
+## 界面展示（`v1.1.7` 实机截图）
 
-| 本地语音配音工作室 | AI 图像生成工作区 |
+| 本地神经语音工作室（VoiceDesign × BreezyVoice 68 声线） | AI 图像生成工作区（9 种比例・1K–8K） |
 | :---: | :---: |
-| ![本地语音配音工作室](screenshots/01-startup-selfcheck.png) | ![生成工作区](screenshots/02-generate-workspace.png) |
+| ![本地神经语音工作室](screenshots/01-startup-selfcheck.png) | ![生成工作区](screenshots/02-generate-workspace.png) |
 
-| 多轨专业剪辑工作区 | 组件设置、多国语言与连接 |
+| 多轨专业剪辑工作区（零卡顿独立音轨・10-bit HEVC） | 设置页、四步快速补装与 5 国语言 |
 | :---: | :---: |
 | ![剪辑工作区](screenshots/03-edit-workspace.png) | ![组件与连接设置](screenshots/04-settings-connections.png) |
 
@@ -52,11 +47,11 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 ## 核心特色
 
-- **本地优先 AI 图像与视频生成**：原生集成 ComfyUI，内置精选 4 大生图预设（`Z-Image Turbo`、`RedCraft 1.5 AIO`、`MOSS-Image BF16`、`Krea-2 Turbo BF16`）与本地 `Wan 2.2 14B MoE 4-step` / `Wan 2.2 5B` 视频（含 Apple Silicon MPS FP8→FP16 Hook），支持 **9 组常见比例＋自适应原图比例＋`1K / 2K / 4K / 8K` 分辨率**、外显 **Denoise 滑块与动态说明**、自定义 `.safetensors` / LoRA 管理与自定义工作流。
-- **原生多轨音视频剪辑**：结合 SwiftUI、CoreText 字幕标题渲染、FFmpeg 与 HyperFrames，支持**鼠标拖拽框选多素材**、批量波纹删除、视频／音频／字幕多轨剪辑、转场、滤镜与 MP4 导出。
-- **本地神经语音工作室**：内置 **`MediaTek BreezyVoice`**（默认 · 68 声线共用）、**`Qwen3-TTS 1.7B`**、**`Chatterbox Turbo`** 与离线 **`Breeze-ASR-26`** 自动字幕及人声分离。
-- **升级版 Google Colab 云端与可选 API**：支持**启动自动连接**、**L4 / G4 / A100** GPU、**`UPD5` / `10Eros-Max 8-step` / `PRISM`** H3 视频模型、**60 秒自动分段无缝续接**（及 3–32 张多关键帧）、**15 分钟保留热机开关**与 `503` 自动重试，以及可选 OpenAI / Gemini 官方图像 API（密钥仅存于 macOS 钥匙串）。
-- **启动自检与 4 步首次引导**：每次启动自动检测核心引擎；首次使用提供硬件兼容检测、ComfyUI 安装与默认路径配置、多模型磁盘空间标注与勾选下载、以及可选登录引导。
+- **本地神经语音工作室（`VoiceDesign` + `BreezyVoice` + `Qwen3-TTS`）**：新增 **`Qwen3-TTS 1.7B VoiceDesign`**（MLX 8-bit）免参考音频以文字捏出全新声线并一键存为专属角色，共用 **`MediaTek BreezyVoice`** 68 声线、**`Qwen3-TTS 1.7B Base`**、**`Chatterbox Turbo`** 及离线 **`Breeze-ASR-26`** 自动字幕与人声分离。
+- **本地优先 AI 图像与视频生成**：原生集成 ComfyUI（`Z-Image Turbo`、`RedCraft 1.5 AIO`、`MOSS-Image BF16`、`Krea-2 Turbo BF16` 与本地 `Wan 2.2 14B MoE 4-step` / `LTX-Video 13B`），支持 **9 组常见比例＋`1K / 2K / 4K / 8K` 分辨率**、外显 **Denoise 滑块与动态说明**与自定义 `.safetensors` / LoRA 管理。
+- **原生多轨音视频剪辑**：支持**鼠标拖拽框选多素材**、跨轨批量波纹删除、**各音频片段独立播放器零卡顿同步**、14 种转场、滤镜与 10-bit HEVC / H.264 MP4 导出。
+- **升级版 Google Colab 云端与可选 API**：支持**启动自动连接**、**L4 / G4 / A100** GPU、**`UPD5` / `10Eros-Max 8-step` / `PRISM`**、**60 秒自动分段无缝续接**、**15 分钟保留热机**与 `503` 自动重试，以及可选 OpenAI / Gemini 官方图像 API。
+- **重制四步后台首次引导**：引擎建置与模型下载全面后台化，并在设置页顶部常驻快速补装入口。
 
 ---
 
@@ -70,7 +65,7 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 | 等级 | Mac 硬件 | 统一内存 | 可用磁盘 | 推荐使用方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **标准** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + BreezyVoice / Qwen3-TTS + 多轨剪辑 |
+| **标准** | Apple Silicon (M1–M5) | 16 GB | 25 GB+ | Z-Image Turbo / RedCraft + VoiceDesign / BreezyVoice + 多轨剪辑 |
 | **旗舰** | Apple Silicon Pro / Max / Ultra | 24–64 GB+ | 80 GB+ | Z-Image / RedCraft / MOSS / Krea-2 + Wan 2.2 14B MoE + 多组 LoRA |
 | **云端混合** | 任一 Apple Silicon Mac | 16 GB | 10 GB+ | 本地剪辑 + Google Colab (L4/G4/A100) / 官方网页或可选 API |
 
@@ -78,7 +73,7 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases) 下载 **`Klipora-1.1.6-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
+1. 前往 [GitHub Releases](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7) 下载 **`Klipora-1.1.7-arm64.dmg`**，将 **Klipora.app** 拖入 **Applications**。
 2. 首次打开若 macOS 提示无法验证开发者，请右键 **Klipora.app → 打开 → 打开**。
 3. 也可直接将仓库链接 `https://github.com/ZhiDuan-art/Klipora-app` 交给你的 Codex／AI 工具，按 **[DEPLOY_WITH_AI.md](../DEPLOY_WITH_AI.md)** 自动部署。
 
@@ -89,9 +84,6 @@ https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 如果 Klipora 对你的创作流程有帮助，欢迎请作者喝杯咖啡支持持续开发（支持信用卡与 PayPal）：
 
 [![赞助 Klipora](https://img.shields.io/badge/%E8%B5%9E%E5%8A%A9%E6%94%AF%E6%8C%81%20Klipora-%E2%9D%A4%20Portaly-EA4AAA?style=for-the-badge)](https://portaly.cc/chihtuan)
-
-- **持续维护**：跟进最新 ComfyUI 工作流、本地生图／视频／语音模型兼容性与 5 国语言更新。
-- **未来期许（不保证）**：若未来赞助累积充足，希望能视情况评估申请 Apple 官方公证（Notarization）以减少 macOS 安全提示，但此项仅为未来期许，不作保证。
 
 ---
 
