@@ -4365,7 +4365,7 @@ struct StudioView: View {
             .tint(StudioTheme.neutralAccent)
             .preferredColorScheme(.dark)
             .sheet(isPresented: $startup.isOnboardingPresented) {
-                KliporaOnboardingSheet(startup: startup)
+                KliporaOnboardingSheet(startup: startup, app: app)
             }
             .sheet(isPresented: $startup.isAboutPresented) {
                 KliporaAboutSheet()
@@ -4921,6 +4921,37 @@ struct StudioView: View {
                     Button { app.importMedia() } label: { Image(systemName: "plus") }
                         .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                         .accessibilityLabel("匯入素材").help("匯入素材")
+                    Menu {
+                        let desktopApps = app.installedDesktopAIApps()
+                        if !desktopApps.isEmpty {
+                            Section("開啟本機桌面 AI") {
+                                ForEach(desktopApps, id: \.name) { item in
+                                    Button(item.name) { NSWorkspace.shared.open(item.url) }
+                                }
+                            }
+                            Divider()
+                        }
+                        Button("開啟今日成品") {
+                            app.openOutputDirectory(datedDirectory(under: app.defaultOutputDirectory))
+                        }
+                        Button("更改預設位置…", action: app.chooseDefaultOutputDirectory)
+                        if app.defaultOutputPath != nil {
+                            Button("恢復原始位置", action: app.resetDefaultOutputDirectory)
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(width: 24, height: 24)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .frame(width: 26, height: 24)
+                    .background(Color.white.opacity(0.06), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1))
+                    .contentShape(.interaction, Capsule())
+                    .accessibilityLabel("更多素材與桌面 AI 快捷選單")
+                    .help("更多素材與桌面 AI 快捷選單")
                 }
             }.padding(14)
             HStack(spacing: 6) {
@@ -4928,6 +4959,8 @@ struct StudioView: View {
                     app.openOutputDirectory(app.defaultOutputDirectory)
                 } label: {
                     Label("預設位置", systemImage: "folder")
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
                 .help(app.defaultOutputDirectory.path)
@@ -4936,31 +4969,14 @@ struct StudioView: View {
                     app.pasteClipboardImage()
                 } label: {
                     Label("貼上圖片", systemImage: "doc.on.clipboard")
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                 .help("從剪貼簿一鍵貼入圖片（適合從 ChatGPT / Gemini 複製圖片後直接入庫）")
 
-                Menu {
-                    let desktopApps = app.installedDesktopAIApps()
-                    if !desktopApps.isEmpty {
-                        Section("開啟本機桌面 AI") {
-                            ForEach(desktopApps, id: \.name) { item in
-                                Button(item.name) { NSWorkspace.shared.open(item.url) }
-                            }
-                        }
-                        Divider()
-                    }
-                    Button("開啟今日成品") {
-                        app.openOutputDirectory(datedDirectory(under: app.defaultOutputDirectory))
-                    }
-                    Button("更改預設位置…", action: app.chooseDefaultOutputDirectory)
-                    if app.defaultOutputPath != nil {
-                        Button("恢復原始位置", action: app.resetDefaultOutputDirectory)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }.accessibilityLabel("更多素材與桌面 AI 快捷選單")
-            }.padding(.horizontal, 14).padding(.bottom, 8)
+                Spacer(minLength: 0)
+            }.padding(.horizontal, 12).padding(.bottom, 8)
             Text((app.defaultOutputDirectory.path as NSString).abbreviatingWithTildeInPath)
                 .font(.caption2).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle).help(app.defaultOutputDirectory.path)

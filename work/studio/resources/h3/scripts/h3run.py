@@ -80,9 +80,18 @@ def keep_file(session):
 def set_keep(session, expires, pid=None):
     """expires = epoch seconds, or None while a batch is running (the watchdog never stops a busy GPU)."""
     KEEP.mkdir(parents=True, exist_ok=True)
-    old = json.loads(keep_file(session).read_text(encoding="utf-8")) if keep_file(session).exists() else {}
-    keep_file(session).write_text(json.dumps({"session": session, "expires": expires,
-                                              "watchdog_pid": pid or old.get("watchdog_pid")}), encoding="utf-8")
+    kf = keep_file(session)
+    old = {}
+    if kf.exists():
+        try:
+            old = json.loads(kf.read_text(encoding="utf-8"))
+        except Exception:
+            old = {}
+    payload = json.dumps({"session": session, "expires": expires,
+                          "watchdog_pid": pid or old.get("watchdog_pid")})
+    tmp = kf.with_suffix(f".tmp.{os.getpid()}")
+    tmp.write_text(payload, encoding="utf-8")
+    os.replace(tmp, kf)
 
 
 def drop_keep(session):
@@ -223,10 +232,10 @@ def _download_json_status(session, timeout=15):
 
 
 def _download_comfy_tail(session, timeout=12):
-    """Best-effort fast read of last meaningful line from /content/h3job/comfyui.log."""
+    """Best-effort fast read of last meaningful line from /content/comfyui.log."""
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "comfyui.log"
-        colab("download", "-s", session, "/content/h3job/comfyui.log", path, timeout=timeout, check=False)
+        colab("download", "-s", session, "/content/comfyui.log", path, timeout=timeout, check=False)
         if path.is_file():
             try:
                 lines = [ln.strip() for ln in path.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
@@ -410,8 +419,11 @@ def run(args):
             colab("upload", "-s", session, REMOTE / f, f"/content/h3job/{f}")
         colab("upload", "-s", session, SKILL / "workflows" / "h3_tts32_api.json", "/content/h3job/h3_tts32_api.json")
         manifest_tmp = Path(tempfile.gettempdir()) / f"{session}_manifest.json"
-        manifest_tmp.write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
-        colab("upload", "-s", session, manifest_tmp, "/content/h3job/manifest.json")
+        try:
+            manifest_tmp.write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
+            colab("upload", "-s", session, manifest_tmp, "/content/h3job/manifest.json")
+        finally:
+            manifest_tmp.unlink(missing_ok=True)
         files = {f for j in m["jobs"] for f in list(j.get("inputs", [])) + list(j.get("voices", []))
                  + [j[k] for k in ("first", "last", "extend") if j.get(k) and (base / j[k]).is_file()]}
         files = {f for f in files if not str(f).startswith("@")}
@@ -437,15 +449,16 @@ def run(args):
                     raise RuntimeError("連續 20 次讀不到遠端進度，先停下來保護點數")
                 continue
             misses = 0
-            line = f"[{(time.time() - t0) / 60:4.1f} 分] {st.get('stage')} · " + " ".join(
+            stable_state = f"{st.get('stage')} · " + " ".join(
                 f"{k}:{v['status']}" for k, v in st.get("jobs", {}).items())
+            line = f"[{(time.time() - t0) / 60:4.1f} 分] {stable_state}"
             log_lines = st.get("log", [])[-2:]
             log_tail = "\n".join(log_lines)
-            if line != last_line or log_tail != last_log_tail:
+            if stable_state != last_line or log_tail != last_log_tail:
                 print(line, flush=True)
                 for l in log_lines:
                     print("    " + l, flush=True)
-                last_line = line
+                last_line = stable_state
                 last_log_tail = log_tail
                 last_progress_ts = time.time()
             elif time.time() - last_progress_ts >= 45:
@@ -471,19 +484,28 @@ def run(args):
                 for _ in range(3):  # anything whose download failed during the run gets two more tries
                     missing = [k for k, v in st.get("jobs", {}).items() if v.get("status") == "done" and k not in got]
                     for jid in missing:
-                        f = st["jobs"][jid]["file"]
-                        colab("download", "-s", session, f"/content/h3job/out/{f}", out_dir / f, timeout=1200, check=False)
-                        if (out_dir / f).is_file():
+                        v = st["jobs"][jid]
+                        f = v["file"]
+                        dst = out_dir / f
+                        colab("download", "-s", session, f"/content/h3job/out/{f}", dst, timeout=1200, check=False)
+                        expected_bytes = v.get("bytes")
+                        if dst.is_file() and dst.stat().st_size > 0 and (not expected_bytes or dst.stat().st_size == expected_bytes):
                             got.add(jid)
-                            print(f"⬇️ {out_dir / f}", flush=True)
+                            print(f"⬇️ {dst}", flush=True)
                     if not missing:
                         break
+                for jid, v in st.get("jobs", {}).items():
+                    if v.get("status") == "done" and jid not in got:
+                        results["jobs"][jid] = dict(v, status="error", error="檔案下載未完成或大小不符")
                 results.update(stage=st.get("stage"), error=st.get("error"))
                 finished = True
                 break
     finally:
         results["minutes"] = round((time.time() - t0) / 60, 1)
-        (out_dir / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
+        try:
+            (out_dir / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
+        except Exception as write_exc:
+            print(f"⚠️ 寫入 results.json 失敗：{write_exc}", flush=True)
         if args.stop_after or not finished or args.idle_minutes <= 0:
             # an interrupted run is never left running: nobody knows what state that GPU is in
             print(f"🛑 釋放 GPU：{session}", flush=True)

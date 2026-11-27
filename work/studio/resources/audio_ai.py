@@ -50,7 +50,18 @@ AI_ROOT = Path(os.environ.get("MOTIONDESK_AI_ROOT", str(DEFAULT_AI_ROOT))).expan
 VENV_DIR = AI_ROOT / "ai-audio-venv"
 MODELS_DIR = AI_ROOT / "ai-models"
 
-COMFYUI_VENV_DIR = Path("/Users/zhangzhiduan/Documents/ComfyUI/.venv")
+def _default_comfyui_venv_dir() -> Path:
+    candidates = [
+        Path.home() / "ComfyUI-Installs" / "ComfyUI-MPS" / "ComfyUI" / ".venv",
+        Path.home() / "Documents" / "ComfyUI" / ".venv",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[1]
+
+
+COMFYUI_VENV_DIR = _default_comfyui_venv_dir()
 
 VENV_PACKAGES = [
     "numpy",
@@ -299,6 +310,8 @@ def dir_size_bytes(path: Path, *, use_cache: bool = True, force_refresh: bool = 
 
 def find_ffmpeg() -> Optional[str]:
     candidates = [
+        os.environ.get("KLIPORA_FFMPEG_BIN"),
+        os.environ.get("MOTIONDESK_FFMPEG_BIN"),
         "/opt/homebrew/bin/ffmpeg",
         "/opt/homebrew/Cellar/ffmpeg/8.1_1/bin/ffmpeg",
         "/usr/local/bin/ffmpeg",
@@ -1099,7 +1112,7 @@ def install_asr_breeze26() -> None:
     vpy = str(venv_python_path())
     dl_script = (
         "from huggingface_hub import snapshot_download; "
-        f"p = snapshot_download(repo_id={repr(ASR_BREEZE26_REPO)}, local_dir={repr(str(tmp_dir))}, local_dir_use_symlinks=False); "
+        f"p = snapshot_download(repo_id={repr(ASR_BREEZE26_REPO)}, local_dir={repr(str(tmp_dir))}); "
         "print('Downloaded Breeze-ASR-26 INT8 to:', p)"
     )
     log(f"Downloading {ASR_BREEZE26_REPO} (MediaTek Breeze-ASR-26 INT8, ~1.55 GB) into isolated model cache ...")
@@ -1934,9 +1947,21 @@ def cmd_voice_clone(
             log(f"Resampling reference audio {ref_audio.name} to 24kHz mono WAV ...")
             _decode_audio_ffmpeg(ref_audio, ref_24k, sample_rate=24000, channels=1, codec="pcm_s16le")
 
+            ref_samples, ref_sr = sf.read(str(ref_24k), dtype="float32")
+            if ref_samples.ndim > 1:
+                ref_samples = np.mean(ref_samples, axis=1).astype(np.float32)
+            # Keep up to 15 seconds BEFORE auto-transcription so audio and transcript stay aligned
+            max_ref_samples = int(15 * ref_sr)
+            if ref_samples.size > max_ref_samples:
+                ref_samples = ref_samples[:max_ref_samples]
+                sf.write(str(ref_24k), ref_samples, ref_sr, subtype="PCM_16")
+            if ref_samples.size < int(0.3 * ref_sr):
+                raise RuntimeError("參考音訊過短（需至少 0.3 秒有效人聲）。")
+
             if not ref_text_clean:
-                if _find_asr_model_dir() is not None:
-                    log("Reference text empty; auto-transcribing reference audio via Faster-Whisper ...")
+                has_any_asr = (_find_asr_model_dir() is not None) or (_find_breeze26_model_dir() is not None)
+                if has_any_asr:
+                    log("Reference text empty; auto-transcribing reference audio via Faster-Whisper / Breeze-ASR ...")
                     segs, _lang, _prob, _dur, _mdl, _pmt = _run_faster_whisper(
                         ref_24k,
                         language="zh",
@@ -1951,16 +1976,6 @@ def cmd_voice_clone(
                     "ZipVoice 聲音複製需要參考音訊的逐字稿 (--ref-text)，"
                     "或請先安裝自動字幕 (ASR) 模組以自動辨識參考音訊。"
                 )
-
-            ref_samples, ref_sr = sf.read(str(ref_24k), dtype="float32")
-            if ref_samples.ndim > 1:
-                ref_samples = np.mean(ref_samples, axis=1).astype(np.float32)
-            # Keep up to 15 seconds for stable flow-matching conditioning
-            max_ref_samples = int(15 * ref_sr)
-            if ref_samples.size > max_ref_samples:
-                ref_samples = ref_samples[:max_ref_samples]
-            if ref_samples.size < int(0.3 * ref_sr):
-                raise RuntimeError("參考音訊過短（需至少 0.3 秒有效人聲）。")
 
             zv_cfg = sherpa_onnx.OfflineTtsZipvoiceModelConfig()
             _set_if_exists(

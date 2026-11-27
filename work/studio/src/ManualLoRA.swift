@@ -14,7 +14,7 @@ struct ImportedLoRA: Codable, Identifiable, Equatable {
 }
 
 struct ManualLoRARegistry {
-    static let supportedModels: Set<String> = ["zimage", "redcraft", "krea2", "moss", "iniverse_flux", "sdxl1"]
+    static let supportedModels: Set<String> = ["zimage", "redcraft", "krea2", "moss"]
 
     static var url: URL {
         FileManager.default.homeDirectoryForCurrentUser

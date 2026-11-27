@@ -17,6 +17,7 @@ import math
 import os
 from pathlib import Path
 import re
+import sys
 from typing import Any, Callable
 
 
@@ -421,7 +422,8 @@ def _apply_user_models(data: dict[str, Any]) -> None:
         order = data.setdefault("modelOrder", list(models.keys()))
         for entry in entries:
             if not isinstance(entry, dict):
-                raise ValueError("模型項目格式無效")
+                print("[klipora] 略過格式無效的自訂模型項目", file=sys.stderr)
+                continue
             entry_id = entry.get("id")
             display_name = entry.get("displayName")
             base_profile = entry.get("baseProfile")
@@ -437,17 +439,25 @@ def _apply_user_models(data: dict[str, Any]) -> None:
                 or not _is_safe_safetensors_filename(primary_weight)
                 or not isinstance(secondary, dict)
             ):
-                raise ValueError("自訂模型項目缺少有效 ID、基底架構或 .safetensors 權重檔名")
+                print(f"[klipora] 略過已失效的自訂模型項目：{entry_id!r} (base={base_profile!r})", file=sys.stderr)
+                continue
             expected_cat = _expected_primary_category_for_base(models[base_profile])
             if primary_cat != expected_cat:
-                raise ValueError(
-                    f"自訂模型 {entry_id} 的主權重類別 {primary_cat} 與基底 {base_profile} 的載入器類別 {expected_cat} 不符"
+                print(
+                    f"[klipora] 略過類別不符的自訂模型 {entry_id}：{primary_cat} != {expected_cat}",
+                    file=sys.stderr,
                 )
+                continue
             clean_secondary: dict[str, str] = {}
+            bad_secondary = False
             for slot, fname in secondary.items():
                 if not isinstance(slot, str) or not _is_safe_safetensors_filename(fname):
-                    raise ValueError(f"次要權重檔名無效：{slot}")
+                    bad_secondary = True
+                    break
                 clean_secondary[slot] = fname
+            if bad_secondary:
+                print(f"[klipora] 略過次要權重無效的自訂模型：{entry_id!r}", file=sys.stderr)
+                continue
 
             cloned = copy.deepcopy(models[base_profile])
             cloned["id"] = entry_id
@@ -505,22 +515,32 @@ def load_profiles(resource_dir: Path | str) -> dict[str, Any]:
             seen = set()
             for entry in entries:
                 if not isinstance(entry, dict):
-                    raise ValueError("登錄格式無效")
+                    continue
                 key, filename = entry.get("id"), entry.get("filename")
-                models, strength = entry.get("compatibleModels"), entry.get("defaultStrength")
+                models_list, strength = entry.get("compatibleModels"), entry.get("defaultStrength")
                 if (not isinstance(key, str) or not key.startswith("user_") or key in seen
                     or not isinstance(filename, str) or not filename.startswith("MotionDesk/")
                     or "\\" in filename or ".." in Path(filename).parts
                     or not filename.endswith(".safetensors")
-                    or not isinstance(models, list) or not models
-                    or any(m not in data["models"] or data["models"][m]["kind"] != "image"
-                           or not data["models"][m]["capabilities"].get("supportsLoRA") for m in models)
+                    or not isinstance(models_list, list) or not models_list
                     or type(strength) not in (float, int) or not math.isfinite(strength) or not 0 <= strength <= 2):
-                    raise ValueError("LoRA 路徑、基底模型或強度設定無效")
+                    print(f"[klipora] 略過格式無效的自訂 LoRA：{key!r}", file=sys.stderr)
+                    continue
+                valid_models = [
+                    m for m in models_list
+                    if m in data["models"]
+                    and data["models"][m].get("kind") == "image"
+                    and data["models"][m].get("capabilities", {}).get("supportsLoRA")
+                ]
+                if not valid_models:
+                    print(f"[klipora] 略過無對應基底模型的孤兒 LoRA：{key!r}", file=sys.stderr)
+                    continue
+                sanitized = dict(entry)
+                sanitized["compatibleModels"] = valid_models
                 seen.add(key)
-                data.setdefault("loras", {})[key] = entry
+                data.setdefault("loras", {})[key] = sanitized
         except (ValueError, OSError, TypeError) as exc:
-            raise ValueError(f"無法讀取自訂 LoRA 清單：{exc}") from exc
+            print(f"[klipora] 讀取自訂 LoRA 清單時略過錯誤：{exc}", file=sys.stderr)
     return data
 
 
@@ -657,8 +677,11 @@ def validate_preset_request(
             raise ValueError(f"{display} 不支援所選的 LoRA：{lora}。")
 
     aspect = request.get("aspect")
-    if aspect is not None and aspect not in profile["nativeSizes"]:
-        allowed = "、".join(profile["nativeSizes"].keys())
+    supported_aspects = set(profile["nativeSizes"].keys()) | {
+        "16:9", "9:16", "1:1", "3:4", "4:3", "2:3", "3:2", "4:5", "5:4"
+    }
+    if aspect is not None and aspect not in supported_aspects:
+        allowed = "、".join(sorted(supported_aspects))
         raise ValueError(f"不支援的畫面比例 {aspect}，可用比例為：{allowed}。")
 
     model_params = request.get("modelParams")
@@ -796,7 +819,17 @@ def resolve_builtin_graph(
 
     default_aspect = "16:9" if profile["kind"] == "video" else "1:1"
     aspect = request.get("aspect") or default_aspect
-    base_w, base_h = profile["nativeSizes"][aspect]
+    if aspect in profile["nativeSizes"]:
+        base_w, base_h = profile["nativeSizes"][aspect]
+    else:
+        parts = aspect.split(":")
+        rw, rh = (float(parts[0]), float(parts[1])) if len(parts) == 2 else (1.0, 1.0)
+        ref_size = profile["nativeSizes"].get("1:1") or next(iter(profile["nativeSizes"].values()))
+        target_area = min(int(profile.get("maxPixels", 2 * 1024 * 1024)), int(ref_size[0]) * int(ref_size[1]))
+        align = int(profile.get("alignment", 16))
+        bw = max(align, int(round(math.sqrt(target_area * (rw / max(0.01, rh))) / align)) * align)
+        bh = max(align, int(round(math.sqrt(target_area * (rh / max(0.01, rw))) / align)) * align)
+        base_w, base_h = bw, bh
     if native_size_fn is not None:
         width, height = native_size_fn(request, (base_w, base_h))
     else:
@@ -1619,21 +1652,20 @@ def _run_self_test(resource_dir: Path, out_dir: Path | None) -> int:
     print(f"Loaded {len(presets)} presets from {resource_dir}: {', '.join(presets)}")
 
     # 1. Removed model (realxl) must raise explicit error
-    try:
-        get_profile("realxl", resource_dir)
-        raise AssertionError("realxl should have raised ValueError")
-    except ValueError as exc:
-        assert "已移除" in str(exc), f"Unexpected realxl message: {exc}"
-        print(f"  [PASS] realxl blocked: {exc}")
+    for retired in ("realxl", "iniverse_flux", "sdxl1"):
+        try:
+            get_profile(retired, resource_dir)
+            raise AssertionError(f"{retired} should have raised ValueError")
+        except ValueError as exc:
+            assert "已移除" in str(exc), f"Unexpected {retired} message: {exc}"
+            print(f"  [PASS] {retired} blocked: {exc}")
 
     # 2. Capability enforcement checks
     bad_cases = [
         ("krea2", {"prompt": "test", "seed": 1, "aspect": "1:1", "reference": "/tmp/a.png"}, "參考圖"),
         ("moss", {"prompt": "test", "seed": 1, "aspect": "1:1", "reference": "/tmp/a.png"}, "參考圖"),
-        ("iniverse_flux", {"prompt": "test", "seed": 1, "aspect": "1:1", "lora": "redz15"}, "LoRA"),
         ("krea2", {"prompt": "test", "seed": 1, "aspect": "1:1", "lora": "pixel_art"}, "LoRA"),
         ("moss", {"prompt": "test", "seed": 1, "aspect": "1:1", "lora": "redz15"}, "LoRA"),
-        ("sdxl1", {"prompt": "test", "seed": 1, "aspect": "1:1", "lora": "redz15"}, "LoRA"),
         ("zimage", {"prompt": "test", "seed": 1, "aspect": "1:1", "modelParams": {"negativePrompt": "bad"}}, "負向"),
         ("wan22", {"prompt": "test", "seed": 1, "aspect": "16:9", "seconds": 3, "videoMethod": "multi"}, "多影格"),
     ]
@@ -1645,9 +1677,10 @@ def _run_self_test(resource_dir: Path, out_dir: Path | None) -> int:
             assert expected_substr in str(exc), f"Expected '{expected_substr}' in '{exc}'"
             print(f"  [PASS] rejected ({preset}): {exc}")
 
-    # 3. Resolve + roundtrip test across all 6 presets and key variants
+    # 3. Resolve + roundtrip test across active presets and key variants
     cases: list[tuple[str, str, dict[str, Any]]] = [
         ("zimage_t2i", "zimage", {"prompt": "sunlit coffee shop portrait", "seed": 101, "aspect": "16:9"}),
+        ("zimage_4x5", "zimage", {"prompt": "vertical editorial portrait", "seed": 101, "aspect": "4:5"}),
         ("zimage_lora_i2i", "zimage", {
             "prompt": "pixel art café", "seed": 102, "aspect": "1:1",
             "lora": "pixel_art", "reference": "/tmp/ref.png",
@@ -1659,26 +1692,11 @@ def _run_self_test(resource_dir: Path, out_dir: Path | None) -> int:
             "lora": "redz15", "reference": "/tmp/portrait.jpg",
             "modelParams": {"steps": 10, "shift": 3.5, "denoise": 0.5, "sampler": "euler"},
         }),
-        ("flux_t2i_16x9", "iniverse_flux", {
-            "prompt": "architectural twilight", "seed": 105, "aspect": "16:9",
-            "modelParams": {"guidance": 2.8, "steps": 24, "scheduler": "beta"},
-        }),
-        ("flux_i2i", "iniverse_flux", {
-            "prompt": "film still", "seed": 106, "aspect": "1:1", "reference": "/tmp/frame.png",
-        }),
         ("moss_t2i", "moss", {
             "prompt": "full body documentary street portrait", "seed": 107, "aspect": "1:1",
             "modelParams": {"steps": 25, "cfg": 2.5, "negativePrompt": "low quality, blurry, jpeg artifacts, watermark"},
         }),
         ("krea2_t2i", "krea2", {"prompt": "vintage workshop", "seed": 108, "aspect": "16:9"}),
-        ("sdxl1_t2i_16x9", "sdxl1", {
-            "prompt": "alpine lake at dawn, crisp natural light", "seed": 111, "aspect": "16:9",
-            "modelParams": {"negativePrompt": "blurry, watermark"},
-        }),
-        ("sdxl1_i2i", "sdxl1", {
-            "prompt": "watercolor alpine lake", "seed": 112, "aspect": "1:1",
-            "reference": "/tmp/lake.png", "modelParams": {"denoise": 0.6},
-        }),
         ("wan22_t2v", "wan22", {"prompt": "gentle breeze through curtains", "seed": 109, "aspect": "16:9", "seconds": 3}),
         ("wan22_i2v", "wan22", {
             "prompt": "person waves gently", "seed": 110, "aspect": "16:9", "seconds": 2,

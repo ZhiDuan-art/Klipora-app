@@ -1142,9 +1142,10 @@ final class AudioAIManager: ObservableObject {
                 await refreshStatusAsync()
                 lastStatusMessage = "已完成安裝：\(module)"
             } catch {
-                lastError = error.localizedDescription
+                let errMsg = error.localizedDescription
                 lastStatusMessage = nil
                 await refreshStatusAsync()
+                lastError = errMsg
             }
         }
     }
@@ -1163,9 +1164,10 @@ final class AudioAIManager: ObservableObject {
                 await refreshStatusAsync()
                 lastStatusMessage = "已移除：\(module)"
             } catch {
-                lastError = error.localizedDescription
+                let errMsg = error.localizedDescription
                 lastStatusMessage = nil
                 await refreshStatusAsync()
+                lastError = errMsg
             }
         }
     }
@@ -1426,11 +1428,16 @@ final class AudioAIManager: ObservableObject {
         }
     }
 
+    private var auditionRequestToken: Int = 0
+
     func previewAudioEffect(sourcePath: String, effectID: String) {
         if isPlayingAudition && auditioningEffectID == effectID {
+            auditionRequestToken &+= 1
             stopAudition()
             return
         }
+        auditionRequestToken &+= 1
+        let token = auditionRequestToken
         stopAudition()
         lastError = nil
         auditioningEffectID = effectID
@@ -1439,9 +1446,11 @@ final class AudioAIManager: ObservableObject {
         Task { @MainActor in
             do {
                 let previewURL = try await renderAudioFXAuditionWAV(sourcePath: sourcePath, effectID: effectID)
+                guard self.auditionRequestToken == token, self.auditioningEffectID == effectID else { return }
                 lastStatusMessage = "試聽中：\(EffectsCatalogStore.shared.audioEffect(id: effectID)?.name ?? effectID)"
                 playLocalAudioFile(path: previewURL.path, tag: effectID)
             } catch {
+                guard self.auditionRequestToken == token else { return }
                 auditioningEffectID = nil
                 isPlayingAudition = false
                 lastError = "音訊特效試聽失敗：\(error.localizedDescription)"

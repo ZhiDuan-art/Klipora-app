@@ -108,7 +108,7 @@ struct RemovedModelNotice: Codable, Equatable, Sendable {
         message: String,
         reason: String? = nil,
         removedAt: String? = nil,
-        recommendedReplacements: [String] = ["redcraft", "zimage", "krea2", "moss", "iniverse_flux", "sdxl1"]
+        recommendedReplacements: [String] = ["redcraft", "zimage", "krea2", "moss"]
     ) {
         self.id = id
         self.displayName = displayName
@@ -140,7 +140,7 @@ struct RemovedModelNotice: Codable, Equatable, Sendable {
             ?? "模型 \(decodedDisplayName) 已移除，請改選其他本機圖片模型（不會靜默替換生成）。"
 
         var replacements = container.decodeFirst([String].self, keys: [.recommendedReplacements, .recommended_replacements, .replacements])
-            ?? ["redcraft", "zimage", "krea2", "moss", "iniverse_flux", "sdxl1"]
+            ?? ["redcraft", "zimage", "krea2", "moss"]
         if let primary = container.decodeFirst(String.self, keys: [.recommendedReplacement, .recommended_replacement]),
            !primary.isEmpty {
             replacements.removeAll { $0 == primary }
@@ -956,7 +956,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
     init(
         version: String,
         engineLabel: String = "本機 ComfyUI",
-        modelOrder: [String] = ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"],
+        modelOrder: [String] = ["zimage", "redcraft", "moss", "krea2", "wan22", "wan22_14b"],
         removedModels: [String: RemovedModelNotice],
         loras: [LoRAProfile],
         models: [LocalModelProfile]
@@ -1015,7 +1015,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
         }
 
         let explicitOrder = container.decodeFirst([String].self, keys: [.modelOrder, .model_order])
-            ?? ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"]
+            ?? ["zimage", "redcraft", "moss", "krea2", "wan22", "wan22_14b"]
         modelOrder = explicitOrder
 
         let decodedModels: [LocalModelProfile]
@@ -1047,7 +1047,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
     static let fallback = ModelProfileCatalog(
         version: "1",
         engineLabel: "本機 ComfyUI",
-        modelOrder: ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1", "wan22", "wan22_14b", "ltxv13b"],
+        modelOrder: ["zimage", "redcraft", "moss", "krea2", "wan22", "wan22_14b", "ltxv13b"],
         removedModels: [
             "realxl": RemovedModelNotice(
                 id: "realxl",
@@ -1056,7 +1056,7 @@ struct ModelProfileCatalog: Codable, Equatable, Sendable {
                 message: "RealXL 模型已移除，請改選其他本機圖片模型（不會靜默替換生成）。",
                 reason: "依使用者選擇移除 RealXL（權重已移至垃圾桶）；舊專案或歷史紀錄需改選其他保留之本機模型。",
                 removedAt: "2026-11-20",
-                recommendedReplacements: ["redcraft", "zimage", "krea2", "moss", "iniverse_flux", "sdxl1"]
+                recommendedReplacements: ["redcraft", "zimage", "krea2", "moss"]
             )
         ],
         loras: [
@@ -1766,7 +1766,7 @@ final class ModelProfileStore: Sendable {
     }
 
     func quickReplacementModels(for notice: RemovedModelNotice) -> [LocalModelProfile] {
-        let preferredOrder = ["redcraft", "zimage", "krea2", "moss", "iniverse_flux", "sdxl1"]
+        let preferredOrder = ["redcraft", "zimage", "krea2", "moss"]
         var ordered: [LocalModelProfile] = []
         var seen = Set<String>()
         for id in notice.recommendedReplacements + preferredOrder {

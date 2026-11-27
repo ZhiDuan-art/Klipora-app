@@ -1253,7 +1253,7 @@ final class PortabilitySetupManager: ObservableObject {
         #endif
 
         // 1. Bundled runtimes & FFmpeg
-        let nodeInBundle = bundleURL.appendingPathComponent("Contents/Resources/runtime/node/bin/node")
+        let nodeInBundle = bundleURL.appendingPathComponent("Contents/Resources/runtime/bin/node")
         let hfInBundle = bundleURL.appendingPathComponent("Contents/Resources/runtime/hyperframes")
         let textRenderInBundle = bundleURL.appendingPathComponent("Contents/Resources/textrender")
 
@@ -2700,7 +2700,7 @@ final class PortabilitySetupManager: ObservableObject {
         let fm = FileManager.default
         let bundleRoot = Bundle.main.bundleURL
 
-        let nodeInBundle = bundleRoot.appendingPathComponent("Contents/Resources/runtime/node/bin/node")
+        let nodeInBundle = bundleRoot.appendingPathComponent("Contents/Resources/runtime/bin/node")
         let hfInBundle = bundleRoot.appendingPathComponent("Contents/Resources/runtime/hyperframes")
         let textRenderInBundle = bundleRoot.appendingPathComponent("Contents/Resources/textrender")
 
@@ -3044,6 +3044,7 @@ struct PortabilitySetupSheetView: View {
     @ObservedObject private var network = NetworkReachabilityMonitor.shared
     @ObservedObject private var l10n = LocalizationManager.shared
     @ObservedObject private var mografy = MografySkillManager.shared
+    @ObservedObject private var voicebox = VoiceboxServiceController.shared
     @StateObject private var hardwareStore = HardwareEnvironmentStore()
 
     var body: some View {
@@ -3240,6 +3241,45 @@ struct PortabilitySetupSheetView: View {
     private var generalSettingsPane: some View {
         VStack(alignment: .leading, spacing: 14) {
             KliporaGroupedCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("首次安裝引導與快速補裝", systemImage: "wand.and.stars")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(StudioTheme.textPrimary)
+                            Text("先前略過的基礎引擎、AI 模型套件或 Google Colab 連線，皆可隨時從這裡直跳該步驟補裝。")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(StudioTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                        Button("開啟完整引導") {
+                            manager.isSheetPresented = false
+                            KliporaStartupController.shared.openOnboarding(step: 0)
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: true))
+                    }
+                    HStack(spacing: 8) {
+                        Button("1. 基礎引擎") {
+                            manager.isSheetPresented = false
+                            KliporaStartupController.shared.openOnboarding(step: 0)
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                        Button("2. 模型下載") {
+                            manager.isSheetPresented = false
+                            KliporaStartupController.shared.openOnboarding(step: 1)
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                        Button("3. Colab 雲端") {
+                            manager.isSheetPresented = false
+                            KliporaStartupController.shared.openOnboarding(step: 2)
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                    }
+                }
+            }
+
+            KliporaGroupedCard {
                 VStack(spacing: 0) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -3281,26 +3321,6 @@ struct PortabilitySetupSheetView: View {
                         Button("重試網路") {
                             network.recheckNow()
                             hardwareStore.refresh()
-                        }
-                        .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
-                    }
-                    .padding(.vertical, 4)
-
-                    Divider().overlay(Color.white.opacity(0.07)).padding(.vertical, 10)
-
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("首次安裝引導")
-                                .font(.system(size: 12.5, weight: .medium))
-                                .foregroundStyle(StudioTheme.textPrimary)
-                            Text("重新檢查硬體相容性、ComfyUI 路徑與預設模型下載")
-                                .font(.system(size: 10.5))
-                                .foregroundStyle(StudioTheme.textMuted)
-                        }
-                        Spacer()
-                        Button("開啟引導") {
-                            manager.isSheetPresented = false
-                            KliporaStartupController.shared.openOnboarding()
                         }
                         .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
                     }
@@ -4057,7 +4077,9 @@ struct PortabilitySetupSheetView: View {
     // MARK: Card 3 — Voicebox Runtime, Models & Voice Library
 
     private var card3VoiceboxSection: some View {
-        let completeCount = manager.voiceboxModelItems.filter(\.isComplete).count
+        let qwenCompleteCount = manager.voiceboxModelItems.filter(\.isComplete).count
+        let standaloneReadyCount = (voicebox.isBreezyVoiceInstalled ? 1 : 0) + (voicebox.isVoiceDesignInstalled ? 1 : 0)
+        let completeCount = qwenCompleteCount + standaloneReadyCount
         let badge: ComponentReadinessBadge = {
             if manager.voiceboxRuntimeSource == .bundledInApp && manager.voiceboxBackendPatchesPresent && completeCount > 0 {
                 return .ready("內建引擎 + \(completeCount) 組模型就緒")
@@ -4092,12 +4114,91 @@ struct PortabilitySetupSheetView: View {
                     .foregroundStyle(.white.opacity(0.88))
                     .fixedSize(horizontal: false, vertical: true)
 
-                // Compact Interactive Model Status Pills (Click un-downloaded models to start direct HF download!)
+                // Compact Interactive Model Status Pills (BreezyVoice default + primary Qwen3-TTS 1.7B Base + any installed models)
+                let primaryVoiceItems = manager.voiceboxModelItems.filter {
+                    $0.isComplete || $0.repoID.lowercased().contains("1.7b-base")
+                }
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 220, maximum: 440), spacing: 8)],
                     spacing: 8
                 ) {
-                    ForEach(manager.voiceboxModelItems) { item in
+                    // MediaTek BreezyVoice (Default Taiwanese Mandarin · 68 Shared Voices)
+                    Button {
+                        if !voicebox.isBreezyVoiceInstalled && !voicebox.breezyVoiceInstalling {
+                            voicebox.installBreezyVoice()
+                        } else {
+                            manager.showVoiceModelManagerSheet = true
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 6) {
+                                Image(systemName: voicebox.isBreezyVoiceInstalled ? "checkmark.seal.fill" : (voicebox.breezyVoiceInstalling ? "arrow.down.circle.fill" : "icloud.and.arrow.down"))
+                                    .foregroundStyle(voicebox.isBreezyVoiceInstalled ? setupEmerald : (voicebox.breezyVoiceInstalling ? StudioTheme.neutralAccent : setupAmber))
+                                    .font(.system(size: 11))
+                                Text("MediaTek BreezyVoice（台灣國語 · 預設 68 聲線）")
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(voicebox.breezyVoiceInstalling ? "\(Int(voicebox.breezyVoiceInstallProgress * 100))%" : (voicebox.isBreezyVoiceInstalled ? "已就緒" : "點此安裝"))
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                    .foregroundStyle(voicebox.isBreezyVoiceInstalled ? setupEmerald : (voicebox.breezyVoiceInstalling ? StudioTheme.neutralAccent : setupAmber))
+                            }
+                            if voicebox.breezyVoiceInstalling {
+                                ProgressView(value: voicebox.breezyVoiceInstallProgress)
+                                    .tint(StudioTheme.neutralAccent)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(setupDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous)
+                                .strokeBorder(voicebox.breezyVoiceInstalling ? StudioTheme.neutralAccent.opacity(0.5) : Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(voicebox.isBreezyVoiceInstalled ? "點選開啟語音模型管理頁" : "點選一鍵背景安裝 MediaTek BreezyVoice（約 2.8 GB）")
+
+                    // Qwen3-TTS 1.7B VoiceDesign (Text-to-Voice · MLX 8-bit · ~2.1 GB)
+                    Button {
+                        if !voicebox.isVoiceDesignInstalled && !voicebox.voiceDesignInstalling {
+                            voicebox.installVoiceDesign()
+                        } else {
+                            manager.showVoiceModelManagerSheet = true
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 6) {
+                                Image(systemName: voicebox.isVoiceDesignInstalled ? "checkmark.seal.fill" : (voicebox.voiceDesignInstalling ? "arrow.down.circle.fill" : "wand.and.stars"))
+                                    .foregroundStyle(voicebox.isVoiceDesignInstalled ? setupEmerald : (voicebox.voiceDesignInstalling ? StudioTheme.neutralAccent : setupAmber))
+                                    .font(.system(size: 11))
+                                Text("Qwen3-TTS 1.7B VoiceDesign（文字自創聲線）")
+                                    .font(.system(size: 10.5, weight: .medium))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(voicebox.voiceDesignInstalling ? "\(Int(voicebox.voiceDesignInstallProgress * 100))%" : (voicebox.isVoiceDesignInstalled ? "已就緒" : "點此安裝"))
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                    .foregroundStyle(voicebox.isVoiceDesignInstalled ? setupEmerald : (voicebox.voiceDesignInstalling ? StudioTheme.neutralAccent : setupAmber))
+                            }
+                            if voicebox.voiceDesignInstalling {
+                                ProgressView(value: voicebox.voiceDesignInstallProgress)
+                                    .tint(StudioTheme.neutralAccent)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(setupDarkWell, in: RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioTheme.Radius.well, style: .continuous)
+                                .strokeBorder(voicebox.voiceDesignInstalling ? StudioTheme.neutralAccent.opacity(0.5) : Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(voicebox.isVoiceDesignInstalled ? "點選開啟語音模型管理頁" : "點選一鍵背景安裝 Qwen3-TTS 1.7B VoiceDesign（MLX 8-bit · 約 2.1 GB）")
+
+                    ForEach(primaryVoiceItems) { item in
                         let isDownloading = manager.downloadingVoiceModelRepoID == item.repoID
                         Button {
                             if !item.isComplete && !isDownloading {
@@ -5195,6 +5296,63 @@ struct LocalVoiceModelManagerSheet: View {
                                     .tint(StudioTheme.neutralAccent)
                                 if !voicebox.breezyVoiceInstallStage.isEmpty {
                                     Text(voicebox.breezyVoiceInstallStage)
+                                        .font(.system(size: 10.5))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                }
+                            }
+                        }
+
+                        Divider().overlay(Color.white.opacity(0.08))
+
+                        // Qwen3-TTS 1.7B VoiceDesign (Text-to-Voice · MLX 8-bit)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: voicebox.isVoiceDesignInstalled ? "checkmark.seal.fill" : (voicebox.voiceDesignInstalling ? "arrow.down.circle.fill" : "wand.and.stars"))
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(voicebox.isVoiceDesignInstalled ? setupEmerald : (voicebox.voiceDesignInstalling ? StudioTheme.neutralAccent : setupAmber))
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text("Qwen3-TTS 1.7B VoiceDesign（文字自創聲線）")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(StudioTheme.textPrimary)
+                                        Text("MLX 8-bit")
+                                            .font(.system(size: 9.5, weight: .semibold))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 1.5)
+                                            .background(Color.white.opacity(0.08), in: Capsule())
+                                            .foregroundStyle(StudioTheme.textSecondary)
+                                    }
+                                    Text("mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-8bit · 預估 ~2.1 GB")
+                                        .font(.system(size: 10.5, design: .monospaced))
+                                        .foregroundStyle(StudioTheme.textMuted)
+                                    Text("免參考音檔，直接用文字描述性別、年紀、個性與腔調捏出全新聲線，並可一鍵存成專屬角色。")
+                                        .font(.system(size: 10.5))
+                                        .foregroundStyle(StudioTheme.textSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                if voicebox.voiceDesignInstalling {
+                                    Button("取消") {
+                                        voicebox.cancelVoiceDesignInstall()
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .secondary, compact: true))
+                                } else if voicebox.isVoiceDesignInstalled {
+                                    Text("已就緒")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(setupEmerald)
+                                } else {
+                                    Button {
+                                        voicebox.installVoiceDesign()
+                                    } label: {
+                                        Label("一鍵安裝", systemImage: "arrow.down.circle")
+                                    }
+                                    .buttonStyle(KliporaPillButtonStyle(variant: .accent, compact: true))
+                                }
+                            }
+                            if voicebox.voiceDesignInstalling {
+                                ProgressView(value: voicebox.voiceDesignInstallProgress)
+                                    .tint(StudioTheme.neutralAccent)
+                                if !voicebox.voiceDesignInstallStage.isEmpty {
+                                    Text(voicebox.voiceDesignInstallStage)
                                         .font(.system(size: 10.5))
                                         .foregroundStyle(StudioTheme.textSecondary)
                                 }

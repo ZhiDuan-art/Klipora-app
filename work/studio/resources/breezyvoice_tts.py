@@ -158,7 +158,6 @@ from huggingface_hub import snapshot_download
 snapshot_download(
     repo_id={HF_REPO_ID!r},
     local_dir={str(MODEL_DIR)!r},
-    local_dir_use_symlinks=False,
 )
 """
     subprocess.run([vpy, "-c", dl_code], check=True)
@@ -192,7 +191,7 @@ def cmd_synthesize(args):
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Re-exec inside breezyvoice-venv so all torch/cosyvoice imports resolve cleanly
-    if Path(sys.executable).resolve() != venv_python().resolve():
+    if Path(sys.prefix).resolve() != VENV_DIR.resolve():
         env = os.environ.copy()
         env["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
         env["HF_HUB_DISABLE_TELEMETRY"] = "1"
@@ -211,8 +210,7 @@ def cmd_synthesize(args):
         ]
         if args.seed is not None:
             cmd += ["--seed", str(args.seed)]
-        p = subprocess.run(cmd, env=env)
-        sys.exit(p.returncode)
+        os.execve(str(venv_python()), cmd, env)
 
     # Running inside breezyvoice-venv
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
@@ -221,16 +219,22 @@ def cmd_synthesize(args):
     if matcha_dir.is_dir():
         sys.path.insert(0, str(matcha_dir))
 
+    import inspect
     import torch
     import torchaudio
-    from cosyvoice.cli.cosyvoice import CosyVoice
     from cosyvoice.utils.file_utils import load_wav
 
     if args.seed is not None:
         torch.manual_seed(int(args.seed))
 
     emit({"stage": "正在載入 MediaTek BreezyVoice 模型…", "progress": 0.25})
-    cosyvoice = CosyVoice(str(MODEL_DIR))
+    # mtkresearch/BreezyVoice defines CustomCosyVoice in single_inference.py with the updated frontend signature
+    try:
+        from single_inference import CustomCosyVoice
+        cosyvoice = CustomCosyVoice(str(MODEL_DIR))
+    except Exception:
+        from cosyvoice.cli.cosyvoice import CosyVoice
+        cosyvoice = CosyVoice(str(MODEL_DIR))
 
     # Load reference audio at 16 kHz mono as expected by CosyVoice / BreezyVoice
     prompt_speech_16k = load_wav(str(ref_audio), 16000)
@@ -252,12 +256,28 @@ def cmd_synthesize(args):
 
     chunks = []
     if prompt_text:
-        gen = cosyvoice.inference_zero_shot(target_text, prompt_text, prompt_speech_16k, stream=False)
+        fn = cosyvoice.inference_zero_shot
+        sig = inspect.signature(fn)
+        if "stream" in sig.parameters:
+            res = fn(target_text, prompt_text, prompt_speech_16k, stream=False)
+        else:
+            res = fn(target_text, prompt_text, prompt_speech_16k)
     else:
-        gen = cosyvoice.inference_cross_lingual(target_text, prompt_speech_16k, stream=False)
+        fn = cosyvoice.inference_cross_lingual
+        sig = inspect.signature(fn)
+        if "stream" in sig.parameters:
+            res = fn(target_text, prompt_speech_16k, stream=False)
+        else:
+            res = fn(target_text, prompt_speech_16k)
 
-    for item in gen:
-        chunks.append(item["tts_speech"])
+    # Upstream BreezyVoice returns a single dict {"tts_speech": tensor}; older CosyVoice yields dicts
+    if isinstance(res, dict):
+        if "tts_speech" in res:
+            chunks.append(res["tts_speech"])
+    else:
+        for item in res:
+            if isinstance(item, dict) and "tts_speech" in item:
+                chunks.append(item["tts_speech"])
 
     if not chunks:
         emit({"ok": False, "error": "BreezyVoice 未產生音訊輸出。"})
@@ -287,14 +307,18 @@ def main():
     p_syn.add_argument("--seed", type=int, default=None)
 
     args = parser.parse_args()
-    if args.cmd == "status":
-        cmd_status(args)
-    elif args.cmd == "install":
-        cmd_install(args)
-    elif args.cmd == "uninstall":
-        cmd_uninstall(args)
-    elif args.cmd == "synthesize":
-        cmd_synthesize(args)
+    try:
+        if args.cmd == "status":
+            cmd_status(args)
+        elif args.cmd == "install":
+            cmd_install(args)
+        elif args.cmd == "uninstall":
+            cmd_uninstall(args)
+        elif args.cmd == "synthesize":
+            cmd_synthesize(args)
+    except Exception as exc:
+        emit({"ok": False, "error": str(exc)})
+        sys.exit(1)
 
 
 if __name__ == "__main__":

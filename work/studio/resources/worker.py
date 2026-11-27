@@ -456,7 +456,10 @@ def map_graph(value, replacements):
 def check_preset(base, preset, lora=""):
     profile = comfy_workflows.get_profile(preset, RESOURCE)
     checks = profile.get("requiredComfyChecks") or {}
-    for node_name in checks.get("requiredNodes", []):
+    required_nodes = list(checks.get("requiredNodes") or [])
+    if checks.get("requiredNode") and checks["requiredNode"] not in required_nodes:
+        required_nodes.append(checks["requiredNode"])
+    for node_name in required_nodes:
         nodes = api(base, "/object_info/" + quote(node_name, safe=""))
         if node_name not in nodes:
             raise ValueError(f"此本機 ComfyUI 缺少 {profile['displayName']} 所需節點 {node_name}。請更新本機 ComfyUI。")
@@ -530,6 +533,10 @@ def comfy(request, folder):
                 raise ValueError("無法從參考影片取出首幀。")
             ref = str(frame)
             log("本機 ComfyUI · Wan 2.2 使用參考影片的首幀")
+        if not ref and isinstance(request.get("referenceImages"), list) and request["referenceImages"]:
+            first_ref = request["referenceImages"][0]
+            if isinstance(first_ref, str) and first_ref.strip():
+                ref = first_ref.strip()
         uploaded = upload(base, Path(ref)) if ref else None
         effective_request = dict(request)
         if ref:
@@ -883,6 +890,13 @@ def cloud_keyframes(request, folder, gpu, method):
         shutil.copy2(source, folder / name)
         inputs.append(name)
 
+    raw_aspect = request["aspect"]
+    if raw_aspect in CLOUD_ASPECT_RATIOS:
+        cloud_aspect = raw_aspect
+    else:
+        target_ratio = ASPECT_RATIOS.get(raw_aspect, 16 / 9)
+        cloud_aspect = min(CLOUD_ASPECT_RATIOS, key=lambda key: abs(math.log(target_ratio / CLOUD_ASPECT_RATIOS[key])))
+
     jobs = []
     for index, (first, last) in enumerate(zip(inputs, inputs[1:])):
         segment = segments[index]
@@ -894,7 +908,7 @@ def cloud_keyframes(request, folder, gpu, method):
                 prompt += "\nTransition-specific direction: " + detail
         job = {"id": "generated" if count == 1 else f"shot-{index + 1:02d}", "type": "video",
                "mode": "frames", "first": first, "last": last, "prompt": prompt,
-               "seconds": duration, "aspect": request["aspect"],
+               "seconds": duration, "aspect": cloud_aspect,
                "resolution": request["resolution"], "video_model": request["model"],
                "seed": (request["seed"] + index) % (2**32), "intensity": "off"}
         jobs.append(job)

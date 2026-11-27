@@ -1569,6 +1569,11 @@ struct MultitrackPreviewMonitor: View {
                 selection: $state.previewMode
             )
             .frame(width: 152)
+            .onChange(of: state.previewMode) { _, newMode in
+                if newMode == .source {
+                    playback.pause()
+                }
+            }
 
             Text(outputSpecLabel)
                 .font(.system(size: 10.5, design: .monospaced))
@@ -1879,11 +1884,9 @@ struct MultitrackPreviewMonitor: View {
             // Real 14-transition rendering: switch to same-source timeline_render.py cache ONLY after AVPlayer is primed & ready (zero black flash).
             if transitionCache.isPlayerReadyForDisplay(key: req.key),
                let cachedPlayer = transitionCache.player(for: req.key) {
+                // Rendered transition cache already includes both clips' scale, position, and opacity
                 TimelinePlayerLayerView(player: cachedPlayer, zOrder: layerZ)
                     .frame(width: canvasSize.width, height: canvasSize.height)
-                    .scaleEffect(max(0.05, CGFloat(clip.scale)))
-                    .offset(x: CGFloat(clip.posX) * canvasSize.width, y: CGFloat(clip.posY) * canvasSize.height)
-                    .opacity(layer.effectiveOpacity)
                     .allowsHitTesting(false)
             } else {
                 LiveTransitionCompositorView(
@@ -4045,15 +4048,35 @@ private struct MultitrackVideoClipBlock: View {
                         let deltaSec = Double(value.translation.width / pixelsPerSecond)
 
                         if clip.still {
-                            let newDur = min(300.0, max(TimelineLayout.minClipDuration, baseSrcEnd + deltaSec))
-                            app.trimVideoClip(id: segment.id, sourceStart: nil, sourceEnd: newDur)
-                            state.dragPreviewHint = String(format: "圖片停留 %.2fs", newDur)
-                        } else if clip.freezeFrame {
-                            let newDur = min(300.0, max(TimelineLayout.minClipDuration, (baseSrcEnd - baseSrcStart) + deltaSec))
-                            app.updateVideoClipProperties(id: segment.id) {
-                                $0.end = TimelineLayout.formatTrimSeconds(baseSrcStart + newDur)
+                            if isLeading {
+                                let clampedDelta = min(baseSrcEnd - TimelineLayout.minClipDuration, max(-baseTStart, deltaSec))
+                                let nextTStart = max(0, baseTStart + clampedDelta)
+                                let newDur = min(300.0, max(TimelineLayout.minClipDuration, baseSrcEnd - clampedDelta))
+                                app.trimVideoClip(id: segment.id, sourceStart: nil, sourceEnd: newDur, timelineStart: nextTStart)
+                                state.dragPreviewHint = String(format: "圖片停留 %.2fs", newDur)
+                            } else {
+                                let newDur = min(300.0, max(TimelineLayout.minClipDuration, baseSrcEnd + deltaSec))
+                                app.trimVideoClip(id: segment.id, sourceStart: nil, sourceEnd: newDur)
+                                state.dragPreviewHint = String(format: "圖片停留 %.2fs", newDur)
                             }
-                            state.dragPreviewHint = String(format: "定格時長 %.2fs", newDur)
+                        } else if clip.freezeFrame {
+                            let baseDur = baseSrcEnd - baseSrcStart
+                            if isLeading {
+                                let clampedDelta = min(baseDur - TimelineLayout.minClipDuration, max(-baseTStart, deltaSec))
+                                let nextTStart = max(0, baseTStart + clampedDelta)
+                                let newDur = min(300.0, max(TimelineLayout.minClipDuration, baseDur - clampedDelta))
+                                app.updateVideoClipProperties(id: segment.id) {
+                                    $0.timelineStart = MultitrackLayout.roundTime(nextTStart)
+                                    $0.end = TimelineLayout.formatTrimSeconds(baseSrcStart + newDur)
+                                }
+                                state.dragPreviewHint = String(format: "定格時長 %.2fs", newDur)
+                            } else {
+                                let newDur = min(300.0, max(TimelineLayout.minClipDuration, baseDur + deltaSec))
+                                app.updateVideoClipProperties(id: segment.id) {
+                                    $0.end = TimelineLayout.formatTrimSeconds(baseSrcStart + newDur)
+                                }
+                                state.dragPreviewHint = String(format: "定格時長 %.2fs", newDur)
+                            }
                         } else if isLeading {
                             let safeSpeed = min(4.0, max(0.25, clip.speed))
                             let srcDelta = deltaSec * safeSpeed

@@ -1,5 +1,24 @@
 # Changelog & Debug Log / 更新與除錯紀錄
 
+## v1.1.7 — 2026-11-27 08:26 (UTC+8)
+### Qwen3-TTS 1.7B VoiceDesign (Text-to-Voice Studio), Rebuilt 4-Step Onboarding Wizard, Timeline Audio/Export Stability Fixes & Full-Codebase Audit Hardening / 新增 Qwen3-TTS 1.7B VoiceDesign 文字自創聲線、重製四步驟新手引導、時間軸音訊防頓與預覽匯出對齊，及全專案深度健檢修補
+- **新增 `Qwen3-TTS-12Hz-1.7B-VoiceDesign`（MLX 8-bit 文字自創聲線）**：
+  - 免參考音檔，直接用自然語言描述性別、年齡、個性與口音即可捏出全新聲線，內建 4 組快速角色範本，並支援一鍵「**存成專屬角色**」加入 68 聲線角色庫（含 2～30 秒驗證與失敗自動回滾），之後可直接交給 **MediaTek BreezyVoice** 或 **Qwen3-TTS 1.7B Base** 永久沿用。
+  - 選用 VoiceDesign 後語音工作室自動切換專屬紫色人物描述介面；設定頁語音卡片與模型管理器亦同步加入 BreezyVoice 與 VoiceDesign 狀態列及一鍵安裝／取消控制。
+  - 修復 macOS 系統 Python 3.9 語法相容（`from __future__ import annotations`）、venv symlink 切換判斷（改比對 `sys.prefix`）與子程序取消／退出清理。
+- **MediaTek BreezyVoice 與音訊 AI 引擎修補**：
+  - 移出 `huggingface_hub` 1.x 已淘汰的 `local_dir_use_symlinks=False` 參數；適配 `mtkresearch/BreezyVoice` 上游 `CustomCosyVoice` 與回傳格式；修正 BreezyVoice 參考逐字稿套用、防撞名檔名與結果卡片更新；`audio_ai.py` 支援設定頁自訂 FFmpeg、Breeze-ASR 自動辨識參考音與先裁切 15 秒再辨識。
+- **重製四步驟首次安裝引導與跨機路徑清理**：
+  - 清除所有殘留開發者本機絕對路徑；四步驟引導改由單例背景 ViewModel 驅動（關閉視窗不中斷安裝，預設勾選 BreezyVoice 與 Breeze-ASR-26）；修復 `audio_ai.py` 缺少 `--module` 參數、Pipe 滿溢 Deadlock 與 Breeze-ASR 偵測路徑。
+- **時間軸音訊防頓、預覽／匯出一致與剪輯器修補**：
+  - 修復時間軸播放音檔「一頓一頓」問題：`automaticallyWaitsToMinimizeStalling = false`、`audioSlots` 改以片段實例獨立配置避免重疊音軌互搶播放器、加入 `itemGeneration` 防止舊 Seek Callback 污染新片段，並為轉場／特效預覽加上失敗重試阻斷。
+  - 對齊預覽與匯出的 `posX`/`posY` 全畫布座標基準、移除轉場快取預覽的重複變形、修復片尾定格誤判超長與音量關鍵幀蓋掉軌道音量的問題；修正圖片／定格左側拉邊、鎖定軌道防刪、形狀防誤切、批次波紋刪除涵蓋文字／形狀軌，以及切換素材預覽時自動暫停時間軸音訊。
+- **本機生圖 9 比例驗證、Colab 關機保護與介面細節**：
+  - 補齊 `comfy_workflows.py` 對全部 9 種長寬比（含 `4:5`、`3:4`、`4:3`、`2:3`、`3:2`、`5:4`）的原生尺寸推算與孤兒 LoRA 隔離容錯；將 `ltxv13b` 補回 `modelOrder` 並修正其 16:9 尺寸；強化 `h3run.py` 原子寫入 keep 檔、獨立 `finally` GPU 關機保護、位元組下載驗證與 `remote_job.py` 續生 `join_error` 偵測；修正素材庫 `···` 選單按鈕排版與語音選單初始閃爍問題。
+- **Affected Files**：`work/studio/build-app.sh`, `work/studio/resources/qwen_voicedesign_tts.py`, `work/studio/resources/breezyvoice_tts.py`, `work/studio/resources/audio_ai.py`, `work/studio/resources/comfy_workflows.py`, `work/studio/resources/model_profiles.json`, `work/studio/resources/worker.py`, `work/studio/resources/timeline_render.py`, `work/studio/resources/h3/scripts/h3run.py`, `work/studio/resources/h3/remote/remote_job.py`, `work/studio/src/*.swift`
+
+---
+
 ## v1.1.6 — 2026-11-26 00:55 (UTC+8)
 ### Upgraded Colab Cloud Studio (A100, 10Eros-Max 8-step, 60s Seamless Auto-Extend, Keep-Warm GPU & 503 Retry), 9 Aspect Ratios + 1K–8K Image Output, Top-Level Denoise Guide & Window Overflow Fix / Colab 雲端全面升級（A100、10Eros-Max 8-step、60 秒自動無縫續接、保留熱機與 503 自動重試）、9 組比例＋1K–8K 解析度、外顯 Denoise 說明與視窗跑版修復
 - **Google Colab 雲端生成全面升級**：

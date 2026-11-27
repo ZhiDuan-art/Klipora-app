@@ -3022,6 +3022,7 @@ struct MultitrackLayout: Equatable {
         let player = AVPlayer()
         var loadedPath: String?
         var syncedClipID: UUID?
+        var itemGeneration: Int = 0
         var itemReady = false
         var isSeeking = false
         var queuedSeek: (time: Double, exact: Bool)?
@@ -3034,18 +3035,20 @@ struct MultitrackLayout: Equatable {
 
         init() {
             player.actionAtItemEnd = .pause
+            player.automaticallyWaitsToMinimizeStalling = false
         }
 
         func tearDown() {
             player.pause()
             statusObserver = nil
+            itemGeneration &+= 1
             itemReady = false
             isSeeking = false
             queuedSeek = nil
             loadedPath = nil
             syncedClipID = nil
             desiredPlayRate = 1.0
-            shouldStayPaused = false
+            shouldStayPaused = true
             itemError = nil
             player.replaceCurrentItem(with: nil)
         }
@@ -3105,8 +3108,8 @@ struct MultitrackLayout: Equatable {
             slot.tearDown()
             secondaryVideoSlots.removeValue(forKey: id)
         }
-        let validAudioIDs = Set(newLayout.audioTracks.map(\.id))
-        for (id, slot) in audioSlots where !validAudioIDs.contains(id) {
+        let validAudioClipIDs = Set(newLayout.audioTracks.flatMap { $0.segments.map(\.id) })
+        for (id, slot) in audioSlots where !validAudioClipIDs.contains(id) {
             slot.tearDown()
             audioSlots.removeValue(forKey: id)
         }
@@ -3327,6 +3330,8 @@ struct MultitrackLayout: Equatable {
             asset = created
         }
         let item = AVPlayerItem(asset: asset)
+        slot.itemGeneration &+= 1
+        let expectedGen = slot.itemGeneration
         slot.itemReady = false
         slot.isSeeking = false
         slot.queuedSeek = nil
@@ -3335,7 +3340,7 @@ struct MultitrackLayout: Equatable {
             let status = observedItem.status
             let errDesc = observedItem.error?.localizedDescription
             Task { @MainActor in
-                guard let self, let slot, slot.player.currentItem === observedItem else { return }
+                guard let self, let slot, slot.itemGeneration == expectedGen, slot.player.currentItem === observedItem else { return }
                 switch status {
                 case .readyToPlay:
                     slot.itemReady = true
@@ -3343,9 +3348,18 @@ struct MultitrackLayout: Equatable {
                     let target = slot.desiredSourceTime
                     if self.isPlaying && !slot.shouldStayPaused {
                         let cm = CMTime(seconds: max(0, target), preferredTimescale: 600)
+                        let expectedClipID = slot.syncedClipID
+                        slot.isSeeking = true
                         slot.player.seek(to: cm, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak slot] _ in
                             Task { @MainActor in
-                                guard let self, let slot, self.isPlaying, !slot.shouldStayPaused else { return }
+                                guard let self, let slot, slot.itemGeneration == expectedGen else { return }
+                                slot.isSeeking = false
+                                if let next = slot.queuedSeek {
+                                    slot.queuedSeek = nil
+                                    self.requestSlotSeek(slot, to: next.time, exact: next.exact)
+                                    return
+                                }
+                                guard self.isPlaying, !slot.shouldStayPaused, slot.syncedClipID == expectedClipID else { return }
                                 slot.player.rate = slot.desiredPlayRate
                             }
                         }
@@ -3377,11 +3391,12 @@ struct MultitrackLayout: Equatable {
             return
         }
         slot.isSeeking = true
+        let expectedGen = slot.itemGeneration
         let target = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
         let tolerance: CMTime = exact ? .zero : CMTime(seconds: 0.04, preferredTimescale: 600)
         slot.player.seek(to: target, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self, weak slot] _ in
             Task { @MainActor in
-                guard let self, let slot else { return }
+                guard let self, let slot, slot.itemGeneration == expectedGen else { return }
                 slot.isSeeking = false
                 if let next = slot.queuedSeek {
                     slot.queuedSeek = nil
@@ -3488,14 +3503,19 @@ struct MultitrackLayout: Equatable {
             } else if seg.clip.reversed {
                 if s.player.rate != 0 { s.player.pause() }
                 requestSlotSeek(s, to: sourceTime, exact: false)
-            } else {
+            } else if !s.isSeeking {
                 let currentSec = s.player.currentTime().seconds
                 let drift = currentSec.isFinite ? abs(currentSec - sourceTime) : 999
-                if forceSeek || clipChanged || drift > 0.28 {
+                let needsDriftResync = (s.player.timeControlStatus == .playing) && drift > 0.55
+                if forceSeek || clipChanged || needsDriftResync {
                     let cm = CMTime(seconds: max(0, sourceTime), preferredTimescale: 600)
-                    s.player.seek(to: cm, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak s] _ in
+                    let tol: CMTime = (forceSeek || clipChanged) ? .zero : CMTime(seconds: 0.03, preferredTimescale: 600)
+                    s.isSeeking = true
+                    s.player.seek(to: cm, toleranceBefore: tol, toleranceAfter: tol) { [weak self, weak s] _ in
                         Task { @MainActor in
-                            guard let self, let s, self.isPlaying, !s.shouldStayPaused, s.syncedClipID == seg.id else { return }
+                            guard let s else { return }
+                            s.isSeeking = false
+                            guard let self, self.isPlaying, !s.shouldStayPaused, s.syncedClipID == seg.id else { return }
                             s.player.rate = targetRate
                         }
                     }
@@ -3593,9 +3613,10 @@ struct MultitrackLayout: Equatable {
         TransitionPreviewCache.shared.pauseAll(except: activeTransitionKeys)
         ClipEffectPreviewCache.shared.pauseAll(except: activeClipEffectKeys)
 
-        let activeAudioTrackIDs = Set(activeAudioLayers.map(\.trackID))
-        for (trackID, slot) in audioSlots where !activeAudioTrackIDs.contains(trackID) {
+        let activeAudioClipIDs = Set(activeAudioLayers.map(\.segment.id))
+        for (clipID, slot) in audioSlots where !activeAudioClipIDs.contains(clipID) {
             slot.player.pause()
+            slot.shouldStayPaused = true
             slot.syncedClipID = nil
         }
 
@@ -3606,10 +3627,10 @@ struct MultitrackLayout: Equatable {
                 if access.missing { missing.insert(path) }
                 if access.permissionDenied { needsPerm = true }
                 if firstError == nil { firstError = access.message }
-                slot(forAudioTrackID: aLayer.trackID).player.pause()
+                slot(forAudioTrackID: aLayer.segment.id).player.pause()
                 continue
             }
-            let s = slot(forAudioTrackID: aLayer.trackID)
+            let s = slot(forAudioTrackID: aLayer.segment.id)
             s.syncedClipID = aLayer.segment.id
             s.desiredSourceTime = max(0, aLayer.sourceTime)
             s.desiredExactSeek = exact
@@ -3743,23 +3764,26 @@ struct MultitrackLayout: Equatable {
         TransitionPreviewCache.shared.pauseAll(except: activeTransitionKeys)
         ClipEffectPreviewCache.shared.pauseAll(except: activeClipEffectKeys)
 
-        let activeAudioTrackIDs = Set(activeAudioLayers.map(\.trackID))
-        for (trackID, slot) in audioSlots where !activeAudioTrackIDs.contains(trackID) {
+        let activeAudioClipIDs = Set(activeAudioLayers.map(\.segment.id))
+        for (clipID, slot) in audioSlots where !activeAudioClipIDs.contains(clipID) {
             slot.player.pause()
+            slot.shouldStayPaused = true
             slot.syncedClipID = nil
         }
 
         for aLayer in activeAudioLayers {
             let path = aLayer.segment.clip.path
-            let access = verifyReadable(path: path)
-            if !access.ok {
-                if access.missing { missing.insert(path) }
-                if access.permissionDenied { needsPerm = true }
-                if firstError == nil { firstError = access.message }
-                continue
-            }
-            let s = slot(forAudioTrackID: aLayer.trackID)
+            let s = slot(forAudioTrackID: aLayer.segment.id)
             let clipChanged = s.syncedClipID != aLayer.segment.id || s.loadedPath != path
+            if clipChanged || forceSeek {
+                let access = verifyReadable(path: path)
+                if !access.ok {
+                    if access.missing { missing.insert(path) }
+                    if access.permissionDenied { needsPerm = true }
+                    if firstError == nil { firstError = access.message }
+                    continue
+                }
+            }
             s.syncedClipID = aLayer.segment.id
             s.desiredSourceTime = max(0, aLayer.sourceTime)
             s.desiredExactSeek = true
@@ -3768,14 +3792,25 @@ struct MultitrackLayout: Equatable {
             s.player.isMuted = aLayer.currentGain <= 0.0001
             s.player.volume = aLayer.currentGain
             ensureSlotLoaded(s, path: path, forceReload: false)
-            if s.itemReady {
+            if s.itemReady && !s.isSeeking {
                 let currentSec = s.player.currentTime().seconds
                 let drift = currentSec.isFinite ? abs(currentSec - aLayer.sourceTime) : 999
-                if forceSeek || clipChanged || drift > 0.25 {
+                let needsDriftResync = (s.player.timeControlStatus == .playing) && drift > 0.65
+                if forceSeek || clipChanged || needsDriftResync {
                     let cm = CMTime(seconds: max(0, aLayer.sourceTime), preferredTimescale: 600)
-                    s.player.seek(to: cm, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self, weak s] _ in
+                    let tol: CMTime = (forceSeek || clipChanged) ? .zero : CMTime(seconds: 0.03, preferredTimescale: 600)
+                    let expectedGen = s.itemGeneration
+                    s.isSeeking = true
+                    s.player.seek(to: cm, toleranceBefore: tol, toleranceAfter: tol) { [weak self, weak s] _ in
                         Task { @MainActor in
-                            guard let self, let s, self.isPlaying, s.syncedClipID == aLayer.segment.id else { return }
+                            guard let s, s.itemGeneration == expectedGen else { return }
+                            s.isSeeking = false
+                            if let next = s.queuedSeek, let self {
+                                s.queuedSeek = nil
+                                self.requestSlotSeek(s, to: next.time, exact: next.exact)
+                                return
+                            }
+                            guard let self, self.isPlaying, !s.shouldStayPaused, s.syncedClipID == aLayer.segment.id else { return }
                             s.player.play()
                         }
                     }
@@ -4254,10 +4289,12 @@ extension Studio {
     func deleteTrack(id: UUID, kind: TrackKind) {
         guard !busy else { return }
         var deletedName: String?
+        var blockedLocked = false
         mutateMultitrack { mt in
             switch kind {
             case .video:
                 guard let idx = mt.videoTracks.firstIndex(where: { $0.id == id }) else { return }
+                if mt.videoTracks[idx].locked { blockedLocked = true; return }
                 if mt.videoTracks.count <= 1 {
                     deletedName = mt.videoTracks[idx].name
                     mt.videoTracks[idx].clips.removeAll()
@@ -4267,19 +4304,24 @@ extension Studio {
                 }
             case .audio:
                 if let idx = mt.audioTracks.firstIndex(where: { $0.id == id }) {
+                    if mt.audioTracks[idx].locked { blockedLocked = true; return }
                     deletedName = mt.audioTracks.remove(at: idx).name
                 }
             case .text:
                 if let idx = mt.textTracks.firstIndex(where: { $0.id == id }) {
+                    if mt.textTracks[idx].locked { blockedLocked = true; return }
                     deletedName = mt.textTracks.remove(at: idx).name
                 }
             case .shape:
                 if let idx = mt.shapeTracks.firstIndex(where: { $0.id == id }) {
+                    if mt.shapeTracks[idx].locked { blockedLocked = true; return }
                     deletedName = mt.shapeTracks.remove(at: idx).name
                 }
             }
         }
-        if let deletedName {
+        if blockedLocked {
+            status = "軌道已鎖定，請先解鎖再刪除。"
+        } else if let deletedName {
             status = "已刪除軌道 · \(deletedName)"
         }
     }
@@ -4780,8 +4822,11 @@ extension Studio {
                    t > seg.timelineStart + 1e-4 && t < seg.timelineEnd - 1e-4 {
                     return performTextSplit(seg: seg, at: t)
                 }
-            case .shapeClip, .transition:
-                break
+            case .shapeClip:
+                status = "形狀片段目前不支援直接分割。"
+                return nil
+            case .transition:
+                return nil
             }
         }
 
@@ -4942,7 +4987,6 @@ extension Studio {
         return .textClip(trackID: seg.trackID, clipID: right.id)
     }
 
-    @discardableResult
     /// Batch delete multiple timeline selections in a single Undo step, with per-track union-interval ripple.
     func deleteMultitrackSelections(_ selections: Set<TimelineSelection>, ripple: Bool) {
         guard !busy, !selections.isEmpty else { return }
@@ -5037,9 +5081,22 @@ extension Studio {
                     return nil
                 })
                 guard !targetIDs.isEmpty else { continue }
+                let removedIntervals: [(Double, Double)] = mt.textTracks[tIdx].clips
+                    .filter { targetIDs.contains($0.id) }
+                    .map { ($0.timelineStart, $0.timelineStart + max(0.05, $0.duration)) }
+                let merged = mergeIntervals(removedIntervals)
                 let beforeCount = mt.textTracks[tIdx].clips.count
                 mt.textTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
                 deletedCount += (beforeCount - mt.textTracks[tIdx].clips.count)
+                if ripple && !merged.isEmpty {
+                    for i in mt.textTracks[tIdx].clips.indices {
+                        let s = mt.textTracks[tIdx].clips[i].timelineStart
+                        let shift = rippleShift(for: s, removed: merged)
+                        if shift > 1e-4 {
+                            mt.textTracks[tIdx].clips[i].timelineStart = MultitrackLayout.roundTime(max(0, s - shift))
+                        }
+                    }
+                }
             }
 
             // 4. Shape tracks
@@ -5050,9 +5107,22 @@ extension Studio {
                     return nil
                 })
                 guard !targetIDs.isEmpty else { continue }
+                let removedIntervals: [(Double, Double)] = mt.shapeTracks[tIdx].clips
+                    .filter { targetIDs.contains($0.id) }
+                    .map { ($0.timelineStart, $0.timelineStart + max(0.05, $0.duration)) }
+                let merged = mergeIntervals(removedIntervals)
                 let beforeCount = mt.shapeTracks[tIdx].clips.count
                 mt.shapeTracks[tIdx].clips.removeAll { targetIDs.contains($0.id) }
                 deletedCount += (beforeCount - mt.shapeTracks[tIdx].clips.count)
+                if ripple && !merged.isEmpty {
+                    for i in mt.shapeTracks[tIdx].clips.indices {
+                        let s = mt.shapeTracks[tIdx].clips[i].timelineStart
+                        let shift = rippleShift(for: s, removed: merged)
+                        if shift > 1e-4 {
+                            mt.shapeTracks[tIdx].clips[i].timelineStart = MultitrackLayout.roundTime(max(0, s - shift))
+                        }
+                    }
+                }
             }
         }
 

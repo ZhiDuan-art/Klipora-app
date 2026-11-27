@@ -192,6 +192,8 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
         switch model_name {
         case "qwen-tts-1.7B":
             return "Qwen3 1.7B Base（推薦中文）"
+        case "qwen-tts-1.7B-voicedesign":
+            return "Qwen3 1.7B VoiceDesign（文字自創聲線）"
         case "breezyvoice-tw":
             return "BreezyVoice 台灣國語（68 聲線）"
         case "qwen-tts-0.6B":
@@ -229,6 +231,20 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
             englishOnly: false,
             supportsInstruct: false,
             caveat: "預設台灣國語引擎，支援注音多音字標註（如 [:ㄏㄠ3]），直接共用 68 個聲音角色；尚未下載時可一鍵安裝或先切換至 Qwen3 1.7B。"
+        ),
+        VoiceboxEngineOption(
+            engine: "qwen_voicedesign",
+            model_size: "1.7B",
+            model_name: "qwen-tts-1.7B-voicedesign",
+            display_name: "Qwen3-TTS 1.7B VoiceDesign（文字自創聲線 · 免參考音檔）",
+            supportsClonedVoices: true,
+            supportsPresetVoices: false,
+            presetEngineMatch: nil,
+            languages: ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"],
+            isRecommendedChinese: true,
+            englishOnly: false,
+            supportsInstruct: true,
+            caveat: "純文字描述角色個性、年紀、腔調與語氣來無中生有捏出全新聲線，不需選擇 68 聲線；滿意後可一鍵存成專屬角色。"
         ),
         VoiceboxEngineOption(
             engine: "qwen",
@@ -359,13 +375,13 @@ struct VoiceboxEngineOption: Codable, Identifiable, Equatable, Hashable {
     ]
 
     static let cloningEngineNames: Set<String> = [
-        "breezyvoice", "qwen", "chatterbox_turbo", "chatterbox", "luxtts", "tada"
+        "breezyvoice", "qwen_voicedesign", "qwen", "chatterbox_turbo", "chatterbox", "luxtts", "tada"
     ]
 
-    /// Curated primary menu models for 68-voice cloned profiles (v1.1.5):
-    /// BreezyVoice (default TW Mandarin), Qwen3 1.7B Base (multilingual), Chatterbox Turbo (fast EN).
+    /// Curated primary menu models (v1.1.6):
+    /// BreezyVoice (default TW Mandarin), Qwen3 1.7B VoiceDesign (text-to-voice), Qwen3 1.7B Base (multilingual), Chatterbox Turbo (fast EN).
     static let curatedClonedMenuModelNames: Set<String> = [
-        "breezyvoice-tw", "qwen-tts-1.7B", "chatterbox-turbo"
+        "breezyvoice-tw", "qwen-tts-1.7B-voicedesign", "qwen-tts-1.7B", "chatterbox-turbo"
     ]
 
     static func compatibleOptions(for profile: VoiceboxProfile) -> [VoiceboxEngineOption] {
@@ -517,6 +533,15 @@ final class VoiceboxServiceController: ObservableObject {
     @Published var breezyVoiceInstallStage: String = ""
     @Published var breezyVoiceStatusTick: Int = 0
     private var breezyVoiceProcess: Process?
+    @Published var voiceDesignInstalling: Bool = false
+    @Published var voiceDesignInstallProgress: Double = 0
+    @Published var voiceDesignInstallStage: String = ""
+    @Published var voiceDesignStatusTick: Int = 0
+    private var voiceDesignProcess: Process?
+    private var activeStandaloneGenProcess: Process?
+    @Published var savingVoiceDesignProfile: Bool = false
+    @Published var lastGeneratedText: String = ""
+    @Published var lastGeneratedEngine: String = ""
     @Published var isGenerating: Bool = false
     @Published var activeGenerationID: String? = nil
     @Published var activeColabJobID: String? = nil
@@ -645,12 +670,14 @@ final class VoiceboxServiceController: ObservableObject {
                 dataDirPath = expanded
             }
         }
+        let defaultModelsDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Klipora/models/huggingface/hub", isDirectory: true).path
         let savedModelsDir = UserDefaults.standard.string(forKey: Self.modelsDirDefaultsKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let savedModelsDir, !savedModelsDir.isEmpty {
-            let expanded = (savedModelsDir as NSString).expandingTildeInPath
-            if expanded != modelsCachePath {
-                modelsCachePath = expanded
-            }
+        let resolvedModelsDir = (savedModelsDir?.isEmpty == false)
+            ? (savedModelsDir! as NSString).expandingTildeInPath
+            : defaultModelsDir
+        if resolvedModelsDir != modelsCachePath {
+            modelsCachePath = resolvedModelsDir
         }
         let savedPort = UserDefaults.standard.integer(forKey: Self.portDefaultsKey)
         if (1025...65534).contains(savedPort), savedPort != localAPIPort {
@@ -1059,20 +1086,31 @@ final class VoiceboxServiceController: ObservableObject {
     }
 
     func stopOwnedServiceIfIdle(forceOnAppQuit: Bool = false) {
-        if ownership == .externalReused {
-            // Never kill an externally owned user/Voicebox service
-            return
+        if forceOnAppQuit {
+            if let p = activeStandaloneGenProcess, p.isRunning { p.terminate() }
+            activeStandaloneGenProcess = nil
+            if let p = breezyVoiceProcess, p.isRunning { p.terminate() }
+            breezyVoiceProcess = nil
+            if let p = voiceDesignProcess, p.isRunning { p.terminate() }
+            voiceDesignProcess = nil
         }
+
         if isGenerating && !forceOnAppQuit {
             return
         }
 
+        // Always clean up Klipora-owned bridge regardless of whether the Voicebox server is external
         if let bridgeProc = ownedBridgeProcess, bridgeProc.isRunning {
             bridgeProc.terminate()
         }
         ownedBridgeProcess = nil
         try? bridgeLogFileHandle?.close()
         bridgeLogFileHandle = nil
+
+        if ownership == .externalReused {
+            // Never kill an externally owned user/Voicebox service
+            return
+        }
 
         if let serverProc = ownedServerProcess, serverProc.isRunning {
             serverProc.terminate()
@@ -1296,6 +1334,9 @@ final class VoiceboxServiceController: ObservableObject {
         if option.model_name == "breezyvoice-tw" {
             return isBreezyVoiceInstalled
         }
+        if option.model_name == "qwen-tts-1.7B-voicedesign" {
+            return isVoiceDesignInstalled
+        }
         if let status = modelStatus(for: option) {
             return status.downloaded
         }
@@ -1353,7 +1394,10 @@ final class VoiceboxServiceController: ObservableObject {
 
     // MARK: 3. Previewing Voice Profiles Without Inference
 
+    private var previewRequestToken: Int = 0
+
     func stopPreview() {
+        previewRequestToken &+= 1
         previewStopTimer?.invalidate()
         previewStopTimer = nil
         previewPlayer?.stop()
@@ -1368,12 +1412,14 @@ final class VoiceboxServiceController: ObservableObject {
             return
         }
         stopPreview()
+        let token = previewRequestToken
         AudioAIManager.shared.stopAudition()
         lastError = nil
         previewingProfileID = profile.id
 
         Task { @MainActor in
             let ready = await ensureServiceReady()
+            guard self.previewRequestToken == token else { return }
             guard ready else {
                 previewingProfileID = nil
                 return
@@ -1385,6 +1431,7 @@ final class VoiceboxServiceController: ObservableObject {
 
             // Step 1: Check existing samples for this profile
             let samples = await fetchSamples(for: profile.id)
+            guard self.previewRequestToken == token else { return }
             if let firstSample = samples.first {
                 let destURL = cacheDir.appendingPathComponent("sample-\(firstSample.id).wav")
                 if FileManager.default.fileExists(atPath: destURL.path),
@@ -1706,6 +1753,7 @@ final class VoiceboxServiceController: ObservableObject {
         self.lastGeneratedWAVPath = finalURL.path
         self.lastGeneratedDuration = resolvedDuration
         self.lastGeneratedProfileName = profileName
+        self.lastGeneratedEngine = "voicebox"
         self.statusMessage = "已生成配音：\(finalURL.lastPathComponent)"
         return finalURL
     }
@@ -1714,6 +1762,10 @@ final class VoiceboxServiceController: ObservableObject {
         let localID = activeGenerationID
         let colabID = activeColabJobID
         activeGenerationTask?.cancel()
+        if let proc = activeStandaloneGenProcess, proc.isRunning {
+            proc.terminate()
+        }
+        activeStandaloneGenProcess = nil
 
         Task { @MainActor in
             if let localID {
@@ -1983,25 +2035,36 @@ final class VoiceboxServiceController: ObservableObject {
         return fm.fileExists(atPath: venvPy) && fm.fileExists(atPath: repoScript) && weightsOK
     }
 
+    @Published private var cachedBreezyVoiceDiskBytes: Int64 = 0
+    private var cachedBreezyDiskTick: Int = -1
+
     var breezyVoiceDiskBytes: Int64 {
-        _ = breezyVoiceStatusTick
-        let appSupport = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Klipora", isDirectory: true)
-        let dirs = ["breezyvoice-models", "breezyvoice-repo", "breezyvoice-venv"]
-        let fm = FileManager.default
-        var total: Int64 = 0
-        for rel in dirs {
-            let url = appSupport.appendingPathComponent(rel, isDirectory: true)
-            guard fm.fileExists(atPath: url.path) else { continue }
-            if let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
-                for case let f as URL in en {
-                    if let sz = try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                        total += Int64(sz)
+        let tick = breezyVoiceStatusTick
+        if cachedBreezyDiskTick != tick {
+            cachedBreezyDiskTick = tick
+            Task.detached(priority: .utility) { [weak self] in
+                let appSupport = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Library/Application Support/Klipora", isDirectory: true)
+                let dirs = ["breezyvoice-models", "breezyvoice-repo", "breezyvoice-venv"]
+                let fm = FileManager.default
+                var total: Int64 = 0
+                for rel in dirs {
+                    let url = appSupport.appendingPathComponent(rel, isDirectory: true)
+                    guard fm.fileExists(atPath: url.path) else { continue }
+                    if let en = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) {
+                        for case let f as URL in en {
+                            if let sz = try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize {
+                                total += Int64(sz)
+                            }
+                        }
                     }
+                }
+                await MainActor.run { [weak self] in
+                    self?.cachedBreezyVoiceDiskBytes = total
                 }
             }
         }
-        return total
+        return cachedBreezyVoiceDiskBytes
     }
 
     func breezyVoiceScriptURL() -> URL? {
@@ -2010,12 +2073,6 @@ final class VoiceboxServiceController: ObservableObject {
             if FileManager.default.fileExists(atPath: bundled.path) {
                 return bundled
             }
-        }
-        let devPaths = [
-            "/Users/zhangzhiduan/Documents/Codex/2026-11-09/https-github-com-dseditor-h3-colab/work/studio/resources/breezyvoice_tts.py"
-        ]
-        for p in devPaths where FileManager.default.fileExists(atPath: p) {
-            return URL(fileURLWithPath: p)
         }
         return nil
     }
@@ -2135,6 +2192,301 @@ final class VoiceboxServiceController: ObservableObject {
         }
     }
 
+    // MARK: - Qwen3-TTS 1.7B VoiceDesign (Text-to-Voice · MLX 8-bit)
+
+    var isVoiceDesignInstalled: Bool {
+        _ = voiceDesignStatusTick
+        let appSupport = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Klipora", isDirectory: true)
+        let fm = FileManager.default
+        let venvPy = appSupport.appendingPathComponent("voicedesign-venv/bin/python3").path
+        let modelDir = appSupport.appendingPathComponent("voicedesign-models/Qwen3-TTS-12Hz-1.7B-VoiceDesign-8bit", isDirectory: true)
+        let hasConfig = fm.fileExists(atPath: modelDir.appendingPathComponent("config.json").path)
+        let hasWeights = ((try? fm.contentsOfDirectory(atPath: modelDir.path)) ?? []).contains { $0.hasSuffix(".safetensors") }
+        return fm.isExecutableFile(atPath: venvPy) && hasConfig && hasWeights
+    }
+
+    func voiceDesignScriptURL() -> URL? {
+        guard let res = Bundle.main.resourceURL else { return nil }
+        let bundled = res.appendingPathComponent("qwen_voicedesign_tts.py")
+        return FileManager.default.fileExists(atPath: bundled.path) ? bundled : nil
+    }
+
+    func installVoiceDesign() {
+        guard !voiceDesignInstalling else { return }
+        guard let scriptURL = voiceDesignScriptURL() else {
+            lastError = "找不到內建 VoiceDesign 安裝腳本（qwen_voicedesign_tts.py）。"
+            return
+        }
+        voiceDesignInstalling = true
+        voiceDesignInstallProgress = 0.05
+        voiceDesignInstallStage = "正在準備 Qwen3-TTS 1.7B VoiceDesign (MLX 8-bit · ~2.1 GB)…"
+        lastError = nil
+        activeDownloads["qwen-tts-1.7B-voicedesign"] = VoiceboxActiveDownloadTask(
+            model_name: "qwen-tts-1.7B-voicedesign",
+            status: "downloading",
+            error: nil,
+            progress: 5,
+            current: 0,
+            total: 100,
+            filename: voiceDesignInstallStage
+        )
+
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            proc.arguments = ["-u", scriptURL.path, "install"]
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = pipe
+            await MainActor.run { self?.voiceDesignProcess = proc }
+
+            let handle = pipe.fileHandleForReading
+            handle.readabilityHandler = { fh in
+                let data = fh.availableData
+                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
+                for rawLine in chunk.split(separator: "\n") {
+                    let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if line.hasPrefix("{"),
+                       let d = line.data(using: .utf8),
+                       let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+                        let stage = obj["stage"] as? String
+                        let prog = obj["progress"] as? Double
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            if let stage { self.voiceDesignInstallStage = stage }
+                            if let prog { self.voiceDesignInstallProgress = prog }
+                            self.activeDownloads["qwen-tts-1.7B-voicedesign"] = VoiceboxActiveDownloadTask(
+                                model_name: "qwen-tts-1.7B-voicedesign",
+                                status: "downloading",
+                                error: nil,
+                                progress: (self.voiceDesignInstallProgress * 100.0),
+                                current: Int64(self.voiceDesignInstallProgress * 100.0),
+                                total: 100,
+                                filename: self.voiceDesignInstallStage
+                            )
+                        }
+                    }
+                }
+            }
+            do {
+                try proc.run()
+                proc.waitUntilExit()
+                handle.readabilityHandler = nil
+                let ok = proc.terminationStatus == 0
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.voiceDesignProcess = nil
+                    self.voiceDesignInstalling = false
+                    self.activeDownloads.removeValue(forKey: "qwen-tts-1.7B-voicedesign")
+                    self.voiceDesignStatusTick += 1
+                    if ok && self.isVoiceDesignInstalled {
+                        self.voiceDesignInstallProgress = 1.0
+                        self.voiceDesignInstallStage = "Qwen3-TTS 1.7B VoiceDesign 已安裝完成！"
+                        self.statusMessage = "Qwen3-TTS 1.7B VoiceDesign 安裝完成，現在可用文字描述自創聲線！"
+                    } else {
+                        self.lastError = "Qwen3-TTS 1.7B VoiceDesign 安裝未完成（代碼 \(proc.terminationStatus)），請確認網路後重試。"
+                    }
+                }
+            } catch {
+                handle.readabilityHandler = nil
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.voiceDesignProcess = nil
+                    self.voiceDesignInstalling = false
+                    self.activeDownloads.removeValue(forKey: "qwen-tts-1.7B-voicedesign")
+                    self.lastError = "無法啟動 VoiceDesign 安裝程序：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func generateLocalWithVoiceDesign(
+        text: String,
+        instruct: String,
+        language: String = "zh",
+        outputRootDir: URL
+    ) async throws -> URL {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else {
+            throw VoiceboxIntegrationError.emptyScript
+        }
+        let trimmedInstruct = instruct.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedInstruct.isEmpty else {
+            throw VoiceboxIntegrationError.generationFailed("請先填寫「角色聲音描述」（例如年紀、個性、腔調與語氣）。")
+        }
+        guard isVoiceDesignInstalled else {
+            throw VoiceboxIntegrationError.generationFailed("Qwen3-TTS 1.7B VoiceDesign 尚未安裝，請先點選「一鍵安裝」。")
+        }
+        guard let scriptURL = voiceDesignScriptURL() else {
+            throw VoiceboxIntegrationError.generationFailed("找不到內建 VoiceDesign 腳本（qwen_voicedesign_tts.py）。")
+        }
+
+        // Unload Voicebox MLX models first to keep unified memory headroom high
+        if activePort > 0, let unloadURL = URL(string: "http://127.0.0.1:\(activePort)/models/unload") {
+            var req = URLRequest(url: unloadURL)
+            req.httpMethod = "POST"
+            req.timeoutInterval = 3.0
+            _ = try? await URLSession.shared.data(for: req)
+        }
+
+        isGenerating = true
+        generationStage = "正在用 Qwen3-TTS VoiceDesign 捏出角色聲線…"
+        generationProgress = 15
+        lastError = nil
+        statusMessage = nil
+
+        let outURL = allocateUniqueDatedOutputURL(under: outputRootDir, stem: "Klipora-VoiceDesign", ext: "wav")
+        let task = Task<URL, Error> { @MainActor in
+            defer {
+                self.isGenerating = false
+                self.generationStage = ""
+                self.generationProgress = nil
+                self.activeStandaloneGenProcess = nil
+            }
+            let result: (ok: Bool, duration: Double?, error: String?) = await Task.detached(priority: .userInitiated) { [weak self] in
+                let proc = Process()
+                proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+                proc.arguments = [
+                    "-u", scriptURL.path, "generate",
+                    "--text", trimmedText,
+                    "--instruct", trimmedInstruct,
+                    "--language", language,
+                    "--output", outURL.path
+                ]
+                let pipe = Pipe()
+                proc.standardOutput = pipe
+                proc.standardError = pipe
+                await MainActor.run { self?.activeStandaloneGenProcess = proc }
+                var collectedError: String? = nil
+                var collectedDuration: Double? = nil
+                do {
+                    try proc.run()
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    proc.waitUntilExit()
+                    if let textOut = String(data: data, encoding: .utf8) {
+                        for rawLine in textOut.split(separator: "\n") {
+                            let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+                            if line.hasPrefix("{"),
+                               let d = line.data(using: .utf8),
+                               let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+                                if let err = obj["error"] as? String { collectedError = err }
+                                if let dur = obj["duration"] as? Double { collectedDuration = dur }
+                            }
+                        }
+                    }
+                    return (proc.terminationStatus == 0 && FileManager.default.fileExists(atPath: outURL.path), collectedDuration, collectedError)
+                } catch {
+                    return (false, nil, error.localizedDescription)
+                }
+            }.value
+
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            guard result.ok else {
+                throw VoiceboxIntegrationError.generationFailed(result.error ?? "VoiceDesign 生成失敗，請稍後重試。")
+            }
+            self.lastGeneratedWAVPath = outURL.path
+            self.lastGeneratedDuration = result.duration
+            self.lastGeneratedProfileName = "VoiceDesign 自創聲線"
+            self.lastGeneratedText = trimmedText
+            self.lastGeneratedEngine = "qwen_voicedesign"
+            self.statusMessage = "已生成自創聲線成品！喜歡的話可點下方「存成專屬角色」固定沿用。"
+            return outURL
+        }
+        self.activeGenerationTask = task
+        return try await task.value
+    }
+
+    func saveVoiceDesignAsProfile(wavPath: String, referenceText: String, profileName: String, language: String = "zh") async throws {
+        guard !savingVoiceDesignProfile else { return }
+        savingVoiceDesignProfile = true
+        defer { savingVoiceDesignProfile = false }
+
+        // Validate WAV file & Voicebox backend 2~30s duration requirement before creating profile
+        let wavURL = URL(fileURLWithPath: wavPath)
+        let wavData = try Data(contentsOf: wavURL)
+        if let probe = try? AVAudioPlayer(data: wavData) {
+            if probe.duration < 2.0 {
+                throw VoiceboxIntegrationError.serverError("目前音檔僅 \(String(format: "%.1f", probe.duration)) 秒，角色庫樣本至少需要 2 秒，請加長測試台詞再生成。")
+            }
+            if probe.duration > 30.0 {
+                throw VoiceboxIntegrationError.serverError("目前音檔為 \(String(format: "%.1f", probe.duration)) 秒，角色庫樣本上限為 30 秒，請縮短測試台詞再存檔。")
+            }
+        }
+
+        let ready = await ensureServiceReady()
+        guard ready, activePort > 0 else {
+            throw VoiceboxIntegrationError.serviceNotReady("本機 Voicebox 服務尚未就緒，無法寫入角色庫。")
+        }
+        guard let createURL = URL(string: "http://127.0.0.1:\(activePort)/profiles") else {
+            throw VoiceboxIntegrationError.serverError("無效的角色建立網址。")
+        }
+
+        // 1. Create profile
+        var createReq = URLRequest(url: createURL)
+        createReq.httpMethod = "POST"
+        createReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let createBody: [String: Any] = [
+            "name": profileName,
+            "description": "由 Qwen3-TTS 1.7B VoiceDesign 文字自創並存檔的專屬聲線",
+            "language": language
+        ]
+        createReq.httpBody = try JSONSerialization.data(withJSONObject: createBody)
+        let (createData, createResp) = try await URLSession.shared.data(for: createReq)
+        guard let http = createResp as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let obj = try? JSONSerialization.jsonObject(with: createData) as? [String: Any],
+              let profileID = obj["id"] as? String else {
+            throw VoiceboxIntegrationError.serverError("建立新角色失敗。")
+        }
+
+        // Helper to rollback empty profile if sample upload fails
+        func rollbackProfile() async {
+            guard let delURL = URL(string: "http://127.0.0.1:\(activePort)/profiles/\(profileID)") else { return }
+            var delReq = URLRequest(url: delURL)
+            delReq.httpMethod = "DELETE"
+            _ = try? await URLSession.shared.data(for: delReq)
+        }
+
+        // 2. Upload WAV sample with transcript
+        guard let sampleURL = URL(string: "http://127.0.0.1:\(activePort)/profiles/\(profileID)/samples") else {
+            await rollbackProfile()
+            throw VoiceboxIntegrationError.serverError("無效的樣本上傳網址。")
+        }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        func appendField(_ name: String, _ value: String) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        appendField("reference_text", referenceText.isEmpty ? "你好，這是我的專屬聲音樣本。" : referenceText)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"voicedesign_sample.wav\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
+        body.append(wavData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var sampleReq = URLRequest(url: sampleURL)
+        sampleReq.httpMethod = "POST"
+        sampleReq.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        sampleReq.httpBody = body
+        do {
+            let (_, sampleResp) = try await URLSession.shared.data(for: sampleReq)
+            guard let shttp = sampleResp as? HTTPURLResponse, (200...299).contains(shttp.statusCode) else {
+                await rollbackProfile()
+                throw VoiceboxIntegrationError.serverError("上傳聲音樣本至新角色失敗（已自動回滾空白角色）。")
+            }
+        } catch {
+            await rollbackProfile()
+            throw error
+        }
+
+        await refreshProfiles()
+        statusMessage = "✅ 已存成新聲線角色「\(profileName)」！現在可切回 BreezyVoice 或 Qwen3 Base 固定使用這把聲音。"
+    }
+
     private func generateLocalWithBreezyVoice(
         profile: VoiceboxProfile,
         text: String,
@@ -2155,7 +2507,7 @@ final class VoiceboxServiceController: ObservableObject {
         if await ensureServiceReady() {
             let samples = await fetchSamples(for: profile.id, forceRefresh: false)
             if let first = samples.first {
-                refText = first.reference_text
+                refText = await effectiveReferenceText(for: first).text
                 if FileManager.default.fileExists(atPath: first.audio_path) {
                     refAudioPath = first.audio_path
                 } else {
@@ -2191,19 +2543,12 @@ final class VoiceboxServiceController: ObservableObject {
             throw VoiceboxIntegrationError.serverError("找不到聲音角色「\(profile.name)」的參考音檔，無法進行 BreezyVoice 聲紋合成。")
         }
 
-        let dayFmt = DateFormatter()
-        dayFmt.dateFormat = "yyyy-MM-dd"
-        let tsFmt = DateFormatter()
-        tsFmt.dateFormat = "HHmmss"
-        let now = Date()
-        let outDir = outputRootDir.appendingPathComponent(dayFmt.string(from: now), isDirectory: true)
-        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
         let safeName = profile.name.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: " ", with: "_")
-        let outURL = outDir.appendingPathComponent("BreezyVoice_\(safeName)_\(tsFmt.string(from: now)).wav")
+        let outURL = allocateUniqueDatedOutputURL(under: outputRootDir, stem: "Klipora-BreezyVoice-\(safeName)", ext: "wav")
 
         isGenerating = true
         generationStage = "正在啟動 MediaTek BreezyVoice（台灣國語）…"
-        generationProgress = 0.15
+        generationProgress = 15
         lastError = nil
         statusMessage = nil
 
@@ -2211,6 +2556,7 @@ final class VoiceboxServiceController: ObservableObject {
             self.isGenerating = false
             self.generationStage = ""
             self.generationProgress = nil
+            self.activeStandaloneGenProcess = nil
         }
 
         var args = [
@@ -2224,56 +2570,58 @@ final class VoiceboxServiceController: ObservableObject {
             args += ["--seed", String(seed)]
         }
 
-        let (exitCode, lastErrMsg): (Int32, String) = await Task.detached(priority: .userInitiated) { [weak self] in
+        let (exitCode, lastErrMsg, parsedDur): (Int32, String, Double?) = await Task.detached(priority: .userInitiated) { [weak self] in
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
             proc.arguments = args
             let pipe = Pipe()
             proc.standardOutput = pipe
             proc.standardError = pipe
+            await MainActor.run { self?.activeStandaloneGenProcess = proc }
             var collectedError = ""
-
-            let handle = pipe.fileHandleForReading
-            handle.readabilityHandler = { fh in
-                let data = fh.availableData
-                guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8) else { return }
-                for rawLine in chunk.split(separator: "\n") {
-                    let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
-                    if line.hasPrefix("{"),
-                       let d = line.data(using: .utf8),
-                       let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
-                        if let err = obj["error"] as? String {
-                            collectedError = err
-                        }
-                        let stage = obj["stage"] as? String
-                        let prog = obj["progress"] as? Double
-                        Task { @MainActor [weak self] in
-                            if let stage { self?.generationStage = stage }
-                            if let prog { self?.generationProgress = prog }
-                        }
-                    } else if !line.isEmpty {
-                        collectedError = line
-                    }
-                }
-            }
+            var collectedDuration: Double? = nil
 
             do {
                 try proc.run()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 proc.waitUntilExit()
-                handle.readabilityHandler = nil
-                return (proc.terminationStatus, collectedError)
+                if let textOut = String(data: data, encoding: .utf8) {
+                    for rawLine in textOut.split(separator: "\n") {
+                        let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if line.hasPrefix("{"),
+                           let d = line.data(using: .utf8),
+                           let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+                            if let err = obj["error"] as? String {
+                                collectedError = err
+                            }
+                            if let dur = obj["duration"] as? Double {
+                                collectedDuration = dur
+                            }
+                        } else if !line.isEmpty {
+                            collectedError = line
+                        }
+                    }
+                }
+                return (proc.terminationStatus, collectedError, collectedDuration)
             } catch {
-                handle.readabilityHandler = nil
-                return (-1, error.localizedDescription)
+                return (-1, error.localizedDescription, nil)
             }
         }.value
 
+        if Task.isCancelled {
+            throw CancellationError()
+        }
         guard exitCode == 0, FileManager.default.fileExists(atPath: outURL.path) else {
             throw VoiceboxIntegrationError.serverError(
                 lastErrMsg.isEmpty ? "BreezyVoice 語音合成失敗（代碼 \(exitCode)）。" : "BreezyVoice 語音合成失敗：\(lastErrMsg)"
             )
         }
 
+        self.lastGeneratedWAVPath = outURL.path
+        self.lastGeneratedDuration = parsedDur
+        self.lastGeneratedProfileName = profile.name
+        self.lastGeneratedText = text
+        self.lastGeneratedEngine = "breezyvoice"
         statusMessage = "已以 MediaTek BreezyVoice（台灣國語 · \(profile.name)）完成配音！"
         return outURL
     }
@@ -2281,6 +2629,10 @@ final class VoiceboxServiceController: ObservableObject {
     func startModelDownload(modelName: String) {
         if modelName == "breezyvoice-tw" {
             installBreezyVoice()
+            return
+        }
+        if modelName == "qwen-tts-1.7B-voicedesign" {
+            installVoiceDesign()
             return
         }
         Task { @MainActor in
@@ -2323,9 +2675,23 @@ final class VoiceboxServiceController: ObservableObject {
         }
     }
 
+    func cancelVoiceDesignInstall() {
+        voiceDesignProcess?.terminate()
+        voiceDesignProcess = nil
+        voiceDesignInstalling = false
+        voiceDesignInstallStage = ""
+        voiceDesignInstallProgress = 0
+        activeDownloads.removeValue(forKey: "qwen-tts-1.7B-voicedesign")
+        statusMessage = "已取消 Qwen3-TTS VoiceDesign 安裝。"
+    }
+
     func cancelModelDownload(modelName: String) {
         if modelName == "breezyvoice-tw" {
             cancelBreezyVoiceInstall()
+            return
+        }
+        if modelName == "qwen-tts-1.7B-voicedesign" {
+            cancelVoiceDesignInstall()
             return
         }
         Task { @MainActor in
@@ -2355,6 +2721,9 @@ final class VoiceboxServiceController: ObservableObject {
                    (resp as? HTTPURLResponse)?.statusCode == 200,
                    let activeResp = try? JSONDecoder().decode(VoiceboxActiveTasksResponse.self, from: data) {
                     var nextMap: [String: VoiceboxActiveDownloadTask] = [:]
+                    for (k, v) in self.activeDownloads where k == "breezyvoice-tw" || k == "qwen-tts-1.7B-voicedesign" {
+                        nextMap[k] = v
+                    }
                     for dl in activeResp.downloads {
                         if dl.status == "error", let err = dl.error {
                             self.lastError = "模型 \(dl.model_name) 下載失敗：\(err)"
@@ -2713,7 +3082,9 @@ struct VoiceboxStudioSectionView: View {
 
     private var compatibleEngines: [VoiceboxEngineOption] {
         guard let profile = selectedProfile else {
-            return VoiceboxEngineOption.allOptions.filter { $0.supportsClonedVoices }
+            return VoiceboxEngineOption.allOptions.filter {
+                $0.supportsClonedVoices && VoiceboxEngineOption.curatedClonedMenuModelNames.contains($0.model_name)
+            }
         }
         return VoiceboxEngineOption.compatibleOptions(for: profile)
     }
@@ -2741,6 +3112,10 @@ struct VoiceboxStudioSectionView: View {
         return samples.first
     }
 
+    private var isVoiceDesignMode: Bool {
+        store.mode == .local && selectedEngineOption.engine == "qwen_voicedesign"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerBar
@@ -2754,12 +3129,11 @@ struct VoiceboxStudioSectionView: View {
                     comfyUIMemoryCoordinationNotice
                 }
 
-                // When the spacious central voice workspace is active, the narrow left sidebar
-                // acts exclusively as a clean 12-13pt Voice Role Picker (zero duplicate script/generate forms
-                // and zero duplicate onAppear/onChange callbacks). In the central workspace itself, we only
-                // render the active selected voice summary bar + script editor + model/generate controls
-                // (without duplicating the 68-row profile list!).
-                if isCentralLayout {
+                // When Qwen3-TTS 1.7B VoiceDesign is selected, replace the 68-voice role picker
+                // with a dedicated Text-to-Voice Persona Design studio (no reference audio needed!).
+                if isVoiceDesignMode {
+                    voiceDesignPersonaCard
+                } else if isCentralLayout {
                     centralSelectedVoiceHeaderBar
                 } else {
                     profileSelectorSection
@@ -2824,6 +3198,85 @@ struct VoiceboxStudioSectionView: View {
             guard !isCentralLayout else { return }
             syncSelectedProfileAndEngine()
         }
+    }
+
+    private var voiceDesignPersonaCard: some View {
+        let presets: [(String, String)] = [
+            ("溫柔台灣女生", "25 歲溫柔開朗的台灣年輕女生，聲音清亮微帶氣音，語速輕快自然，像在跟朋友聊天。"),
+            ("沉穩磁性大叔", "48 歲低沉沙啞的成熟男性，語氣冷靜沉穩有磁性，節奏不疾不徐。"),
+            ("元氣開朗少女", "19 歲活潑元氣少女，音調清脆偏高，語氣輕快帶點微笑感。"),
+            ("知性溫暖旁白", "32 歲知性沉靜的紀錄片旁白聲線，咬字清晰、語氣溫潤自然、沒有過度播報感。")
+        ]
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 13))
+                    .foregroundStyle(vbViolet)
+                Text("文字自創聲線（VoiceDesign）")
+                    .font(.system(size: 13.5, weight: .bold))
+                    .foregroundStyle(.white)
+                Text("免選 68 聲線")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(vbViolet)
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(vbViolet.opacity(0.18), in: Capsule())
+                Spacer()
+            }
+
+            Text("直接用中文或英文描述角色性別、年紀、個性、腔調與語氣，模型會從零創造全新聲音；滿意後可一鍵存進角色庫供 BreezyVoice / Qwen3 Base 固定沿用。")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !controller.isVoiceDesignInstalled {
+                HStack(spacing: 8) {
+                    Image(systemName: controller.voiceDesignInstalling ? "arrow.down.circle.fill" : "icloud.and.arrow.down")
+                        .foregroundStyle(controller.voiceDesignInstalling ? vbCyan : vbAmber)
+                    Text(controller.voiceDesignInstalling
+                         ? (controller.voiceDesignInstallStage.isEmpty ? "正在背景安裝 VoiceDesign…" : controller.voiceDesignInstallStage)
+                         : "尚未安裝 Qwen3-TTS 1.7B VoiceDesign（MLX 8-bit · 約 2.1 GB）")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(controller.voiceDesignInstalling ? "\(Int(controller.voiceDesignInstallProgress * 100))%" : "一鍵安裝") {
+                        controller.installVoiceDesign()
+                    }
+                    .buttonStyle(KliporaPillButtonStyle(variant: .primary, compact: true))
+                    .disabled(controller.voiceDesignInstalling)
+                }
+                .padding(8)
+                .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("角色聲音描述（個性・年紀・腔調・語氣）")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                TextEditor(text: $store.instructText)
+                    .font(.system(size: 12))
+                    .frame(minHeight: 54, maxHeight: 76)
+                    .padding(6)
+                    .scrollContentBackground(.hidden)
+                    .background(vbDarkWell, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(vbViolet.opacity(0.35)))
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(presets, id: \.0) { label, desc in
+                        Button(label) {
+                            store.instructText = desc
+                        }
+                        .buttonStyle(KliporaPillButtonStyle(variant: .subtle, compact: true))
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(vbViolet.opacity(0.12), in: RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: StudioTheme.Radius.card, style: .continuous).strokeBorder(vbViolet.opacity(0.42), lineWidth: 1))
     }
 
     private var sidebarCentralWorkspaceActiveHint: some View {
@@ -3232,11 +3685,14 @@ struct VoiceboxStudioSectionView: View {
         if profile.isPreset && store.mode == .colab {
             store.mode = .local
         }
+        let targetProfileID = profile.id
         Task { @MainActor in
-            let samples = await controller.fetchSamples(for: profile.id)
+            let samples = await controller.fetchSamples(for: targetProfileID)
+            guard store.selectedProfileID == targetProfileID else { return }
             if let first = samples.first {
                 store.selectedSampleID = first.id
                 let resolved = await controller.effectiveReferenceText(for: first)
+                guard store.selectedProfileID == targetProfileID else { return }
                 store.editingSampleID = first.id
                 store.editingSampleReferenceText = resolved.text
                 store.editingSampleIsDerivedOverride = resolved.isDerivedOverride
@@ -3621,10 +4077,14 @@ struct VoiceboxStudioSectionView: View {
     private var canStartGeneration: Bool {
         guard !app.busy,
               !controller.isGenerating,
-              let profile = selectedProfile,
               !store.scriptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false
         }
+        if isVoiceDesignMode {
+            return controller.isVoiceDesignInstalled
+                && !store.instructText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard let profile = selectedProfile else { return false }
         if store.mode == .colab {
             return !profile.isPreset && !store.selectedSampleID.isEmpty
         }
@@ -3632,16 +4092,26 @@ struct VoiceboxStudioSectionView: View {
     }
 
     private func triggerGeneration(insertToTrack: Bool) {
-        guard let profile = selectedProfile else { return }
         let script = store.scriptText
         let playhead = playback.playhead
         let outputRoot = app.audioOutputDirectory
         let seedVal = Int(store.seedText.trimmingCharacters(in: .whitespacesAndNewlines))
+        let voiceDesignActive = isVoiceDesignMode
+        let trackLabel = voiceDesignActive ? "VoiceDesign 自創聲線" : (selectedProfile?.name ?? "配音")
+
+        if !voiceDesignActive && selectedProfile == nil { return }
 
         Task { @MainActor in
             do {
                 let finalURL: URL
-                if store.mode == .local {
+                if voiceDesignActive {
+                    finalURL = try await controller.generateLocalWithVoiceDesign(
+                        text: script,
+                        instruct: store.instructText,
+                        language: "zh",
+                        outputRootDir: outputRoot
+                    )
+                } else if store.mode == .local, let profile = selectedProfile {
                     finalURL = try await controller.generateLocal(
                         profile: profile,
                         text: script,
@@ -3651,7 +4121,7 @@ struct VoiceboxStudioSectionView: View {
                         instruct: store.instructText,
                         outputRootDir: outputRoot
                     )
-                } else {
+                } else if let profile = selectedProfile {
                     finalURL = try await controller.generateColab(
                         profile: profile,
                         sampleID: store.selectedSampleID,
@@ -3659,13 +4129,15 @@ struct VoiceboxStudioSectionView: View {
                         seed: seedVal,
                         outputRootDir: outputRoot
                     )
+                } else {
+                    return
                 }
 
                 if insertToTrack {
                     if let sel = app.addGeneratedAudioToTrack(
                         path: finalURL.path,
                         at: playhead,
-                        preferredTrackName: "A 配音 · \(profile.name)"
+                        preferredTrackName: "A 配音 · \(trackLabel)"
                     ) {
                         state.selection = sel
                         state.previewMode = .timeline
@@ -3710,7 +4182,40 @@ struct VoiceboxStudioSectionView: View {
                     auditionLastOutputButton(path: path, isAuditioning: isAuditioningThis)
                     insertLastOutputToTrackButton(path: path)
                 }
-                revealLastOutputInFinderButton(path: path)
+                HStack(spacing: 5) {
+                    revealLastOutputInFinderButton(path: path)
+                    if controller.lastGeneratedEngine == "qwen_voicedesign" {
+                        Button {
+                            let stamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short)
+                                .replacingOccurrences(of: ":", with: "")
+                                .replacingOccurrences(of: " ", with: "")
+                            let newName = "自創聲線 \(stamp)"
+                            let refText = controller.lastGeneratedText.isEmpty ? store.scriptText : controller.lastGeneratedText
+                            Task { @MainActor in
+                                do {
+                                    try await controller.saveVoiceDesignAsProfile(
+                                        wavPath: path,
+                                        referenceText: refText,
+                                        profileName: newName
+                                    )
+                                } catch {
+                                    controller.lastError = error.localizedDescription
+                                }
+                            }
+                        } label: {
+                            Label(controller.savingVoiceDesignProfile ? "儲存中…" : "存成專屬角色", systemImage: "person.badge.plus")
+                                .font(.system(size: 11.5, weight: .medium))
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
+                        .tint(vbViolet)
+                        .controlSize(.small)
+                        .disabled(controller.savingVoiceDesignProfile)
+                        .help("將此自創聲線存進角色庫，之後可直接交給 BreezyVoice 或 Qwen3 Base 固定沿用")
+                    }
+                }
             }
         }
         .padding(8)

@@ -934,6 +934,7 @@ class _PreparedAudioClip:
     effective_volume: float
     fade_in: float
     fade_out: float
+    track_volume: float = 1.0
     voice_cleanup: bool = False
     audio_effect: str = "none"
     keyframes: list[dict[str, Any]] = field(default_factory=list)
@@ -1354,15 +1355,15 @@ def _append_clip_video_filters(
         return out_label, "0", "0"
 
     if kf_pos_x is not None:
-        base_x = f"(W-w)/2+(W/2)*({kf_pos_x})"
+        base_x = f"(W-w)/2+W*({kf_pos_x})"
     else:
-        dx = int(round(clip.pos_x * (canvas_w / 2.0)))
+        dx = int(round(clip.pos_x * canvas_w))
         base_x = f"(W-w)/2+{dx}" if dx >= 0 else f"(W-w)/2{dx}"
 
     if kf_pos_y is not None:
-        base_y = f"(H-h)/2+(H/2)*({kf_pos_y})"
+        base_y = f"(H-h)/2+H*({kf_pos_y})"
     else:
-        dy = int(round(clip.pos_y * (canvas_h / 2.0)))
+        dy = int(round(clip.pos_y * canvas_h))
         base_y = f"(H-h)/2+{dy}" if dy >= 0 else f"(H-h)/2{dy}"
 
     x_terms = [base_x]
@@ -1788,7 +1789,8 @@ def _prepare_video_clip(
         source_len = source_end - source_start
         if freeze_frame:
             speed_curve = []
-        if len(speed_curve) >= 2:
+            clip_dur = source_len
+        elif len(speed_curve) >= 2:
             clip_dur = _speed_curve_output_duration(source_len, speed_curve, fps)
         else:
             clip_dur = source_len / speed
@@ -1796,7 +1798,7 @@ def _prepare_video_clip(
             source_start < 0
             or source_len < 1.0 / fps
             or clip_dur < 1.0 / fps
-            or (probed_dur > 0 and source_end > probed_dur + 0.15)
+            or (probed_dur > 0 and (source_start > probed_dur + 0.15 if freeze_frame else source_end > probed_dur + 0.15))
         ):
             raise ValueError(
                 f"視訊軌「{track_name}」片段 {path.name} 入出點無效（來源長度 {probed_dur:.2f} 秒）。"
@@ -2188,6 +2190,7 @@ def export_multitrack(
                     source_end=min(s_end, probed_dur),
                     duration=clip_dur,
                     effective_volume=eff_vol,
+                    track_volume=track_vol,
                     fade_in=fade_in,
                     fade_out=fade_out,
                     voice_cleanup=a_voice_cleanup,
@@ -2598,7 +2601,7 @@ def export_multitrack(
         achain.extend(_build_audio_fx_filters(aclip.voice_cleanup, aclip.audio_effect))
         kf_vol = _build_keyframe_expr(aclip.keyframes, "volume", aclip.effective_volume, 0.0, time_var="t")
         if kf_vol is not None:
-            achain.append(f"volume='clip({kf_vol},0,2)':eval=frame")
+            achain.append(f"volume='clip(({kf_vol})*{aclip.track_volume:.6f},0,2)':eval=frame")
         else:
             achain.append(f"volume={aclip.effective_volume:.6f}")
         if aclip.fade_in > 1e-4:

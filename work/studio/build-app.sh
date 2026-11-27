@@ -3,9 +3,6 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 app="${1:?Pass the absolute path to the output .app}"
 runtime="${MOTIONDESK_RUNTIME_DIR:-$here/hf-runtime}"
-if [[ ! -d "$runtime" ]]; then
-  runtime="/Users/zhangzhiduan/Documents/Codex/2026-11-09/https-github-com-dseditor-h3-colab/work/studio/hf-runtime"
-fi
 resources="$app/Contents/Resources"
 mkdir -p "$app/Contents/MacOS" "$resources/runtime/bin" "$resources/backend-patches" "$resources/colab" "/tmp/md-v5-module-cache"
 
@@ -74,6 +71,7 @@ cp "$here/resources/worker.py" \
    "$here/resources/timeline_render.py" \
    "$here/resources/audio_ai.py" \
    "$here/resources/breezyvoice_tts.py" \
+  "$here/resources/qwen_voicedesign_tts.py" \
    "$here/resources/effects_catalog.json" \
    "$here/resources/model_profiles.json" \
    "$here/resources/zimage.json" \

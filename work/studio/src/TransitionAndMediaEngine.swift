@@ -416,12 +416,11 @@ final class TransitionPreviewCache: ObservableObject {
             return
         }
 
-        if renderingKeys.contains(key) {
+        if renderingKeys.contains(key) || errors[key] != nil {
             return
         }
 
         let resolvedScript = timelineRenderScript ?? timelineRenderScriptURL
-        errors.removeValue(forKey: key)
         renderingKeys.insert(key)
         pendingQueue.append((request: req, scriptURL: resolvedScript))
         pumpQueue()
@@ -1818,12 +1817,11 @@ final class ClipEffectPreviewCache: ObservableObject {
             errors.removeValue(forKey: key)
             return
         }
-        if renderingKeys.contains(key) {
+        if renderingKeys.contains(key) || errors[key] != nil {
             return
         }
 
         let resolvedScript = timelineRenderScript ?? timelineRenderScriptURL
-        errors.removeValue(forKey: key)
         renderingKeys.insert(key)
         pendingQueue.append((request: req, scriptURL: resolvedScript))
         pumpQueue()

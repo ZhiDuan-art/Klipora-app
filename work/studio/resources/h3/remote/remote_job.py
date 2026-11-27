@@ -351,8 +351,12 @@ def run_video(j):
     job = call(TOYBOX_URL + "/api/generate", body)
     TOYBOX_JOB[j["id"]] = job["id"]
     done = wait_toybox(job["id"], int(j.get("timeout", 2400)))
+    if done.get("join_error"):
+        raise RuntimeError(f"續生片段拼接失敗：{done['join_error']}")
     if done.get("full_video"):  # an extension: the new clip already joined after the source
         return toybox_data() / "outputs" / done["full_video"], done
+    if j.get("extend"):
+        raise RuntimeError("續生任務未產出完整拼接影片（缺少 full_video）。")
     return comfy_file(done["video"]), done
 
 

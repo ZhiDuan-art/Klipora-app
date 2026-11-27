@@ -391,18 +391,16 @@ struct UserModelState: Codable, Equatable, Sendable {
 }
 
 struct UserModelRegistry {
-    static let supportedBaseProfiles: [String] = ["zimage", "redcraft", "iniverse_flux", "moss", "krea2", "sdxl1"]
+    static let supportedBaseProfiles: [String] = ["zimage", "redcraft", "moss", "krea2"]
 
     /// Explicit base-profile loader category map matching model_profiles.json templates:
-    /// - CheckpointLoaderSimple -> checkpoints: redcraft, iniverse_flux, sdxl1
+    /// - CheckpointLoaderSimple -> checkpoints: redcraft
     /// - UNETLoader -> diffusion_models: zimage, moss, krea2
     static let baseProfilePrimaryCategory: [String: String] = [
         "zimage": "diffusion_models",
         "redcraft": "checkpoints",
-        "iniverse_flux": "checkpoints",
         "moss": "diffusion_models",
-        "krea2": "diffusion_models",
-        "sdxl1": "checkpoints"
+        "krea2": "diffusion_models"
     ]
 
     static var url: URL {
@@ -690,7 +688,7 @@ private final class LocalModelManagerSheetState: ObservableObject {
     @Published var showAddForm = false
     @Published var editingEntry: UserImageModelEntry? = nil
     @Published var draftName = ""
-    @Published var draftBaseProfile = "sdxl1"
+    @Published var draftBaseProfile = "zimage"
     @Published var draftPrimaryWeight = ""
     @Published var draftImportedHash: String? = nil
     @Published var draftNotes = ""
@@ -956,7 +954,7 @@ struct LocalModelManagerSheet: View {
     private func beginNewEntry() {
         vm.editingEntry = nil
         vm.draftName = ""
-        vm.draftBaseProfile = "sdxl1"
+        vm.draftBaseProfile = "zimage"
         vm.draftPrimaryWeight = ""
         vm.draftImportedHash = nil
         vm.draftNotes = ""
@@ -1013,8 +1011,10 @@ struct LocalModelManagerSheet: View {
                 displayName: vm.draftName,
                 baseProfile: vm.draftBaseProfile,
                 primaryWeight: vm.draftPrimaryWeight,
+                secondaryWeights: vm.editingEntry?.secondaryWeights ?? [:],
                 weightSHA256: vm.draftImportedHash,
-                notes: vm.draftNotes
+                notes: vm.draftNotes,
+                isBuiltInOverride: vm.editingEntry?.isBuiltInOverride ?? false
             )
             vm.showAddForm = false
             vm.editingEntry = nil
