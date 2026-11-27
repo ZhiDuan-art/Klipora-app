@@ -22,14 +22,19 @@
 
 > **最新發布 — `v1.1.7`（2026-11-27）**：新增 **`Qwen3-TTS 1.7B VoiceDesign`（MLX 8-bit 文字自創聲線）**，免參考音檔即可用文字捏出全新角色聲音並一鍵存進 68 聲線角色庫；重製**四步驟背景首次安裝引導**；修復時間軸音檔卡頓與預覽／匯出座標一致；全面整合 **Colab A100 + `10Eros-Max 8-step` + 60 秒無縫續生 + 保留熱機**，以及 **9 種比例 + `1K–8K` 本機生圖**。查看完整 **[更新與除錯紀錄（CHANGELOG.md）](../CHANGELOG.md)** · **[下載 v1.1.7 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)**。
 
-## 實機操作宣傳影片（`v1.1.7`）
+## 實機操作宣傳影片
 
-*全新 `v1.1.7` 實機展示——涵蓋 Qwen3-TTS VoiceDesign 文字自創聲線、MediaTek BreezyVoice 台灣國語 68 聲線、9 種比例／1K–8K 生圖、Colab A100 60 秒續生、零卡頓多軌剪輯與四步驟引導：*
+*純視窗 `v1.1.1` 實機畫面——旁白由 Klipora 內建本機 Qwen3-TTS 離線合成，展示全新膠囊 UI、6 分頁設定頁與台灣 Breeze-ASR-26 字幕：*
+**[▶ 觀看／下載 v1.1.1 繁體中文配音版（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)** · **[▶ English Version（1080p）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)**
 
-- **[▶ 觀看／下載 v1.1.7 繁體中文配音版（1080p · 73s）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)**
-- **[▶ Watch / Download v1.1.7 English Version（1080p · 62s）](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)**
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
 
-[![觀看 Klipora v1.1.7 繁體中文宣傳影片](screenshots/01-startup-selfcheck.png)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)
+<details>
+<summary>▶ Watch English Voiceover Version (英文配音版 · 62s)</summary>
+
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
+
+</details>
 
 ---
 

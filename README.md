@@ -22,14 +22,19 @@
 
 > **Latest Release — `v1.1.7` (2026-11-27):** Added **`Qwen3-TTS 1.7B VoiceDesign` (Apple Silicon MLX 8-bit)** to invent brand-new voices from text descriptions and save them straight into your 68-voice library; rebuilt the **4-Step Background Onboarding Wizard**; hardened **stutter-free per-clip timeline audio playback** & preview-to-export coordinate parity; upgraded **Colab A100 + `10Eros-Max 8-step` + 60s seamless extend + Keep-Warm GPU**; and unlocked **9 aspect ratios + `1K–8K` local image output**. See **[Changelog & Debug Log](CHANGELOG.md)** · **[Download v1.1.7 DMG](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)**.
 
-## Product Demo Video (`v1.1.7`)
+## Product Demo Video
 
-*Fresh `v1.1.7` live showcase — covering Qwen3-TTS VoiceDesign, MediaTek BreezyVoice 68 Voices, 9 Ratios / 1K–8K Local ComfyUI, Colab A100 60s Extend, Pro Multitrack Timeline & 4-Step Onboarding:*
+*Recorded from live `v1.1.1` macOS app — voiced with offline Qwen3-TTS, unified Capsule UI, Breeze-ASR-26 & 6-tab Settings:*
+**[▶ Watch / Download v1.1.1 English 1080p Demo](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ Watch / Download v1.1.1 繁體中文配音版 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
-- **[▶ Watch / Download v1.1.7 English Demo (1080p · 62s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)**
-- **[▶ Watch / Download v1.1.7 繁體中文配音版 (1080p · 73s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)**
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
-[![Watch Klipora v1.1.7 Promo Video](docs/screenshots/01-startup-selfcheck.png)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)
+<details>
+<summary>▶ Watch Traditional Chinese Voiceover Version (繁體中文配音版 · 60s)</summary>
+
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
+
+</details>
 
 ---
 

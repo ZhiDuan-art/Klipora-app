@@ -22,14 +22,19 @@
 
 > **최신 릴리스 — `v1.1.7` (2026-11-27)**: 참조 오디오 없이 텍스트 설명만으로 새 음성을 창작해 68 보이스 라이브러리에 저장하는 **`Qwen3-TTS 1.7B VoiceDesign` (MLX 8-bit)** 추가; **4단계 백그라운드 초기 설정 마법사** 전면 개편; 타임라인 오디오 끊김 수정 및 미리보기/내보내기 좌표 일치; **Colab A100 + `10Eros-Max 8-step` + 60초 자동 연속 연장 + 웜 GPU 유지** 및 **9가지 비율 + `1K–8K` 로컬 이미지 생성**을 통합했습니다. **[CHANGELOG.md](../CHANGELOG.md)** · **[v1.1.7 DMG 다운로드](https://github.com/ZhiDuan-art/Klipora-app/releases/tag/v1.1.7)**.
 
-## 실기 데모 영상 (`v1.1.7`)
+## 실기 데모 영상
 
-*신규 `v1.1.7` 실기 데모 — VoiceDesign·BreezyVoice 68 보이스·9 비율/1K–8K·Colab A100 60초 연장·멀티트랙 타임라인·4단계 초기 설정 소개:*
+*`v1.1.1` 실기 화면 + 로컬 Qwen3-TTS 내레이션(신규 캡슐 UI·6탭 설정·Breeze-ASR-26 자막 지원):*
+**[▶ v1.1.1 영문판 1080p 보기](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-en-1080p.mp4)** · **[▶ v1.1.1 번체중문판 1080p](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.1/Klipora-Promo-zh-Hant-1080p.mp4)**
 
-- **[▶ v1.1.7 영문판 1080p 보기 (62s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)**
-- **[▶ v1.1.7 번체중문판 1080p 보기 (73s)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-zh-Hant-1080p.mp4)**
+https://github.com/user-attachments/assets/cf44c254-edec-46e1-83d6-0114225d340c
 
-[![Klipora v1.1.7 데모 영상 보기](screenshots/01-startup-selfcheck.png)](https://github.com/ZhiDuan-art/Klipora-app/releases/download/v1.1.7/Klipora-Promo-v1.1.7-en-1080p.mp4)
+<details>
+<summary>▶ 繁體中文 내레이션 버전 보기 (60s)</summary>
+
+https://github.com/user-attachments/assets/8410f8b6-4835-4497-a124-40e8544bfab2
+
+</details>
 
 ---
 
